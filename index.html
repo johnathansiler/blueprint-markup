@@ -1,7 +1,8 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Blueprint Markup</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1e293b">
-<link rel="icon" href="icon.svg"><link rel="stylesheet" href="app.css"></head><body>
+<link rel="icon" href="icon.svg"><link rel="apple-touch-icon" href="icon-192.png"><link rel="stylesheet" href="app.css"></head><body>
+<div id="proj"><span title="Project">🗂</span><select id="projSel" title="Project"></select><button class="btn" id="projNew" title="New project">＋</button><button class="btn" id="projRen" title="Rename project">✎</button><button class="btn" id="projDel" title="Delete project">🗑</button></div>
 <header id="top">
  <label class="btn" title="Open plan">📂<input id="file" type="file" accept="application/pdf,image/png,image/jpeg" hidden></label>
  <select id="planSel" title="Plan"></select>
@@ -23,7 +24,7 @@
  <button id="del" class="tool" title="Delete selected">🗑</button>
  <button id="fit" class="tool" title="Fit">⤢</button>
 </div>
-<main id="stage"><canvas id="cv"></canvas><div id="empty">Open a PDF plan set (or image) with 📂</div><div id="busy" hidden>Rendering…</div></main>
+<main id="stage"><canvas id="cv"></canvas><canvas id="ov"></canvas><div id="empty">Open a PDF plan set (or image) with 📂</div><div id="busy" hidden>Rendering…</div></main>
 <aside id="panel" hidden><div class="ph"><b>Pins</b><button class="btn" id="closeList">✕</button></div>
  <input id="q" placeholder="Search address, loop, notes…">
  <div class="row"><select id="fType"><option value="">All types</option></select>

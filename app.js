@@ -5,45 +5,59 @@ const TYPES={smoke:{c:'#dc2626',l:'S',n:'Smoke'},heat:{c:'#ea580c',l:'H',n:'Heat
 const ST={passed:'#16a34a',failed:'#dc2626','not tested':'#ca8a04'};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 // ---------- IndexedDB ----------
-let dbp;function db(){return dbp||(dbp=new Promise((res,rej)=>{const r=indexedDB.open('blueprint-markup',1);r.onupgradeneeded=()=>{const d=r.result;d.createObjectStore('plans',{keyPath:'id'});for(const s of['markups','pins','media']){const o=d.createObjectStore(s,{keyPath:'id'});o.createIndex(s==='media'?'pinId':'planId',s==='media'?'pinId':'planId')}d.createObjectStore('meta')};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))}
+let dbp;function db(){return dbp||(dbp=new Promise((res,rej)=>{const r=indexedDB.open('blueprint-markup',2);r.onupgradeneeded=e=>{const d=r.result,t=r.transaction;if(e.oldVersion<1){d.createObjectStore('plans',{keyPath:'id'});for(const s of['markups','pins','media']){const o=d.createObjectStore(s,{keyPath:'id'});o.createIndex(s==='media'?'pinId':'planId',s==='media'?'pinId':'planId')}d.createObjectStore('meta')}
+ if(e.oldVersion<2){const pid='p'+uid();d.createObjectStore('projects',{keyPath:'id'}).put({id:pid,name:'My project',created:Date.now()});t.objectStore('meta').put(pid,'project');t.objectStore('plans').openCursor().onsuccess=ev=>{const c=ev.target.result;if(c){c.update({...c.value,projectId:pid});c.continue()}}}};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))}
 async function tx(store,mode,fn){const d=await db();return new Promise((res,rej)=>{const t=d.transaction(store,mode),s=t.objectStore(store);let out;const r=fn(s);if(r)r.onsuccess=()=>out=r.result;t.oncomplete=()=>res(out);t.onerror=()=>rej(t.error)})}
 const put=(s,v,k)=>tx(s,'readwrite',o=>o.put(v,k)),get=(s,k)=>tx(s,'readonly',o=>o.get(k)),del=(s,k)=>tx(s,'readwrite',o=>o.delete(k)),all=s=>tx(s,'readonly',o=>o.getAll()),byIdx=(s,i,v)=>tx(s,'readonly',o=>o.index(i).getAll(v));
 // ---------- state ----------
 const cv=$('#cv'),ctx=cv.getContext('2d'),stage=$('#stage');
-let plan=null,pdf=null,page=1,pageW=0,pageH=0,bmp=null,bmpScale=0,renderTask=null,renderTimer=0;
+let plan=null,pdf=null,page=1,pageW=0,pageH=0,bmp=null,bmpScale=0,renderTask=null,renderTimer=0,baseBm=null,tile=null,project=null;
+const ov=$('#ov'),octx=ov.getContext('2d');
 let markups=[],pins=[],view={s:1,x:0,y:0},tool='pan',sel=null,draft=null;
 const dpr=()=>window.devicePixelRatio||1;
-let lastW=0,lastH=0;function resize(){const w=stage.clientWidth,h=stage.clientHeight;if(lastW&&pageW){const cx=(lastW/2-view.x)/view.s,cy=(lastH/2-view.y)/view.s;view.x=w/2-cx*view.s;view.y=h/2-cy*view.s}const wide=innerWidth>=800;if(wide!==resize.wide){resize.wide=wide;$('#panel').hidden=!wide;renderList()}lastW=w;lastH=h;cv.width=w*dpr();cv.height=h*dpr();draw();scheduleRender()}
+let lastW=0,lastH=0;function resize(){const w=stage.clientWidth,h=stage.clientHeight;if(lastW&&pageW){const cx=(lastW/2-view.x)/view.s,cy=(lastH/2-view.y)/view.s;view.x=w/2-cx*view.s;view.y=h/2-cy*view.s}const wide=innerWidth>=800;if(wide!==resize.wide){resize.wide=wide;$('#panel').hidden=!wide;renderList()}lastW=w;lastH=h;cv.width=ov.width=w*dpr();cv.height=ov.height=h*dpr();draw();scheduleRender()}
 new ResizeObserver(()=>resize()).observe(stage);
 window.addEventListener('resize',resize);
 const toW=(sx,sy)=>({x:(sx-view.x)/view.s,y:(sy-view.y)/view.s});
 // ---------- plans ----------
-async function refreshPlans(){const ps=(await all('plans')).sort((a,b)=>b.added-a.added);$('#planSel').innerHTML=ps.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')||'<option>(no plans)</option>';if(plan)$('#planSel').value=plan.id}
+async function refreshPlans(){const ps=(await all('plans')).filter(p=>p.projectId===project?.id).sort((a,b)=>b.added-a.added);$('#planSel').innerHTML=ps.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')||'<option>(no plans)</option>';if(plan)$('#planSel').value=plan.id}
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-$('#file').onchange=async e=>{const f=e.target.files[0];if(!f)return;e.target.value='';const p={id:uid(),name:f.name,kind:f.type==='application/pdf'||/\.pdf$/i.test(f.name)?'pdf':'image',blob:f,added:Date.now()};await put('plans',p);await openPlan(p.id)};
+$('#file').onchange=async e=>{const f=e.target.files[0];if(!f)return;e.target.value='';const p={id:uid(),name:f.name,kind:f.type==='application/pdf'||/\.pdf$/i.test(f.name)?'pdf':'image',blob:f,added:Date.now(),projectId:project.id};await put('plans',p);await openPlan(p.id)};
 $('#planSel').onchange=e=>openPlan(e.target.value);
 async function openPlan(id,pg=1){const p=await get('plans',id);if(!p)return;plan=p;busy(1);
  if(pdf){pdf.destroy();pdf=null}
  if(p.kind==='pdf'){pdf=await pdfjsLib.getDocument({data:new Uint8Array(await p.blob.arrayBuffer()),disableFontFace:false}).promise;p.pages=pdf.numPages}else p.pages=1;
  markups=await byIdx('markups','planId',id);pins=await byIdx('pins','planId',id);
- await put('meta',id,'last');await refreshPlans();$('#empty').hidden=true;await gotoPage(Math.min(pg,p.pages));busy(0)}
+ await put('meta',id,'last:'+p.projectId);await refreshPlans();$('#empty').hidden=true;await gotoPage(Math.min(pg,p.pages));busy(0)}
 async function buildPageSel(){let labels=null;try{labels=pdf&&await pdf.getPageLabels()}catch{}const sel=$('#pageSel');sel.innerHTML='';for(let i=1;i<=plan.pages;i++){const n=pins.filter(x=>x.page===i).length;sel.add(new Option(`${labels?.[i-1]||'Pg '+i} / ${plan.pages}${n?` (${n}📍)`:''}`,i))}sel.value=page}
 $('#pageSel').onchange=e=>gotoPage(+e.target.value);$('#prev').onclick=()=>plan&&page>1&&gotoPage(page-1);$('#next').onclick=()=>plan&&page<plan.pages&&gotoPage(page+1);
-async function gotoPage(n){page=n;sel=null;bmp=null;bmpScale=0;busy(1);
+async function gotoPage(n){page=n;sel=null;bmp=null;bmpScale=0;baseBm=tile=null;if(renderTask){renderTask.cancel();renderTask=null}busy(1);
  if(pdf){const pg=await pdf.getPage(n);const vp=pg.getViewport({scale:1});pageW=vp.width;pageH=vp.height}
  else{const im=await createImageBitmap(plan.blob);pageW=im.width;pageH=im.height;bmp=im;bmpScale=1}
  put('meta',{plan:plan.id,page:n},'lastPage');fit();await buildPageSel();await renderPage();renderList();busy(0)}
 function fit(){if(!pageW)return;const w=stage.clientWidth,h=stage.clientHeight,s=Math.min(w/pageW,h/pageH)*.95;view={s,x:(w-pageW*s)/2,y:(h-pageH*s)/2};draw()}
 $('#fit').onclick=fit;
 // crisp re-render: render the page at current zoom*dpr, capped by pixel budget
-const MAXPX=36e6;
-function wantScale(){return Math.min(view.s*dpr(),Math.sqrt(MAXPX/(pageW*pageH)),10)}
-function scheduleRender(){if(!pdf)return;clearTimeout(renderTimer);const w=wantScale();if(bmpScale&&w<=bmpScale*1.15&&w>=bmpScale/2.5)return;renderTimer=setTimeout(renderPage,180)}
-async function renderPage(){if(!pdf){draw();return}const want=wantScale(),pn=page;if(renderTask){renderTask.cancel();renderTask=null}
- const pg=await pdf.getPage(pn),vp=pg.getViewport({scale:want}),c=document.createElement('canvas');c.width=Math.ceil(vp.width);c.height=Math.ceil(vp.height);
- const t=pg.render({canvasContext:c.getContext('2d',{alpha:false}),viewport:vp,background:'#fff'});renderTask=t;
- try{await t.promise}catch(e){return}if(renderTask!==t||pn!==page)return;renderTask=null;
- if(bmp&&bmp.close&&!(bmp instanceof HTMLCanvasElement))bmp.close?.();bmp=c;bmpScale=want;draw()}
+// Perf: a small full-page base bitmap is rendered once per page; zoomed-in views render only the visible
+// region (plus margin) at screen resolution, capped by a pixel budget. Markups live on a separate overlay canvas.
+const MAXPX=matchMedia('(pointer:coarse)').matches?16e6:24e6,BASEPX=4e6;
+function wantScale(){return Math.min(view.s*dpr(),10)}
+function visRect(){return{x:-view.x/view.s,y:-view.y/view.s,w:stage.clientWidth/view.s,h:stage.clientHeight/view.s}}
+function covered(t){const v=visRect();return Math.max(0,v.x)>=t.x-1&&Math.max(0,v.y)>=t.y-1&&Math.min(pageW,v.x+v.w)<=t.x+t.w+1&&Math.min(pageH,v.y+v.h)<=t.y+t.h+1}
+function baseOK(w){return baseBm&&baseBm.s>=w*.87}
+function scheduleRender(){if(!pdf)return;clearTimeout(renderTimer);const w=wantScale();if(!baseBm){renderTimer=setTimeout(renderPage,0);return}
+ if(baseOK(w)){if(tile){tile=null;requestDraw()}return}
+ if(tile&&w<=tile.s*1.15&&w>=tile.s/2.5&&covered(tile))return;renderTimer=setTimeout(renderPage,180)}
+function wantRect(s){const v=visRect();let m=.5,w,h;for(;;){w=v.w*(1+2*m);h=v.h*(1+2*m);if(w*h*s*s<=MAXPX||m<=0)break;m=Math.max(0,m-.1)}
+ const x=Math.max(0,v.x-v.w*m),y=Math.max(0,v.y-v.h*m);return{x,y,w:Math.max(1,Math.min(pageW-x,w)),h:Math.max(1,Math.min(pageH-y,h))}}
+async function raster(pg,s,r){const vp=pg.getViewport({scale:s}),c=document.createElement('canvas');c.width=Math.max(1,Math.ceil(r.w*s));c.height=Math.max(1,Math.ceil(r.h*s));
+ const t=pg.render({canvasContext:c.getContext('2d',{alpha:false}),viewport:vp,transform:[1,0,0,1,-r.x*s,-r.y*s],background:'#fff'});renderTask=t;
+ try{await t.promise}catch(e){return null}if(renderTask!==t)return null;renderTask=null;return c}
+async function renderPage(){if(!pdf){draw();return}const pn=page;if(renderTask){renderTask.cancel();renderTask=null}
+ const pg=await pdf.getPage(pn);if(pn!==page)return;
+ if(!baseBm){const s=Math.min(wantScale(),Math.sqrt(BASEPX/(pageW*pageH)));const c=await raster(pg,s,{x:0,y:0,w:pageW,h:pageH});if(!c||pn!==page)return;baseBm={c,s};bmpScale=s;draw()}
+ const want=wantScale();if(baseOK(want)){tile=null;draw();return}
+ const r=wantRect(want),c=await raster(pg,want,r);if(!c||pn!==page)return;tile={c,s:want,...r};bmpScale=want;draw()}
 function busy(b){$('#busy').hidden=!b}
 // ---------- drawing ----------
 function cloudPath(c,x1,y1,x2,y2,s){const x=Math.min(x1,x2),y=Math.min(y1,y2),w=Math.abs(x2-x1),h=Math.abs(y2-y1);const r=Math.max(6/s,Math.min(w,h)/8,1);const pts=[];
@@ -61,11 +75,17 @@ function drawPin(c,p,s,hl){const T=TYPES[p.type]||TYPES.other,r=13/s;c.save();c.
  c.fill();c.stroke();c.fillStyle='#fff';c.font=`bold ${(T.l.length>2?7:T.l.length>1?9:12)/s}px sans-serif`;c.textAlign='center';c.textBaseline='middle';c.fillText(T.l,0,p.type==='heat'?r*.15:0);
  c.fillStyle=ST[p.status]||ST['not tested'];c.beginPath();c.arc(r*.9,-r*.9,4.5/s,0,7);c.fill();c.stroke();
  if(p.address){c.font=`${11/s}px sans-serif`;c.textAlign='left';c.lineWidth=3/s;c.strokeStyle='#fff';c.strokeText(p.address,r*1.3,r*.3);c.fillStyle='#111';c.fillText(p.address,r*1.3,r*.3)}c.restore()}
-function draw(){ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);if(!plan||!pageW)return;const d=dpr();ctx.setTransform(view.s*d,0,0,view.s*d,view.x*d,view.y*d);
- ctx.fillStyle='#fff';ctx.fillRect(0,0,pageW,pageH);if(bmp){ctx.imageSmoothingQuality='high';ctx.drawImage(bmp,0,0,pageW,pageH)}
+function setT(c){const d=dpr();c.setTransform(view.s*d,0,0,view.s*d,view.x*d,view.y*d)}
+function drawBase(){drawn={...view};cv.style.transform=ov.style.transform='';ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);if(!plan||!pageW)return;setT(ctx);
+ ctx.fillStyle='#fff';ctx.fillRect(0,0,pageW,pageH);ctx.imageSmoothingQuality='high';if(bmp)ctx.drawImage(bmp,0,0,pageW,pageH);if(baseBm)ctx.drawImage(baseBm.c,0,0,pageW,pageH);if(tile)ctx.drawImage(tile.c,tile.x,tile.y,tile.c.width/tile.s,tile.c.height/tile.s)}
+function drawOverlay(){const ctx=octx;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,ov.width,ov.height);if(!plan||!pageW)return;setT(ctx);
  for(const m of markups)if(m.page===page)drawMarkup(ctx,m,view.s);if(draft)drawMarkup(ctx,draft,view.s);
  if(sel&&sel.kind==='m'){const m=sel.o;ctx.save();ctx.setLineDash([6/view.s,4/view.s]);ctx.strokeStyle='#2563eb';ctx.lineWidth=1.5/view.s;const p=8/view.s;ctx.strokeRect(Math.min(m.x1,m.x2)-p,Math.min(m.y1,m.y2)-p,Math.abs(m.x2-m.x1)+2*p,Math.abs(m.y2-m.y1)+2*p);ctx.restore()}
  for(const p of pins)if(p.page===page)drawPin(ctx,p,view.s,sel&&sel.o===p)}
+function draw(){drawBase();drawOverlay()}
+// during pan/pinch/wheel move the already-drawn canvases with a cheap CSS transform; repaint once the gesture pauses (150ms) or on release
+let drawn=null,gTimer=0;function fastView(){if(drawn){const k=view.s/drawn.s,t=`translate(${view.x-drawn.x*k}px,${view.y-drawn.y*k}px) scale(${k})`;cv.style.transform=ov.style.transform=t}clearTimeout(gTimer);gTimer=setTimeout(()=>{gTimer=0;requestDraw()},150);scheduleRender()}
+let raf=0,rafB=0;function requestDraw(b=true){if(b)rafB=1;if(!raf)raf=requestAnimationFrame(()=>{raf=0;if(rafB)drawBase();drawOverlay();rafB=0})}
 // ---------- hit testing ----------
 function hit(w){const tol=10/view.s;for(const p of[...pins].reverse())if(p.page===page&&Math.hypot(p.x-w.x,p.y-w.y)<18/view.s)return{kind:'p',o:p};
  for(const m of[...markups].reverse()){if(m.page!==page)continue;const x=Math.min(m.x1,m.x2),y=Math.min(m.y1,m.y2),X=Math.max(m.x1,m.x2),Y=Math.max(m.y1,m.y2);if(w.x>x-tol&&w.x<X+tol&&w.y>y-tol&&w.y<Y+tol)return{kind:'m',o:m}}return null}
@@ -79,21 +99,21 @@ stage.addEventListener('pointerdown',e=>{if(!plan)return;stage.setPointerCapture
  if(tool==='pin'){gesture={type:'pin',...start,w};return}
  draft={id:uid(),planId:plan.id,page,type:tool,x1:w.x,y1:w.y,x2:w.x,y2:w.y,color:$('#color').value,w:3};gesture={type:'draw',...start}});
 stage.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,{x:e.offsetX,y:e.offsetY});if(!gesture)return;
- if(gesture.type==='pinch'&&ptrs.size>=2){const[a,b]=[...ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y),c={x:(a.x+b.x)/2,y:(a.y+b.y)/2},g=gesture,s=clampS(g.v.s*d/g.d),wx=(g.c.x-g.v.x)/g.v.s,wy=(g.c.y-g.v.y)/g.v.s;view={s,x:c.x-wx*s,y:c.y-wy*s};draw();scheduleRender();return}
+ if(gesture.type==='pinch'&&ptrs.size>=2){const[a,b]=[...ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y),c={x:(a.x+b.x)/2,y:(a.y+b.y)/2},g=gesture,s=clampS(g.v.s*d/g.d),wx=(g.c.x-g.v.x)/g.v.s,wy=(g.c.y-g.v.y)/g.v.s;view={s,x:c.x-wx*s,y:c.y-wy*s};fastView();return}
  const dx=e.offsetX-gesture.sx,dy=e.offsetY-gesture.sy;if(Math.hypot(dx,dy)>4)gesture.moved=true;
- if(gesture.type==='pan'){view.x=gesture.v.x+dx;view.y=gesture.v.y+dy;draw()}
- else if(gesture.type==='move'){const o=sel.o,g=gesture.orig,ddx=dx/view.s,ddy=dy/view.s;if(sel.kind==='p'){o.x=g.x+ddx;o.y=g.y+ddy}else{o.x1=g.x1+ddx;o.x2=g.x2+ddx;o.y1=g.y1+ddy;o.y2=g.y2+ddy}draw()}
- else if(gesture.type==='draw'){const w=toW(e.offsetX,e.offsetY);draft.x2=w.x;draft.y2=w.y;draw()}});
-async function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);const g=gesture;if(g?.type==='pinch'){if(ptrs.size===0)gesture=null;return}gesture=null;if(!g)return;
+ if(gesture.type==='pan'){view.x=gesture.v.x+dx;view.y=gesture.v.y+dy;fastView()}
+ else if(gesture.type==='move'){const o=sel.o,g=gesture.orig,ddx=dx/view.s,ddy=dy/view.s;if(sel.kind==='p'){o.x=g.x+ddx;o.y=g.y+ddy}else{o.x1=g.x1+ddx;o.x2=g.x2+ddx;o.y1=g.y1+ddy;o.y2=g.y2+ddy}requestDraw(false)}
+ else if(gesture.type==='draw'){const w=toW(e.offsetX,e.offsetY);draft.x2=w.x;draft.y2=w.y;requestDraw(false)}});
+async function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);const g=gesture;if(g?.type==='pinch'){if(ptrs.size===0){gesture=null;requestDraw()}return}gesture=null;if(!g)return;if(g.type==='pan')requestDraw();
  const w=toW(e.offsetX,e.offsetY);
  if(!g.moved&&(g.type==='pan'||g.type==='move')){const h=hit(w);if(h&&h.kind==='p'){openPin(h.o);return}}
  if(g.type==='move'&&g.moved)await put(sel.kind==='p'?'pins':'markups',sel.o);
  if(g.type==='pin'){const p={id:uid(),planId:plan.id,page,x:g.w.x,y:g.w.y,type:$('#pinType').value,address:'',loop:'',status:'not tested',notes:'',created:Date.now()};pins.push(p);await put('pins',p);draw();renderList();buildPageSel();openPin(p)}
  if(g.type==='draw'){const d=draft;draft=null;if(d.type==='check'&&!g.moved){const s=24/view.s;d.x1=w.x-s*.4;d.y1=w.y-s*.6;d.x2=w.x+s*.6;d.y2=w.y+s*.4}
-  if(Math.abs(d.x2-d.x1)+Math.abs(d.y2-d.y1)>3/view.s){markups.push(d);await put('markups',d)}draw()}}
+  if(Math.abs(d.x2-d.x1)+Math.abs(d.y2-d.y1)>3/view.s){markups.push(d);await put('markups',d)}drawOverlay()}}
 stage.addEventListener('pointerup',up);stage.addEventListener('pointercancel',up);
 const clampS=s=>Math.max(.02,Math.min(s,40));
-stage.addEventListener('wheel',e=>{if(!plan)return;e.preventDefault();const k=Math.exp(-e.deltaY*(e.ctrlKey?.01:.0015)),s=clampS(view.s*k),wx=(e.offsetX-view.x)/view.s,wy=(e.offsetY-view.y)/view.s;view={s,x:e.offsetX-wx*s,y:e.offsetY-wy*s};draw();scheduleRender()},{passive:false});
+stage.addEventListener('wheel',e=>{if(!plan)return;e.preventDefault();const k=Math.exp(-e.deltaY*(e.ctrlKey?.01:.0015)),s=clampS(view.s*k),wx=(e.offsetX-view.x)/view.s,wy=(e.offsetY-view.y)/view.s;view={s,x:e.offsetX-wx*s,y:e.offsetY-wy*s};fastView()},{passive:false});
 document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{tool=b.dataset.t;document.querySelectorAll('[data-t]').forEach(x=>x.classList.toggle('on',x===b));if(tool!=='select'){sel=null;draw()}});
 async function deleteSel(){if(!sel)return;if(sel.kind==='m'){markups=markups.filter(m=>m!==sel.o);await del('markups',sel.o.id)}else await deletePin(sel.o);sel=null;draw()}
 $('#del').onclick=deleteSel;document.addEventListener('keydown',e=>{if((e.key==='Delete'||e.key==='Backspace')&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))deleteSel()});
@@ -135,6 +155,21 @@ $('#exPdf').onclick=async()=>{if(!plan)return;busy(1);const c=await composite();
  const ps=pins.filter(p=>p.page===page);if(ps.length){doc.addPage([612,792],'p');doc.setFontSize(14);doc.text(`Device list - ${plan.name} page ${page}`,40,40);doc.setFontSize(10);let y=64;
   for(const p of ps){if(y>760){doc.addPage([612,792],'p');y=40}doc.text(`${TYPES[p.type].n} | Addr ${p.address||'-'} | Loop ${p.loop||'-'} | ${p.status}${p.notes?' | '+p.notes.slice(0,60):''}`,40,y);y+=16}}
  dl(doc.output('blob'),base()+'.pdf');busy(0)};
+// ---------- projects ----------
+async function refreshProjects(){const ps=(await all('projects')).sort((a,b)=>a.created-b.created);$('#projSel').innerHTML=ps.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');if(project)$('#projSel').value=project.id;return ps}
+function closePlan(){if(renderTask){renderTask.cancel();renderTask=null}if(pdf){pdf.destroy();pdf=null}plan=null;markups=[];pins=[];pageW=pageH=0;bmp=baseBm=tile=null;bmpScale=0;sel=null;$('#pageSel').innerHTML='';$('#empty').hidden=false;draw();renderList()}
+async function loadProject(id){let ps=await refreshProjects();project=ps.find(p=>p.id===id)||ps[0];
+ if(!project){project={id:'p'+uid(),name:'My project',created:Date.now()};await put('projects',project);ps=await refreshProjects()}
+ await put('meta',project.id,'project');$('#projSel').value=project.id;closePlan();await refreshPlans();
+ const mine=(await all('plans')).filter(p=>p.projectId===project.id).sort((a,b)=>b.added-a.added);if(!mine.length)return;
+ let last=await get('meta','last:'+project.id);if(!mine.some(p=>p.id===last))last=mine[0].id;const lp=await get('meta','lastPage');await openPlan(last,lp&&lp.plan===last?lp.page:1)}
+$('#projSel').onchange=e=>loadProject(e.target.value);
+$('#projNew').onclick=async()=>{const n=prompt('New project name:','Project '+(($('#projSel').options.length||0)+1));if(!n||!n.trim())return;const p={id:'p'+uid(),name:n.trim(),created:Date.now()};await put('projects',p);await loadProject(p.id)};
+$('#projRen').onclick=async()=>{if(!project)return;const n=prompt('Rename project:',project.name);if(!n||!n.trim())return;project.name=n.trim();await put('projects',project);await refreshProjects()};
+$('#projDel').onclick=async()=>{if(!project)return;const mine=(await all('plans')).filter(p=>p.projectId===project.id);
+ if(!confirm(`Delete project "${project.name}" and its ${mine.length} plan(s), markups, pins and media? This cannot be undone.`))return;
+ for(const pl of mine){for(const m of await byIdx('markups','planId',pl.id))await del('markups',m.id);for(const p of await byIdx('pins','planId',pl.id)){for(const m of await byIdx('media','pinId',p.id))await del('media',m.id);await del('pins',p.id)}await del('plans',pl.id)}
+ await del('projects',project.id);await del('meta','last:'+project.id);project=null;await loadProject(null)};
 // ---------- boot ----------
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
-(async()=>{resize();await refreshPlans();const last=await get('meta','last'),lp=await get('meta','lastPage');if(last)await openPlan(last,lp&&lp.plan===last?lp.page:1)})();
+(async()=>{resize();await loadProject(await get('meta','project'))})();
