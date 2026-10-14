@@ -1,0 +1,44 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Blueprint Markup</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1e293b">
+<link rel="icon" href="icon.svg"><link rel="stylesheet" href="app.css"></head><body>
+<header id="top">
+ <label class="btn" title="Open plan">📂<input id="file" type="file" accept="application/pdf,image/png,image/jpeg" hidden></label>
+ <select id="planSel" title="Plan"></select>
+ <button class="btn" id="prev">◀</button><select id="pageSel" title="Page"></select><button class="btn" id="next">▶</button>
+ <span class="sp"></span>
+ <button class="btn" id="exPng">PNG</button><button class="btn" id="exPdf">PDF</button>
+ <button class="btn" id="listBtn">☰ Pins</button>
+</header>
+<div id="tools">
+ <button data-t="pan" class="tool on" title="Pan">✋</button>
+ <button data-t="select" class="tool" title="Select/move">➤</button>
+ <button data-t="rect" class="tool" title="Square">▢</button>
+ <button data-t="ellipse" class="tool" title="Circle">◯</button>
+ <button data-t="check" class="tool" title="Checkmark">✔</button>
+ <button data-t="cloud" class="tool" title="Cloud">☁</button>
+ <button data-t="pin" class="tool" title="Pin">📍</button>
+ <select id="pinType" title="Pin type"></select>
+ <input type="color" id="color" value="#e11d48" title="Color">
+ <button id="del" class="tool" title="Delete selected">🗑</button>
+ <button id="fit" class="tool" title="Fit">⤢</button>
+</div>
+<main id="stage"><canvas id="cv"></canvas><div id="empty">Open a PDF plan set (or image) with 📂</div><div id="busy" hidden>Rendering…</div></main>
+<aside id="panel" hidden><div class="ph"><b>Pins</b><button class="btn" id="closeList">✕</button></div>
+ <input id="q" placeholder="Search address, loop, notes…">
+ <div class="row"><select id="fType"><option value="">All types</option></select>
+ <select id="fStat"><option value="">All status</option><option>passed</option><option>failed</option><option>not tested</option></select>
+ <label><input type="checkbox" id="allPages"> all pages</label></div><ul id="pinList"></ul></aside>
+<dialog id="pinDlg"><form method="dialog" id="pinForm">
+ <div style="width:40px;height:4px;background:#64748b;border-radius:2px;margin:0 auto 6px"></div><h3 style="margin:4px 0">Device pin</h3>
+ <label>Type <select name="type" id="dType"></select></label>
+ <label>Address <input name="address"></label><label>Loop <input name="loop"></label>
+ <label>Status <select name="status"><option>not tested</option><option>passed</option><option>failed</option></select></label>
+ <label>Notes <textarea name="notes" rows="3"></textarea></label>
+ <div class="row"><label class="btn">📷 Photo<input type="file" id="addPhoto" accept="image/*" capture="environment" hidden></label>
+ <label class="btn">🎥 Video<input type="file" id="addVideo" accept="video/*" capture="environment" hidden></label>
+ <button type="button" class="btn" id="rec">🎙 Record</button></div>
+ <div id="media"></div>
+ <div class="row"><button type="button" class="btn danger" id="pinDel">Delete pin</button><span class="sp"></span><button class="btn" value="cancel">Close</button><button class="btn pri" id="pinSave" value="save">Save</button></div>
+</form></dialog>
+<script src="vendor/pdf.min.js"></script><script src="vendor/jspdf.umd.min.js"></script><script src="app.js"></script></body></html>
