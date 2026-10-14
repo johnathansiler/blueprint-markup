@@ -29,8 +29,9 @@
  <button id="undo" class="tool" title="Undo (Ctrl+Z)" disabled>↶</button>
  <button id="redo" class="tool" title="Redo (Ctrl+Y)" disabled>↷</button>
  <button id="fit" class="tool" title="Fit">⤢</button>
+ <button id="detBtn" class="tool" title="Detect devices (suggest pins from the plan's symbols)">🔍</button>
 </div>
-<main id="stage"><canvas id="cv"></canvas><canvas id="ov"></canvas><div id="empty">Open a PDF plan set (or image) with 📂</div><div id="busy" hidden><span id="busyTxt">Rendering</span> <b id="busyPct">…</b><div id="busyTrack"><div id="busyBar"></div></div><button type="button" class="btn" id="stop">Stop</button></div><div id="err" hidden><span id="errTxt"></span><button type="button" class="btn" id="errX" title="Dismiss">✕</button></div></main>
+<main id="stage"><canvas id="cv"></canvas><canvas id="ov"></canvas><div id="empty">Open a PDF plan set (or image) with 📂</div><div id="busy" hidden><span id="busyTxt">Rendering</span> <b id="busyPct">…</b><div id="busyTrack"><div id="busyBar"></div></div><button type="button" class="btn" id="stop">Stop</button></div><div id="ghBar" hidden></div><div id="err" hidden><span id="errTxt"></span><button type="button" class="btn" id="errX" title="Dismiss">✕</button></div></main>
 <aside id="panel" hidden><div class="ph"><button class="btn tab on" id="modePins">Pins</button><button class="btn tab" id="modeDefs">⚠ Deficiencies <b id="defCount"></b></button><span class="sp"></span><button class="btn" id="csvBtn" title="Export device list (CSV, whole project)">CSV</button><button class="btn" id="testerBtn" title="Tester name">👤</button><button class="btn" id="closeList">✕</button></div>
  <input id="q" placeholder="Search address, type, loop, notes…">
  <div class="row"><select id="fType"><option value="">All types</option></select>
@@ -41,6 +42,15 @@
 <dialog id="annDlg"><div class="row"><b>Annotate photo</b><span class="sp"></span><button type="button" class="btn" id="annCancel">Cancel</button><button type="button" class="btn pri" id="annSave">Save copy</button></div>
  <div class="row" id="annTools"><button type="button" class="tool on" data-at="arrow" title="Arrow">↗</button><button type="button" class="tool" data-at="circle" title="Circle">◯</button><button type="button" class="tool" data-at="box" title="Box">▢</button><button type="button" class="tool" data-at="pen" title="Pen">✏</button><button type="button" class="tool" data-at="text" title="Text">T</button><input type="color" id="annColor" value="#e11d48" title="Color"><button type="button" class="tool" id="annUndo" title="Undo">↶</button></div>
  <div id="annWrap"><canvas id="annCv"></canvas></div><small style="color:#94a3b8">The original photo is kept; this saves an annotated copy used in exports.</small></dialog>
+<dialog id="detDlg"><form method="dialog" id="detForm"><h3 style="margin:4px 0">🔍 Detect devices</h3>
+ <small style="color:#94a3b8">Finds device symbols drawn in the PDF and shows them as dashed suggestions. Nothing becomes a pin until you accept it.</small>
+ <div class="row" style="margin:8px 0 4px"><b>Device types</b><span class="sp"></span><button type="button" class="btn" id="detAll">All</button><button type="button" class="btn" id="detNone">None</button></div>
+ <div id="detTypes"></div>
+ <div class="row" id="detScope"><label><input type="radio" name="scope" value="page" checked> This page</label><label><input type="radio" name="scope" value="all"> All pages of this plan</label></div>
+ <div class="row"><span class="sp"></span><button class="btn" value="cancel">Cancel</button><button class="btn pri" id="detGo" value="go">Detect</button></div></form></dialog>
+<dialog id="ghDlg"><form method="dialog" id="ghForm"><h3 style="margin:4px 0" id="ghHead">Suggested device</h3>
+ <label>Type <select id="ghType"></select></label><small id="ghInfo" style="color:#94a3b8"></small>
+ <div class="row" style="margin-top:10px"><button type="button" class="btn danger" id="ghRej">✕ Reject</button><button type="button" class="btn" id="ghAllType">Accept all of this type</button><span class="sp"></span><button class="btn" value="cancel">Close</button><button type="button" class="btn pri" id="ghAcc">✔ Accept</button></div></form></dialog>
 <dialog id="pinDlg"><form method="dialog" id="pinForm">
  <div style="width:40px;height:4px;background:#64748b;border-radius:2px;margin:0 auto 6px"></div><h3 style="margin:4px 0">Device pin</h3>
  <label>Type <select name="type" id="dType"></select></label>

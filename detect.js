@@ -1,0 +1,74 @@
+'use strict';
+// Detect devices worker: plain-geometry multi-shape matcher (port of /workspace/detect/match.py).
+// Input: a reduced pdf.js operator list for one page + viewport transform. Output: [{type,x,y}] in viewport (scale 1) coords.
+const hyp=Math.hypot,dist=(a,b)=>hyp(a[0]-b[0],a[1]-b[1]);
+function walk(fn,args,O,vt){const out=[];let ctm=vt.slice(),st=[],stroke=[0,0,0],fill=[0,0,0],segs=[],cur=null,start=null;
+ const ap=(x,y)=>[ctm[0]*x+ctm[2]*y+ctm[4],ctm[1]*x+ctm[3]*y+ctm[5]];
+ const mul=(m,n)=>[m[0]*n[0]+m[2]*n[1],m[1]*n[0]+m[3]*n[1],m[0]*n[2]+m[2]*n[3],m[1]*n[2]+m[3]*n[3],m[0]*n[4]+m[2]*n[5]+m[4],m[1]*n[4]+m[3]*n[5]+m[5]];
+ const col=a=>{if(typeof a[0]==='string'){const h=a[0].replace('#','');return[parseInt(h.slice(0,2),16)/255,parseInt(h.slice(2,4),16)/255,parseInt(h.slice(4,6),16)/255]}return[a[0]/255,a[1]/255,a[2]/255]};
+ const close=()=>{if(cur&&start&&dist(cur,start)>1e-6)segs.push({t:'l',p:[cur,start]});cur=start};
+ const paint=(s,f)=>{if(segs.length){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const g of segs)for(const p of g.p){if(p[0]<x0)x0=p[0];if(p[0]>x1)x1=p[0];if(p[1]<y0)y0=p[1];if(p[1]>y1)y1=p[1]}
+  out.push({segs,color:s?stroke:null,fill:f?fill:null,x0,y0,x1,y1,w:x1-x0,h:y1-y0,cx:(x0+x1)/2,cy:(y0+y1)/2,k:segs.map(g=>g.t).join('')})}segs=[];cur=start=null};
+ for(let i=0;i<fn.length;i++){const f=fn[i],a=args[i];
+  if(f===O.save)st.push([ctm,stroke,fill]);else if(f===O.restore){const s=st.pop();if(s)[ctm,stroke,fill]=s}
+  else if(f===O.transform)ctm=mul(ctm,a);
+  else if(f===O.paintFormXObjectBegin){st.push([ctm,stroke,fill]);if(a&&a[0])ctm=mul(ctm,a[0])}else if(f===O.paintFormXObjectEnd){const s=st.pop();if(s)[ctm,stroke,fill]=s}
+  else if(f===O.setStrokeRGBColor)stroke=col(a);else if(f===O.setFillRGBColor)fill=col(a);
+  else if(f===O.setStrokeColorN)stroke=null;else if(f===O.setFillColorN)fill=null;
+  else if(f===O.constructPath){const ops=a[0],c=a[1];let j=0;
+   for(const op of ops){
+    if(op===O.moveTo){cur=start=ap(c[j],c[j+1]);j+=2}
+    else if(op===O.lineTo){const p=ap(c[j],c[j+1]);j+=2;if(cur)segs.push({t:'l',p:[cur,p]});cur=p}
+    else if(op===O.curveTo){const p1=ap(c[j],c[j+1]),p2=ap(c[j+2],c[j+3]),p=ap(c[j+4],c[j+5]);j+=6;if(cur)segs.push({t:'c',p:[cur,p1,p2,p]});cur=p}
+    else if(op===O.curveTo2){const p2=ap(c[j],c[j+1]),p=ap(c[j+2],c[j+3]);j+=4;if(cur)segs.push({t:'c',p:[cur,cur,p2,p]});cur=p}
+    else if(op===O.curveTo3){const p1=ap(c[j],c[j+1]),p=ap(c[j+2],c[j+3]);j+=4;if(cur)segs.push({t:'c',p:[cur,p1,p,p]});cur=p}
+    else if(op===O.closePath)close();
+    else if(op===O.rectangle){const x=c[j],y=c[j+1],w=c[j+2],h=c[j+3];j+=4;const q=[ap(x,y),ap(x+w,y),ap(x+w,y+h),ap(x,y+h)];for(let k=0;k<4;k++)segs.push({t:'l',p:[q[k],q[(k+1)%4]]});cur=start=q[0]}}}
+  else if(f===O.stroke)paint(1,0);else if(f===O.closeStroke){close();paint(1,0)}
+  else if(f===O.fill||f===O.eoFill)paint(0,1);else if(f===O.fillStroke||f===O.eoFillStroke)paint(1,1);
+  else if(f===O.closeFillStroke||f===O.closeEOFillStroke){close();paint(1,1)}else if(f===O.endPath){segs=[];cur=start=null}}
+ return out}
+const dark=g=>{const c=g.color||g.fill;return!!c&&Math.max(...c)<=.3};
+function poly(g,tol){if(!/^l+$/.test(g.k))return null;const pts=[g.segs[0].p[0]].concat(g.segs.map(s=>s.p[1]));if(dist(pts[0],pts[pts.length-1])>tol)return null;return pts.slice(0,-1)}
+const sides=p=>p.map((a,i)=>dist(a,p[(i+1)%p.length]));
+const area=p=>Math.abs(p.reduce((s,a,i)=>{const b=p[(i+1)%p.length];return s+a[0]*b[1]-b[0]*a[1]},0))/2;
+// symbol scale: median side of dark near-square 4-gons (the reference symbols are ~13 pt on the sample plan)
+function scaleOf(G){const s=[];for(const g of G){const p=poly(g,1);if(!p||p.length!==4)continue;const sd=sides(p),mx=Math.max(...sd),mn=Math.min(...sd);if(mn<4||mx>60||mx/mn>1.15)continue;const a=area(p);if(Math.abs(a-mn*mx)/a>.12)continue;s.push((mx+mn)/2)}
+ if(s.length<5)return 1;s.sort((a,b)=>a-b);return s[s.length>>1]/13}
+function shape(g,k){if(g.k==='cccc')return Math.abs(g.w-g.h)<1*k?'circle':null;const pts=poly(g,.6*k);if(!pts)return null;
+ const s=sides(pts),n=pts.length,A=area(pts),mx=Math.max(...s),mn=Math.min(...s),K2=k*k;
+ if(n===4){if(mn>=11.5*k&&mx<=14.5*k&&A>155*K2)return'square';if(mn>12*k&&mx<17*k&&A<160*K2)return'diamond';if(mn>5.5*k&&mn<8.5*k&&mx>12*k&&mx<16*k)return'rect_small'}
+ if(n===6&&Math.max(g.w,g.h)>=11*k&&Math.max(g.w,g.h)<=17*k&&A>100*K2)return'hex';
+ if(n===3&&mx>=8.5*k&&mx<=12.5*k&&mn>7*k)return'tri';return null}
+function detect(P,W,H,want){const TB=W>H?W*.825:W;let G=P.filter(g=>dark(g)&&g.x0<TB);const k=scaleOf(G);
+ const ctr=g=>[g.cx,g.cy],prim=[];for(const g of G){const s=shape(g,k);if(s)prim.push([s,g])}
+ const tris=prim.filter(p=>p[0]==='tri').map(p=>[p[1],p[1].fill!=null]),circles=prim.filter(p=>p[0]==='circle').map(p=>p[1]),lines=G.filter(g=>g.k==='l');
+ // grid index for neighbourhood queries
+ const CS=40*k,grid=new Map(),key=(x,y)=>Math.floor(x/CS)+','+Math.floor(y/CS);for(const g of G){const q=key(g.cx,g.cy);let a=grid.get(q);if(!a)grid.set(q,a=[]);a.push(g)}
+ const near=(c,r)=>{const o=[];const x0=Math.floor((c[0]-r)/CS),x1=Math.floor((c[0]+r)/CS),y0=Math.floor((c[1]-r)/CS),y1=Math.floor((c[1]+r)/CS);for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++){const a=grid.get(x+','+y);if(a)for(const g of a)if(dist([g.cx,g.cy],c)<r)o.push(g)}return o};
+ const out=[];
+ for(const[sk,g]of prim){if(!['square','hex','diamond','rect_small'].includes(sk))continue;const c=ctr(g),R=(sk!=='rect_small'?7:7.5)*k;
+  const ins=near(c,R*.8).filter(h=>h!==g&&Math.max(h.w,h.h)<R*1.6);
+  const glyph=ins.filter(h=>h.k!=='cccc'&&h.fill==null).map(h=>h.segs.length).sort((a,b)=>a-b);
+  const filled=g.fill!=null||ins.some(h=>h.fill!=null&&Math.max(h.w,h.h)>4*k);
+  const hasC=ins.some(h=>h.k==='cccc'&&h.w>4*k&&h.w<8*k);
+  const tnear=tris.filter(([t])=>dist(ctr(t),c)<15*k);let t=null;
+  if(sk==='square'){
+   if(hasC||tnear.length){t=tnear.some(x=>x[1])?'SPK_BOH':'SPK_FOH';
+    if(!hasC&&!glyph.length)t='LINE_ARRAY';
+    else{const tc=tnear.length?ctr(tnear[0][0]):null;let stem=false;
+     for(const h of near(c,20*k)){if(h.k!=='l')continue;const[a,b]=h.segs[0].p,L=dist(a,b);if(!(L>2.5*k&&L<11*k))continue;
+      for(const[e,o]of[[a,b],[b,a]])if(dist(e,c)>6*k&&dist(e,c)<10.5*k&&dist(o,c)>dist(e,c)+2*k&&(!tc||dist(o,tc)>dist(o,c)))stem=true}
+     t+=stem?'_WALL':'_CEIL'}}
+   else{const gs=glyph.join(',');if(['1,2','1,1,1','1,3','2,2'].includes(gs)||(glyph.length===2&&glyph.includes(1)&&Math.max(...glyph)<=3))t='PULL';else if(glyph.length===1&&glyph[0]>=4)t='JBOX';else if(glyph.length===2)t='SURGE';else t=null}}
+  else if(sk==='hex'){if(filled||!glyph.length||(glyph.length>=6&&Math.max(...glyph)===1))t='RELAY';else if(glyph.length===1)t='SMOKE';else t='MODULE'}
+  else if(sk==='diamond')t='FLOW_TAMPER';else if(sk==='rect_small')t=ins.length>=2?'DOOR_HOLDER':null;
+  if(t)out.push({type:t,c})}
+ for(const g of circles)if(g.w>11.5*k&&g.w<14.5*k){const c=ctr(g);if(near(c,5*k).some(h=>h!==g&&Math.max(h.w,h.h)<9*k))out.push({type:'JBOX_CEIL',c})}
+ const sq=out.filter(o=>o.type.startsWith('SPK'));
+ for(const g of circles){const w=g.w;if(!(w>5*k&&w<11*k))continue;const c=ctr(g);if(sq.some(o=>dist(c,o.c)<8*k))continue;
+  const rad=near(c,w*.5+6*k).filter(h=>h.k==='l'&&dist(ctr(h),c)>2*k&&Math.max(h.w,h.h)<7*k);
+  if(rad.length>=3){const f=g.fill!=null||near(c,2*k).some(h=>h!==g&&h.fill!=null);out.push({type:f?'STROBE_BOH':'STROBE_FOH',c})}}
+ const res=[];for(const o of out){if(res.some(r=>r.type===o.type&&dist(o.c,r.c)<4*k))continue;res.push(o)}
+ return{k,items:res.filter(o=>!want||want.includes(o.type)).map(o=>({type:o.type,x:o.c[0],y:o.c[1]}))}}
+self.onmessage=e=>{const{id,fn,args,O,vt,W,H,want}=e.data;const t0=performance.now();try{const P=walk(fn,args,O,vt);const r=detect(P,W,H,want);self.postMessage({id,ok:1,...r,paths:P.length,ms:performance.now()-t0})}catch(err){self.postMessage({id,ok:0,err:String(err&&err.message||err)})}};

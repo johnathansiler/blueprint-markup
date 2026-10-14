@@ -69,3 +69,9 @@ dialog input,dialog select,dialog textarea{font-size:16px;min-height:42px}
 .ck>span:first-child{flex:1;font-size:14px;line-height:1.2}.ck-pass{border-color:#15803d}.ck-fail{border-color:#b91c1c;background:#2a1215}.ck-na{opacity:.8}
 .seg{display:flex;flex:none}.seg button{min-width:44px;min-height:40px;padding:0 6px;background:#334155;color:#e2e8f0;border:1px solid #475569;font-size:13px;cursor:pointer}.seg button:first-child{border-radius:6px 0 0 6px}.seg button:last-child{border-radius:0 6px 6px 0}
 .seg button.on.pass{background:#15803d}.seg button.on.fail{background:#b91c1c}.seg button.on.na{background:#64748b}.ckbar{margin-top:8px}
+
+/* v8: detect devices */
+#ghBar{position:absolute;left:6px;right:6px;bottom:6px;z-index:3;background:#000d;border-radius:8px;padding:5px 6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;max-height:38%;overflow:auto;font-size:13px}
+#ghBar .btn{padding:3px 8px;min-height:32px;font-size:13px}#ghBar .chip{padding:2px 7px;border-radius:12px;border:1.5px solid;background:#1e293b;color:#e2e8f0;font-size:12px;min-height:28px;cursor:pointer}
+#detTypes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:2px 8px}#detTypes label,#detScope label{display:flex;align-items:center;gap:6px;margin:2px 0;min-height:36px;font-size:14px}
+#detDlg input[type=checkbox],#detDlg input[type=radio]{width:22px;min-height:22px;height:22px;flex:none;margin:0}#detTypes .sw{width:12px;height:12px;border-radius:50%;flex:none}
