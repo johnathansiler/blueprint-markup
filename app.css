@@ -49,3 +49,8 @@ dialog input,dialog select,dialog textarea{font-size:16px;min-height:42px}
 @media(max-width:520px){#top{flex-wrap:nowrap;overflow-x:auto}#top .btn,#top select{padding:6px 7px;font-size:14px}#planSel{max-width:80px}#pageSel{max-width:120px}}
 @media(max-width:520px){#tools{flex-wrap:wrap;justify-content:center}#top{flex-wrap:wrap}}
 @media(max-width:380px){#planSel{max-width:76px}#pageSel{max-width:92px}#top .btn{padding:6px 6px}}
+
+.tool:disabled{opacity:.35}#size{max-width:60px}
+#sum{font-size:13px;background:#0f172a;border:1px solid #334155;border-radius:6px;padding:4px 6px;max-height:40%;overflow:auto;flex:none}#sum summary{cursor:pointer}
+#sum table{width:100%;border-collapse:collapse;margin-top:4px}#sum td,#sum th{padding:2px 4px;text-align:right;border-bottom:1px solid #1e293b}#sum td:first-child,#sum th[colspan]{text-align:left}#sum th[colspan]{color:#94a3b8;font-weight:600}
+#tools{flex-wrap:wrap}

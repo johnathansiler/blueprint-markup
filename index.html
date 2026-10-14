@@ -18,23 +18,30 @@
  <button data-t="ellipse" class="tool" title="Circle">◯</button>
  <button data-t="check" class="tool" title="Checkmark">✔</button>
  <button data-t="cloud" class="tool" title="Cloud">☁</button>
+ <button data-t="arrow" class="tool" title="Arrow">↗</button>
+ <button data-t="line" class="tool" title="Line">╱</button>
+ <button data-t="text" class="tool" title="Text label">T</button>
  <button data-t="pin" class="tool" title="Pin">📍</button>
  <select id="pinType" title="Pin type"></select>
  <input type="color" id="color" value="#e11d48" title="Color">
+ <select id="size" title="Line / text size"><option value="0">S</option><option value="1" selected>M</option><option value="2">L</option><option value="3">XL</option></select>
  <button id="del" class="tool" title="Delete selected">🗑</button>
+ <button id="undo" class="tool" title="Undo (Ctrl+Z)" disabled>↶</button>
+ <button id="redo" class="tool" title="Redo (Ctrl+Y)" disabled>↷</button>
  <button id="fit" class="tool" title="Fit">⤢</button>
 </div>
 <main id="stage"><canvas id="cv"></canvas><canvas id="ov"></canvas><div id="empty">Open a PDF plan set (or image) with 📂</div><div id="busy" hidden><span id="busyTxt">Rendering</span> <b id="busyPct">…</b><div id="busyTrack"><div id="busyBar"></div></div><button type="button" class="btn" id="stop">Stop</button></div><div id="err" hidden><span id="errTxt"></span><button type="button" class="btn" id="errX" title="Dismiss">✕</button></div></main>
-<aside id="panel" hidden><div class="ph"><b>Pins</b><button class="btn" id="closeList">✕</button></div>
- <input id="q" placeholder="Search address, loop, notes…">
+<aside id="panel" hidden><div class="ph"><b>Pins</b><span class="sp"></span><button class="btn" id="csvBtn" title="Export device list (CSV, whole project)">CSV</button><button class="btn" id="testerBtn" title="Tester name">👤</button><button class="btn" id="closeList">✕</button></div>
+ <input id="q" placeholder="Search address, type, loop, notes…">
  <div class="row"><select id="fType"><option value="">All types</option></select>
  <select id="fStat"><option value="">All status</option><option>passed</option><option>failed</option><option>not tested</option></select>
- <label><input type="checkbox" id="allPages"> all pages</label></div><ul id="pinList"></ul></aside>
+ <select id="fLoop"><option value="">All loops</option></select>
+ <label><input type="checkbox" id="allPages"> all pages</label></div><details id="sum" open></details><ul id="pinList"></ul></aside>
 <dialog id="pinDlg"><form method="dialog" id="pinForm">
  <div style="width:40px;height:4px;background:#64748b;border-radius:2px;margin:0 auto 6px"></div><h3 style="margin:4px 0">Device pin</h3>
  <label>Type <select name="type" id="dType"></select></label>
  <label>Address <input name="address"></label><label>Loop <input name="loop"></label>
- <label>Status <select name="status"><option>not tested</option><option>passed</option><option>failed</option></select></label>
+ <label>Status <select name="status"><option>not tested</option><option>passed</option><option>failed</option></select></label><small id="testedInfo" style="color:#94a3b8"></small>
  <label>Notes <textarea name="notes" rows="3"></textarea></label>
  <div class="row"><label class="btn">📷 Photo<input type="file" id="addPhoto" accept="image/*" capture="environment" hidden></label>
  <label class="btn">🎥 Video<input type="file" id="addVideo" accept="video/*" capture="environment" hidden></label>
