@@ -5,7 +5,7 @@
 <div id="proj"><span title="Project">🗂</span><select id="projSel" title="Project"></select><button class="btn" id="projNew" title="New project">＋</button><button class="btn" id="projRen" title="Rename project">✎</button><button class="btn" id="projDel" title="Delete project">🗑</button></div>
 <header id="top">
  <label class="btn" title="Open plan">📂<input id="file" type="file" accept="application/pdf,image/png,image/jpeg" hidden></label>
- <select id="planSel" title="Plan"></select>
+ <select id="planSel" title="Plan"></select><button class="btn" id="planDel" title="Delete this plan">🗑</button>
  <button class="btn" id="prev">◀</button><select id="pageSel" title="Page"></select><button class="btn" id="next">▶</button>
  <span class="sp"></span>
  <button class="btn" id="exPng">PNG</button><button class="btn" id="exPdf">PDF</button>
@@ -24,7 +24,7 @@
  <button id="del" class="tool" title="Delete selected">🗑</button>
  <button id="fit" class="tool" title="Fit">⤢</button>
 </div>
-<main id="stage"><canvas id="cv"></canvas><canvas id="ov"></canvas><div id="empty">Open a PDF plan set (or image) with 📂</div><div id="busy" hidden>Rendering…</div></main>
+<main id="stage"><canvas id="cv"></canvas><canvas id="ov"></canvas><div id="empty">Open a PDF plan set (or image) with 📂</div><div id="busy" hidden><span id="busyTxt">Rendering</span> <b id="busyPct">…</b><div id="busyTrack"><div id="busyBar"></div></div><button type="button" class="btn" id="stop">Stop</button></div><div id="err" hidden><span id="errTxt"></span><button type="button" class="btn" id="errX" title="Dismiss">✕</button></div></main>
 <aside id="panel" hidden><div class="ph"><b>Pins</b><button class="btn" id="closeList">✕</button></div>
  <input id="q" placeholder="Search address, loop, notes…">
  <div class="row"><select id="fType"><option value="">All types</option></select>

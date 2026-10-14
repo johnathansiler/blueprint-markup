@@ -22,19 +22,36 @@ const toW=(sx,sy)=>({x:(sx-view.x)/view.s,y:(sy-view.y)/view.s});
 // ---------- plans ----------
 async function refreshPlans(){const ps=(await all('plans')).filter(p=>p.projectId===project?.id).sort((a,b)=>b.added-a.added);$('#planSel').innerHTML=ps.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')||'<option>(no plans)</option>';if(plan)$('#planSel').value=plan.id}
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-$('#file').onchange=async e=>{const f=e.target.files[0];if(!f)return;e.target.value='';const p={id:uid(),name:f.name,kind:f.type==='application/pdf'||/\.pdf$/i.test(f.name)?'pdf':'image',blob:f,added:Date.now(),projectId:project.id};await put('plans',p);await openPlan(p.id)};
+$('#file').onchange=async e=>{const f=e.target.files[0];if(!f)return;e.target.value='';hideErr();busy(1,'Saving');prog(null);let blob;
+ // copy the bytes now: some Android file providers hand out File handles that can't be re-read later from IndexedDB
+ try{blob=new Blob([await f.arrayBuffer()],{type:f.type||''})}catch(err){showErr(`Could not read "${f.name}": ${err.message}`);return}
+ const p={id:uid(),name:f.name,kind:f.type==='application/pdf'||/\.pdf$/i.test(f.name)?'pdf':'image',blob,added:Date.now(),projectId:project.id};await put('plans',p);await openPlan(p.id)};
 $('#planSel').onchange=e=>openPlan(e.target.value);
-async function openPlan(id,pg=1){const p=await get('plans',id);if(!p)return;plan=p;busy(1);
- if(pdf){pdf.destroy();pdf=null}
- if(p.kind==='pdf'){pdf=await pdfjsLib.getDocument({data:new Uint8Array(await p.blob.arrayBuffer()),disableFontFace:false}).promise;p.pages=pdf.numPages}else p.pages=1;
- markups=await byIdx('markups','planId',id);pins=await byIdx('pins','planId',id);
- await put('meta',id,'last:'+p.projectId);await refreshPlans();$('#empty').hidden=true;await gotoPage(Math.min(pg,p.pages));busy(0)}
-async function buildPageSel(){let labels=null;try{labels=pdf&&await pdf.getPageLabels()}catch{}const sel=$('#pageSel');sel.innerHTML='';for(let i=1;i<=plan.pages;i++){const n=pins.filter(x=>x.page===i).length;sel.add(new Option(`${labels?.[i-1]||'Pg '+i} / ${plan.pages}${n?` (${n}📍)`:''}`,i))}sel.value=page}
+// Loading is guarded: every step has a timeout, errors are shown, the badge always clears, and Stop cancels.
+let loadTask=null,opSeq=0;
+const withTimeout=(p,ms,msg)=>new Promise((res,rej)=>{const t=setTimeout(()=>rej(new Error(msg)),ms);p.then(v=>{clearTimeout(t);res(v)},e=>{clearTimeout(t);rej(e)})});
+function stopAll(){opSeq++;if(loadTask){try{loadTask.destroy()}catch{}loadTask=null}if(renderTask){try{renderTask.cancel()}catch{}renderTask=null}clearTimeout(renderTimer);busy(0)}
+async function openPlan(id,pg=1){const p=await get('plans',id);if(!p)return;stopAll();const seq=opSeq;hideErr();plan=p;busy(1,'Loading');prog(0);
+ try{if(pdf){pdf.destroy();pdf=null}pageW=0;draw();
+  if(p.kind==='pdf'){if(!p.blob||!p.blob.size)throw new Error('the stored file is empty');
+   const data=new Uint8Array(await withTimeout(p.blob.arrayBuffer(),30000,'reading the stored file timed out'));if(seq!==opSeq)return;prog(.1);
+   const t=pdfjsLib.getDocument({data,disableFontFace:false});loadTask=t;t.onProgress=e=>{if(e.total)prog(.1+.2*Math.min(1,e.loaded/e.total))};
+   const d=await withTimeout(t.promise,60000,'the PDF engine did not respond within 60 s');if(seq!==opSeq||loadTask!==t){d.destroy();return}loadTask=null;pdf=d;p.pages=d.numPages}else p.pages=1;
+  prog(.3);markups=await byIdx('markups','planId',id);pins=await byIdx('pins','planId',id);
+  await put('meta',id,'last:'+p.projectId);await refreshPlans();$('#empty').hidden=true;await gotoPage(Math.min(pg,p.pages)||1,seq)}
+ catch(e){if(seq===opSeq){if(loadTask){try{loadTask.destroy()}catch{}loadTask=null}showErr(`Could not open "${p.name}": ${e&&e.message||e}`)}}
+ finally{if(seq===opSeq)busy(0)}}
+async function buildPageSel(){fillPageSel(null);let labels=null;try{labels=pdf&&await withTimeout(pdf.getPageLabels(),5000,'labels')}catch{}if(labels)fillPageSel(labels)}
+function fillPageSel(labels){if(!plan)return;const sel=$('#pageSel');sel.innerHTML='';for(let i=1;i<=plan.pages;i++){const n=pins.filter(x=>x.page===i).length;sel.add(new Option(`${labels?.[i-1]||'Pg '+i} / ${plan.pages}${n?` (${n}📍)`:''}`,i))}sel.value=page}
 $('#pageSel').onchange=e=>gotoPage(+e.target.value);$('#prev').onclick=()=>plan&&page>1&&gotoPage(page-1);$('#next').onclick=()=>plan&&page<plan.pages&&gotoPage(page+1);
-async function gotoPage(n){page=n;sel=null;bmp=null;bmpScale=0;baseBm=tile=null;if(renderTask){renderTask.cancel();renderTask=null}busy(1);
- if(pdf){const pg=await pdf.getPage(n);const vp=pg.getViewport({scale:1});pageW=vp.width;pageH=vp.height}
- else{const im=await createImageBitmap(plan.blob);pageW=im.width;pageH=im.height;bmp=im;bmpScale=1}
- put('meta',{plan:plan.id,page:n},'lastPage');fit();await buildPageSel();await renderPage();renderList();busy(0)}
+async function gotoPage(n,seq){if(!plan)return;const own=seq===undefined;if(own){if(renderTask){try{renderTask.cancel()}catch{}renderTask=null}seq=++opSeq;hideErr()}
+ page=n;sel=null;bmp=null;bmpScale=0;baseBm=tile=null;busy(1,'Rendering');prog(.3);
+ try{if(pdf){const pg=await withTimeout(pdf.getPage(n),30000,'reading page '+n+' timed out');if(seq!==opSeq)return;const vp=pg.getViewport({scale:1});pageW=vp.width;pageH=vp.height}
+  else{const im=await createImageBitmap(plan.blob);pageW=im.width;pageH=im.height;bmp=im;bmpScale=1}
+  put('meta',{plan:plan.id,page:n},'lastPage');fit();prog(.35);await buildPageSel();if(seq!==opSeq)return;prog(.4);
+  const ok=await renderPage(true);if(seq!==opSeq)return;if(ok===false)showErr('Could not render this page, even at low resolution. Try ⤢ or reopen the plan.');renderList()}
+ catch(e){if(seq===opSeq)showErr('Could not show page '+n+': '+(e&&e.message||e))}
+ finally{if(own&&seq===opSeq)busy(0)}}
 function fit(){if(!pageW)return;const w=stage.clientWidth,h=stage.clientHeight,s=Math.min(w/pageW,h/pageH)*.95;view={s,x:(w-pageW*s)/2,y:(h-pageH*s)/2};draw()}
 $('#fit').onclick=fit;
 // crisp re-render: render the page at current zoom*dpr, capped by pixel budget
@@ -50,15 +67,26 @@ function scheduleRender(){if(!pdf)return;clearTimeout(renderTimer);const w=wantS
  if(tile&&w<=tile.s*1.15&&w>=tile.s/2.5&&covered(tile))return;renderTimer=setTimeout(renderPage,180)}
 function wantRect(s){const v=visRect();let m=.5,w,h;for(;;){w=v.w*(1+2*m);h=v.h*(1+2*m);if(w*h*s*s<=MAXPX||m<=0)break;m=Math.max(0,m-.1)}
  const x=Math.max(0,v.x-v.w*m),y=Math.max(0,v.y-v.h*m);return{x,y,w:Math.max(1,Math.min(pageW-x,w)),h:Math.max(1,Math.min(pageH-y,h))}}
-async function raster(pg,s,r){const vp=pg.getViewport({scale:s}),c=document.createElement('canvas');c.width=Math.max(1,Math.ceil(r.w*s));c.height=Math.max(1,Math.ceil(r.h*s));
- const t=pg.render({canvasContext:c.getContext('2d',{alpha:false}),viewport:vp,transform:[1,0,0,1,-r.x*s,-r.y*s],background:'#fff'});renderTask=t;
- try{await t.promise}catch(e){return null}if(renderTask!==t)return null;renderTask=null;return c}
-async function renderPage(){if(!pdf){draw();return}const pn=page;if(renderTask){renderTask.cancel();renderTask=null}
- const pg=await pdf.getPage(pn);if(pn!==page)return;
- if(!baseBm){const s=Math.min(wantScale(),Math.sqrt(BASEPX/(pageW*pageH)));const c=await raster(pg,s,{x:0,y:0,w:pageW,h:pageH});if(!c||pn!==page)return;baseBm={c,s};bmpScale=s;draw()}
+// Mobile canvas limits: keep every canvas under ~16.7 MP and 8192 px per side; a null context falls back to a smaller size.
+const SAFE_AREA=16e6,SAFE_SIDE=8192;
+async function raster(pg,s,r,showProg){s=Math.max(s,.02);const k=Math.min(1,Math.sqrt(SAFE_AREA/(r.w*r.h*s*s)),SAFE_SIDE/(r.w*s),SAFE_SIDE/(r.h*s));s*=k;
+ const vp=pg.getViewport({scale:s}),c=document.createElement('canvas');c.width=Math.max(1,Math.ceil(r.w*s));c.height=Math.max(1,Math.ceil(r.h*s));
+ const cx=c.getContext('2d',{alpha:false});if(!cx)return null;
+ let t;try{t=pg.render({canvasContext:cx,viewport:vp,transform:[1,0,0,1,-r.x*s,-r.y*s],background:'#fff'})}catch(e){console.warn('render failed',e);return null}renderTask=t;
+ // pdf.js has no render-progress API: phase % (40% = page ready) plus a live count of drawing operations received
+ if(showProg)t.onContinue=cont=>{let n=0;try{for(const st of pg._intentStates?.values()||[])n=Math.max(n,st.operatorList?.fnArray?.length||0)}catch{}if(n)$('#busyPct').textContent=`40% · ${n>=1e4?Math.round(n/1e3)+'k':n} ops`;cont()};
+ const to=setTimeout(()=>{if(renderTask===t){t.cancel();t.timedOut=1}},45000);
+ try{await t.promise}catch(e){if(!/cancel/i.test(e?.name+e?.message))console.warn('render failed',e);return null}finally{clearTimeout(to)}if(renderTask!==t)return null;renderTask=null;if(showProg)prog(1);c._s=s;return c}
+async function renderPage(first){if(!pdf){draw();return}const pn=page,seq=opSeq;if(renderTask){renderTask.cancel();renderTask=null}
+ const pg=await pdf.getPage(pn);if(pn!==page||seq!==opSeq)return;
+ if(!baseBm){let s=Math.min(wantScale(),Math.sqrt(BASEPX/(pageW*pageH))),c=null;for(let i=0;i<3&&!c;i++,s/=2){c=await raster(pg,s,{x:0,y:0,w:pageW,h:pageH},first);if(pn!==page||seq!==opSeq)return}if(!c)return false;baseBm={c,s:c._s};bmpScale=c._s;draw()}
  const want=wantScale();if(baseOK(want)){tile=null;draw();return}
- const r=wantRect(want),c=await raster(pg,want,r);if(!c||pn!==page)return;tile={c,s:want,...r};bmpScale=want;draw()}
-function busy(b){$('#busy').hidden=!b}
+ const r=wantRect(want),c=await raster(pg,want,r);if(!c||pn!==page)return;tile={c,s:c._s,...r};bmpScale=c._s;draw()}
+function busy(b,txt){$('#busy').hidden=!b;if(b){$('#busyTxt').textContent=txt||'Working';prog(null)}}
+function prog(f){const pc=f==null?null:Math.round(Math.max(0,Math.min(1,f))*100);$('#busyBar').style.width=(pc||0)+'%';$('#busyPct').textContent=pc==null?'…':pc+'%'}
+function showErr(m){$('#errTxt').textContent=m;$('#err').hidden=false;busy(0);if(!plan||!pageW)$('#empty').hidden=false}
+function hideErr(){$('#err').hidden=true}
+$('#stop').onclick=()=>{const loading=!!loadTask||!pageW;stopAll();showErr(loading?'Stopped. Pick a plan above or open it again.':'Stopped rendering. Zoom or tap ⤢ to try again.')};$('#errX').onclick=hideErr;
 // ---------- drawing ----------
 function cloudPath(c,x1,y1,x2,y2,s){const x=Math.min(x1,x2),y=Math.min(y1,y2),w=Math.abs(x2-x1),h=Math.abs(y2-y1);const r=Math.max(6/s,Math.min(w,h)/8,1);const pts=[];
  const seg=(ax,ay,bx,by)=>{const L=Math.hypot(bx-ax,by-ay),n=Math.max(1,Math.round(L/(2*r)));for(let i=0;i<n;i++)pts.push([ax+(bx-ax)*i/n,ay+(by-ay)*i/n])};
@@ -91,7 +119,7 @@ function hit(w){const tol=10/view.s;for(const p of[...pins].reverse())if(p.page=
  for(const m of[...markups].reverse()){if(m.page!==page)continue;const x=Math.min(m.x1,m.x2),y=Math.min(m.y1,m.y2),X=Math.max(m.x1,m.x2),Y=Math.max(m.y1,m.y2);if(w.x>x-tol&&w.x<X+tol&&w.y>y-tol&&w.y<Y+tol)return{kind:'m',o:m}}return null}
 // ---------- input ----------
 const ptrs=new Map();let gesture=null;
-stage.addEventListener('pointerdown',e=>{if(!plan)return;stage.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.offsetX,y:e.offsetY});
+stage.addEventListener('pointerdown',e=>{if(!plan||e.target!==cv)return;stage.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.offsetX,y:e.offsetY});
  if(ptrs.size===2){draft=null;const[a,b]=[...ptrs.values()];gesture={type:'pinch',d:Math.hypot(a.x-b.x,a.y-b.y),c:{x:(a.x+b.x)/2,y:(a.y+b.y)/2},v:{...view}};return}
  const w=toW(e.offsetX,e.offsetY);const start={sx:e.offsetX,sy:e.offsetY,moved:false};
  if(tool==='pan'||e.button===1){gesture={type:'pan',...start,v:{...view}};return}
@@ -149,15 +177,15 @@ async function composite(){const sc=Math.min(3,Math.sqrt(30e6/(pageW*pageH)));co
  x.setTransform(sc,0,0,sc,0,0);const ps=1/Math.max(1,Math.max(pageW,pageH)/1200);for(const m of markups)if(m.page===page)drawMarkup(x,m,1/1.5);for(const p of pins)if(p.page===page)drawPin(x,p,ps,false);return c}
 const base=()=>`${plan.name.replace(/\.[^.]+$/,'')}-p${page}`;
 function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
-$('#exPng').onclick=async()=>{if(!plan)return;busy(1);const c=await composite();c.toBlob(b=>{dl(b,base()+'.png');busy(0)},'image/png')};
-$('#exPdf').onclick=async()=>{if(!plan)return;busy(1);const c=await composite();const{jsPDF}=window.jspdf;const doc=new jsPDF({orientation:pageW>pageH?'l':'p',unit:'pt',format:[pageW,pageH]});
+$('#exPng').onclick=async()=>{if(!plan)return;busy(1,'Exporting');try{const c=await composite();await new Promise(r=>c.toBlob(b=>{dl(b,base()+'.png');r()},'image/png'))}catch(e){showErr('PNG export failed: '+e.message)}finally{busy(0)}};
+$('#exPdf').onclick=async()=>{if(!plan)return;busy(1,'Exporting');try{const c=await composite();const{jsPDF}=window.jspdf;const doc=new jsPDF({orientation:pageW>pageH?'l':'p',unit:'pt',format:[pageW,pageH]});
  doc.addImage(c.toDataURL('image/jpeg',.9),'JPEG',0,0,pageW,pageH);
  const ps=pins.filter(p=>p.page===page);if(ps.length){doc.addPage([612,792],'p');doc.setFontSize(14);doc.text(`Device list - ${plan.name} page ${page}`,40,40);doc.setFontSize(10);let y=64;
   for(const p of ps){if(y>760){doc.addPage([612,792],'p');y=40}doc.text(`${TYPES[p.type].n} | Addr ${p.address||'-'} | Loop ${p.loop||'-'} | ${p.status}${p.notes?' | '+p.notes.slice(0,60):''}`,40,y);y+=16}}
- dl(doc.output('blob'),base()+'.pdf');busy(0)};
+ dl(doc.output('blob'),base()+'.pdf')}catch(e){showErr('PDF export failed: '+e.message)}finally{busy(0)}};
 // ---------- projects ----------
 async function refreshProjects(){const ps=(await all('projects')).sort((a,b)=>a.created-b.created);$('#projSel').innerHTML=ps.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');if(project)$('#projSel').value=project.id;return ps}
-function closePlan(){if(renderTask){renderTask.cancel();renderTask=null}if(pdf){pdf.destroy();pdf=null}plan=null;markups=[];pins=[];pageW=pageH=0;bmp=baseBm=tile=null;bmpScale=0;sel=null;$('#pageSel').innerHTML='';$('#empty').hidden=false;draw();renderList()}
+function closePlan(){stopAll();if(pdf){pdf.destroy();pdf=null}plan=null;markups=[];pins=[];pageW=pageH=0;bmp=baseBm=tile=null;bmpScale=0;sel=null;$('#pageSel').innerHTML='';$('#empty').hidden=false;draw();renderList()}
 async function loadProject(id){let ps=await refreshProjects();project=ps.find(p=>p.id===id)||ps[0];
  if(!project){project={id:'p'+uid(),name:'My project',created:Date.now()};await put('projects',project);ps=await refreshProjects()}
  await put('meta',project.id,'project');$('#projSel').value=project.id;closePlan();await refreshPlans();
@@ -166,10 +194,15 @@ async function loadProject(id){let ps=await refreshProjects();project=ps.find(p=
 $('#projSel').onchange=e=>loadProject(e.target.value);
 $('#projNew').onclick=async()=>{const n=prompt('New project name:','Project '+(($('#projSel').options.length||0)+1));if(!n||!n.trim())return;const p={id:'p'+uid(),name:n.trim(),created:Date.now()};await put('projects',p);await loadProject(p.id)};
 $('#projRen').onclick=async()=>{if(!project)return;const n=prompt('Rename project:',project.name);if(!n||!n.trim())return;project.name=n.trim();await put('projects',project);await refreshProjects()};
+async function deletePlanData(id){for(const m of await byIdx('markups','planId',id))await del('markups',m.id);for(const p of await byIdx('pins','planId',id)){for(const m of await byIdx('media','pinId',p.id))await del('media',m.id);await del('pins',p.id)}await del('plans',id)}
+$('#planDel').onclick=async()=>{if(!plan)return;const cur=plan,mine=(await all('plans')).filter(x=>x.projectId===cur.projectId),dups=mine.filter(x=>x.id!==cur.id&&x.name===cur.name&&x.blob?.size===cur.blob?.size);
+ if(!confirm(`Delete plan "${cur.name}" and its markups, pins and media? This cannot be undone.`))return;let ids=[cur.id];
+ if(dups.length&&confirm(`Also delete ${dups.length} duplicate upload(s) of this same file (same name and size), including any markups on them?`))ids=ids.concat(dups.map(x=>x.id));
+ stopAll();hideErr();for(const id of ids)await deletePlanData(id);await loadProject(project.id)};
 $('#projDel').onclick=async()=>{if(!project)return;const mine=(await all('plans')).filter(p=>p.projectId===project.id);
  if(!confirm(`Delete project "${project.name}" and its ${mine.length} plan(s), markups, pins and media? This cannot be undone.`))return;
- for(const pl of mine){for(const m of await byIdx('markups','planId',pl.id))await del('markups',m.id);for(const p of await byIdx('pins','planId',pl.id)){for(const m of await byIdx('media','pinId',p.id))await del('media',m.id);await del('pins',p.id)}await del('plans',pl.id)}
+ stopAll();for(const pl of mine)await deletePlanData(pl.id);
  await del('projects',project.id);await del('meta','last:'+project.id);project=null;await loadProject(null)};
 // ---------- boot ----------
-if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
+if('serviceWorker'in navigator&&location.protocol.startsWith('http')){const had=!!navigator.serviceWorker.controller;let done=0;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!done){done=1;location.reload()}});navigator.serviceWorker.register('sw.js')}
 (async()=>{resize();await loadProject(await get('meta','project'))})();

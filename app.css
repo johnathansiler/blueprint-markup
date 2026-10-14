@@ -9,7 +9,9 @@ input[type=color]{padding:0;width:38px;height:34px}
 #stage{flex:1;position:relative;touch-action:none;overflow:hidden;background:#64748b}
 #cv,#ov{position:absolute;inset:0;width:100%;height:100%}#ov{pointer-events:none}#cv,#ov{transform-origin:0 0}
 #empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px;pointer-events:none}
-#busy{position:absolute;top:8px;right:8px;background:#000a;padding:4px 8px;border-radius:6px}
+#busy{position:absolute;top:8px;right:8px;background:#000c;padding:4px 6px 4px 10px;border-radius:6px;display:flex;align-items:center;gap:6px;z-index:4;max-width:calc(100% - 16px)}
+#busyTrack{width:70px;height:6px;background:#334155;border-radius:3px;overflow:hidden}#busyBar{height:100%;width:0;background:#60a5fa;transition:width .2s}#busy .btn{padding:3px 8px;min-height:30px;font-size:13px}
+#err{position:absolute;left:8px;right:8px;top:8px;z-index:4;background:#7f1d1d;color:#fee2e2;border:1px solid #b91c1c;padding:8px 10px;border-radius:8px;display:flex;gap:8px;align-items:center}#err span{flex:1;overflow-wrap:anywhere}#err .btn{padding:3px 8px;min-height:30px}
 #panel{position:absolute;right:0;top:0;bottom:0;width:min(340px,100%);background:#1e293b;z-index:5;padding:8px;display:flex;flex-direction:column;gap:6px;box-shadow:-4px 0 12px #0008}
 #panel[hidden]{display:none}.ph,.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 #pinList{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
@@ -44,5 +46,6 @@ dialog input,dialog select,dialog textarea{font-size:16px;min-height:42px}
 #proj{display:flex;gap:4px;align-items:center;padding:3px 6px;background:#0f172a;border-bottom:1px solid #334155;order:0;min-width:0}
 #proj select{flex:1;min-width:0;max-width:320px;font-weight:600;padding:3px 7px;min-height:32px}#proj .btn{padding:3px 9px;min-height:32px;min-width:36px}
 @media(min-width:800px){#proj{grid-column:1/3;grid-row:1}#top{grid-row:2}#stage{grid-row:3}#tools{grid-row:4}#panel{grid-row:3/5}body{grid-template-rows:auto auto 1fr auto}}
-@media(max-width:520px){#top{flex-wrap:nowrap;overflow-x:auto}#top .btn,#top select{padding:6px 7px;font-size:14px}#planSel{max-width:90px}#pageSel{max-width:120px}}
+@media(max-width:520px){#top{flex-wrap:nowrap;overflow-x:auto}#top .btn,#top select{padding:6px 7px;font-size:14px}#planSel{max-width:80px}#pageSel{max-width:120px}}
 @media(max-width:520px){#tools{flex-wrap:wrap;justify-content:center}#top{flex-wrap:wrap}}
+@media(max-width:380px){#planSel{max-width:76px}#pageSel{max-width:92px}#top .btn{padding:6px 6px}}
