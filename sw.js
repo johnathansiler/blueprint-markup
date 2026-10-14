@@ -1,6 +1,6 @@
-// bpm-v6: app files are network-first (fresh code whenever online, cache when offline); the big vendor libraries are cache-first.
+// bpm-v7: app files are network-first (fresh code whenever online, cache when offline); the big vendor libraries are cache-first.
 // Precache bypasses the HTTP cache (cache:'reload') so an install can't mix old and new files.
-const C='bpm-v6',A=['./','index.html','app.js','app.css','manifest.json','icon.svg','icon-192.png','icon-512.png','icon-maskable-512.png','vendor/pdf.min.js','vendor/pdf.worker.min.js','vendor/jspdf.umd.min.js'];
+const C='bpm-v7',A=['./','index.html','app.js','app.css','manifest.json','icon.svg','icon-192.png','icon-512.png','icon-maskable-512.png','vendor/pdf.min.js','vendor/pdf.worker.min.js','vendor/jspdf.umd.min.js'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A.map(u=>new Request(u,{cache:'reload'})))));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',e=>{const q=e.request;if(q.method!=='GET'||new URL(q.url).origin!==location.origin)return;

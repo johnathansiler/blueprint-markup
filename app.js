@@ -1,8 +1,22 @@
 'use strict';
 pdfjsLib.GlobalWorkerOptions.workerSrc='vendor/pdf.worker.min.js';
 const $=s=>document.querySelector(s);
-const TYPES={smoke:{c:'#dc2626',l:'S',n:'Smoke'},heat:{c:'#ea580c',l:'H',n:'Heat'},pull:{c:'#be185d',l:'P',n:'Pull station'},horn:{c:'#7c3aed',l:'HS',n:'Horn/strobe'},panel:{c:'#0f766e',l:'FACP',n:'Panel',sq:1},module:{c:'#2563eb',l:'M',n:'Module',sq:1},other:{c:'#475569',l:'?',n:'Other'}};
-const ST={passed:'#16a34a',failed:'#dc2626','not tested':'#ca8a04'};
+const TYPES={smoke:{c:'#dc2626',l:'S',n:'Smoke'},heat:{c:'#ea580c',l:'H',n:'Heat'},pull:{c:'#be185d',l:'P',n:'Pull station'},horn:{c:'#7c3aed',l:'HS',n:'Horn/strobe'},panel:{c:'#0f766e',l:'FACP',n:'Panel',sq:1},module:{c:'#2563eb',l:'M',n:'Monitor/control module',sq:1},duct:{c:'#b45309',l:'D',n:'Duct detector'},flow:{c:'#0369a1',l:'WF',n:'Waterflow switch'},tamper:{c:'#4d7c0f',l:'TS',n:'Tamper switch'},other:{c:'#475569',l:'?',n:'Other'}};
+const ST={passed:'#16a34a',failed:'#dc2626','in progress':'#f59e0b','not tested':'#94a3b8'},STATUSES=['passed','failed','in progress','not tested'];
+// NFPA 72-style default inspection/test items per device type (snapshotted onto each pin when first answered)
+const CHECKS={smoke:['Alarm received at panel','Correct address/label at panel','LED/base condition OK','Sensitivity within range','Clean/unobstructed'],
+ heat:['Alarm received at panel','Correct address/label at panel','Physical condition OK'],
+ pull:['Activates alarm','Correct address/label at panel','Resets properly','Accessible/unobstructed','Physical condition OK'],
+ horn:['Audible','Visible/flash','Synchronized','Mounted/condition OK'],
+ duct:['Alarm/supervisory received at panel','Correct address/label at panel','Airflow/sampling tube OK','Fan shutdown/relay operates','Physical condition OK'],
+ module:['Signal received at panel','Correct address/label at panel','Controlled/monitored circuit operates','Wiring/supervision (trouble on open)','Physical condition OK'],
+ flow:['Waterflow alarm received at panel','Correct address/label at panel','Retard/delay within limits','Physical condition OK'],
+ tamper:['Supervisory received at panel','Correct address/label at panel','Restores on valve open','Physical condition OK'],
+ panel:['Normal/AC power OK','Batteries tested/charged','No trouble/supervisory conditions','Communicator/monitoring signal received','Event log/time correct'],
+ other:['Operates as intended','Correct address/label at panel','Physical condition OK']};
+const checkItems=t=>(CHECKS[t]||CHECKS.other).map(t=>({t,v:''}));
+function autoStatus(cs){const a=(cs||[]).filter(c=>c.v);if(!a.length)return'not tested';if(a.some(c=>c.v==='fail'))return'failed';return a.length===cs.length?'passed':'in progress'}
+function reasonFor(item){return /alarm|activat|audible|signal|received|operat|visible|flash|flow/i.test(item)?'No alarm':/clean/i.test(item)?'Dirty/needs cleaning':/obstruct|accessib/i.test(item)?'Obstructed':/address|label/i.test(item)?'Wrong location':/condition|mount|led|base/i.test(item)?'Damaged':/trouble|supervis|wiring/i.test(item)?'Trouble':'Other'}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 // ---------- IndexedDB ----------
 let dbp;function db(){return dbp||(dbp=new Promise((res,rej)=>{const r=indexedDB.open('blueprint-markup',2);r.onupgradeneeded=e=>{const d=r.result,t=r.transaction;if(e.oldVersion<1){d.createObjectStore('plans',{keyPath:'id'});for(const s of['markups','pins','media']){const o=d.createObjectStore(s,{keyPath:'id'});o.createIndex(s==='media'?'pinId':'planId',s==='media'?'pinId':'planId')}d.createObjectStore('meta')}
@@ -108,10 +122,11 @@ function resizeTo(m,o,h,w){if(isLine(m)){if(h===0){m.x1=w.x;m.y1=w.y}else{m.x2=w
  if(m.type==='text'){const nh=Math.max(6/view.s,T?Y0-w.y:w.y-y0);m.fs=o.fs*nh/((Y0-y0)||1);const tw=textBox({...m,x1:0,y1:0}).x2;Object.assign(m,{x1:L?X0-tw:x0,y1:T?Y0-m.fs*1.15:y0});textBox(m);return}
  let x=L?w.x:x0,X=L?X0:w.x,y=T?w.y:y0,Y=T?Y0:w.y;m.x1=Math.min(x,X);m.x2=Math.max(x,X);m.y1=Math.min(y,Y);m.y2=Math.max(y,Y)}
 function drawPin(c,p,s,hl,bare){const T=TYPES[p.type]||TYPES.other,r=13/s;c.save();c.translate(p.x,p.y);
- c.fillStyle=T.c;c.strokeStyle=hl?'#facc15':'#fff';c.lineWidth=(hl?4:2)/s;c.beginPath();
+ const sc=ST[p.status]||ST['not tested'];if(hl&&!bare){c.beginPath();c.arc(0,0,r*1.75,0,7);c.fillStyle='rgba(56,189,248,.35)';c.fill()}
+ c.fillStyle=T.c;c.strokeStyle=bare?'#fff':sc;c.lineWidth=(bare?2:4.5)/s;c.beginPath();
  if(T.sq)c.rect(-r,-r,2*r,2*r);else if(p.type==='heat'){c.moveTo(0,-r*1.2);c.lineTo(r*1.1,r*.8);c.lineTo(-r*1.1,r*.8);c.closePath()}else if(p.type==='pull'){c.moveTo(0,-r*1.2);c.lineTo(r*1.2,0);c.lineTo(0,r*1.2);c.lineTo(-r*1.2,0);c.closePath()}else c.arc(0,0,r,0,7);
  c.fill();c.stroke();c.fillStyle='#fff';c.font=`bold ${(T.l.length>2?7:T.l.length>1?9:12)/s}px sans-serif`;c.textAlign='center';c.textBaseline='middle';c.fillText(T.l,0,p.type==='heat'?r*.15:0);
- if(bare){c.restore();return}c.fillStyle=ST[p.status]||ST['not tested'];c.beginPath();c.arc(r*.9,-r*.9,4.5/s,0,7);c.fill();c.stroke();
+ if(bare){c.restore();return}c.fillStyle=sc;c.strokeStyle='#fff';c.lineWidth=1.5/s;c.beginPath();c.arc(r*.95,-r*.95,5.5/s,0,7);c.fill();c.stroke();
  if(p.address){c.font=`${11/s}px sans-serif`;c.textAlign='left';c.lineWidth=3/s;c.lineJoin='round';c.strokeStyle='#fff';c.strokeText(p.address,r*1.3,r*.3);c.fillStyle='#111';c.fillText(p.address,r*1.3,r*.3)}c.restore()}
 function setT(c){const d=dpr();c.setTransform(view.s*d,0,0,view.s*d,view.x*d,view.y*d)}
 function drawBase(){drawn={...view};cv.style.transform=ov.style.transform='';ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);if(!plan||!pageW)return;setT(ctx);
@@ -180,7 +195,7 @@ $('#undo').onclick=undo;$('#redo').onclick=redo;
 const dlg=$('#pinDlg'),form=$('#pinForm');let cur=null,urls=[];
 for(const[k,t]of Object.entries(TYPES)){$('#pinType').add(new Option(t.n,k));$('#dType').add(new Option(t.n,k));$('#fType').add(new Option(t.n,k))}
 const PK=['type','address','loop','status','notes','reason','reasonText','severity'];
-async function openPin(p){cur=p;for(const k of PK)form.elements[k].value=p[k]||(k==='severity'?'Non-critical':'');failUI();$('#testedInfo').textContent=testedTxt(p);await showMedia();dlg.showModal()}
+let ckl=[];async function openPin(p){cur=p;for(const k of PK)form.elements[k].value=p[k]||(k==='severity'?'Non-critical':'');autoR=false;ckl=structuredClone(p.checks||checkItems(p.type));renderChecks();failUI();$('#testedInfo').textContent=testedTxt(p);await showMedia();dlg.showModal()}
 const fmtT=t=>{const d=new Date(t),z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`};
 const testedTxt=p=>p.testedAt?`${p.status} ${fmtT(p.testedAt)}${p.tester?' by '+p.tester:''}`:'';
 let tester=null;async function getTester(force){if(tester===null)tester=(await get('meta','tester'))||'';if(!tester||force){const n=prompt('Tester name (asked once, saved on this device):',tester);if(n!==null&&n.trim()){tester=n.trim();await put('meta',tester,'tester')}}return tester}
@@ -199,9 +214,18 @@ let rec=null;$('#rec').onclick=async()=>{const b=$('#rec');if(rec){rec.stop();re
  try{const st=await navigator.mediaDevices.getUserMedia({audio:true});const ch=[];rec=new MediaRecorder(st);rec.ondataavailable=e=>ch.push(e.data);
   rec.onstop=()=>{st.getTracks().forEach(t=>t.stop());addMedia('audio',new Blob(ch,{type:rec.mimeType||'audio/webm'}),'voice note');rec=null;b.textContent='🎙 Record'};rec.start();b.textContent='⏹ Stop'}catch(err){alert('Microphone unavailable: '+err.message)}};
 function failUI(){$('#failBox').hidden=form.elements.status.value!=='failed'}form.elements.status.addEventListener('change',failUI);
+const CV={pass:'Pass',fail:'Fail',na:'N/A'};let autoR=false;form.elements.reason.addEventListener('change',()=>autoR=false);form.elements.reasonText.addEventListener('input',()=>autoR=false);
+function renderChecks(){const n=ckl.filter(c=>c.v).length;$('#ckHead').textContent=`Checklist ${n}/${ckl.length}`;
+ $('#checks').innerHTML=ckl.map((c,i)=>`<div class="ck ck-${c.v||'none'}"><span>${esc(c.t)}</span><span class="seg">${Object.entries(CV).map(([v,l])=>`<button type="button" data-i="${i}" data-v="${v}" class="${c.v===v?'on '+v:''}">${l}</button>`).join('')}</span></div>`).join('')}
+function checksChanged(){const st=autoStatus(ckl);form.elements.status.value=st;
+ if(st==='failed'&&(!form.elements.reason.value||autoR)){const f=ckl.filter(c=>c.v==='fail').map(c=>c.t);form.elements.reason.value=reasonFor(f[0]);if(!form.elements.reasonText.value||autoR)form.elements.reasonText.value='Failed: '+f.join('; ');autoR=true}
+ failUI();renderChecks()}
+$('#checks').addEventListener('click',e=>{const b=e.target.closest('button[data-i]');if(!b)return;const c=ckl[+b.dataset.i];c.v=c.v===b.dataset.v?'':b.dataset.v;checksChanged()});
+$('#passAll').onclick=()=>{for(const c of ckl)if(!c.v)c.v='pass';checksChanged()};
+form.elements.type.addEventListener('change',()=>{if(!ckl.some(c=>c.v)){ckl=checkItems(form.elements.type.value);renderChecks()}});
 form.addEventListener('submit',async e=>{if(e.submitter?.value!=='save')return;
  if(form.elements.status.value==='failed'&&!form.elements.reason.value){e.preventDefault();alert('Pick a fail reason for this failed device.');form.elements.reason.focus();return}
- const b=structuredClone(cur),a={...b};for(const k of PK)a[k]=form.elements[k].value;if(a.status!=='failed'){a.reason='';a.reasonText='';a.severity=''}
+ const b=structuredClone(cur),a={...b};for(const k of PK)a[k]=form.elements[k].value;if(ckl.some(c=>c.v)||b.checks)a.checks=structuredClone(ckl);if(a.status!=='failed'){a.reason='';a.reasonText='';a.severity=''}
  if(a.status!==b.status){a.testedAt=Date.now();a.tester=await getTester()}if(JSON.stringify(a)!==JSON.stringify(b))await change('pins',b,a);cur=pins.find(x=>x.id===a.id)});
 dlg.addEventListener('close',()=>{if(rec)rec.stop()});
 $('#pinDel').onclick=async()=>{if(!confirm('Delete this pin and its media?'))return;await deletePin(cur);dlg.close()};
@@ -241,16 +265,17 @@ $('#defPdf').onclick=async()=>{busy(1,'Exporting');try{const items=await renderD
   const lines=doc.splitTextToSize([`Reason: ${p.reason||'-'}${p.reasonText?' - '+p.reasonText:''}`,`Plan: ${pl.name}, page ${p.page}`,`Tested: ${p.testedAt?fmtT(p.testedAt):'-'}${p.tester?' by '+p.tester:''}`,p.notes?`Notes: ${p.notes}`:''].filter(Boolean).join('\n'),im?280:530);doc.text(lines,40,y+28);
   if(im)doc.addImage(im.d,'JPEG',330,y,220,ih);y+=need;doc.setDrawColor(200);doc.line(40,y-6,572,y-6)}
  dl(doc.output('blob'),project.name.replace(/[\\/:*?"<>|]/g,'_')+'-deficiencies.pdf')}catch(e){showErr('Deficiency PDF failed: '+e.message)}finally{busy(0)}};
-function countRows(D){const T=Object.keys(TYPES),blk=ps=>T.map(t=>{const a=ps.filter(p=>p.type===t),te=a.filter(p=>p.status==='passed'||p.status==='failed').length;return{t,n:a.length,te,un:a.length-te}}).filter(r=>r.n);
+function countRows(D){const T=Object.keys(TYPES),blk=ps=>T.map(t=>{const a=ps.filter(p=>p.type===t),te=a.filter(p=>p.status==='passed'||p.status==='failed').length,ip=a.filter(p=>p.status==='in progress').length;return{t,n:a.length,te,ip,un:a.length-te-ip}}).filter(r=>r.n);
  return{plans:D.map(({pl,pins:ps})=>({pl,rows:blk(ps)})),total:blk(D.flatMap(d=>d.pins))}}
-async function renderCounts(){const PD=await projData();$('#defCount').textContent=PD.flatMap(d=>d.pins).filter(p=>p.status==='failed').length||'';const C=countRows(PD),open=$('#counts').open;const tr=(r)=>`<tr><td>${esc(TYPES[r.t].n)}</td><td>${r.n}</td><td class="st-passed">${r.te}</td><td class="st-not">${r.un}</td></tr>`,sum=rs=>rs.reduce((a,r)=>[a[0]+r.n,a[1]+r.te,a[2]+r.un],[0,0,0]);
- const t=sum(C.total);$('#counts').innerHTML=`<summary><b>Device counts</b> · project ${t[0]} (${t[1]} tested, ${t[2]} untested)</summary><table><tr><th></th><th>#</th><th>tested</th><th>untested</th></tr>${C.plans.filter(b=>b.rows.length).map(b=>`<tr><th colspan="4">${esc(plName(b.pl))}</th></tr>${b.rows.map(tr).join('')}`).join('')}<tr><th colspan="4">Project total</th></tr>${C.total.map(tr).join('')}<tr><td><b>All devices</b></td><td><b>${t[0]}</b></td><td><b>${t[1]}</b></td><td><b>${t[2]}</b></td></tr></table>`;$('#counts').open=open;return C}
-$('#countCsv').onclick=async()=>{const C=await renderCounts(),rows=[['plan','type','total','tested','untested']];for(const b of C.plans)for(const r of b.rows)rows.push([b.pl.name,TYPES[r.t].n,r.n,r.te,r.un]);for(const r of C.total)rows.push(['PROJECT TOTAL',TYPES[r.t].n,r.n,r.te,r.un]);csvDl(rows,'-device-counts.csv')};
-function renderSummary(){const cnt=a=>{const c={passed:0,failed:0,nt:0};for(const p of a)p.status==='passed'?c.passed++:p.status==='failed'?c.failed++:c.nt++;c.t=a.length;c.pct=c.t?Math.round((c.passed+c.failed)*100/c.t):0;return c};
- const row=(l,a)=>{const c=cnt(a);return `<tr><td>${esc(l)}</td><td>${c.t}</td><td class="st-passed">${c.passed}</td><td class="st-failed">${c.failed}</td><td class="st-not">${c.nt}</td><td><b>${c.pct}%</b></td></tr>`};
+async function renderCounts(){const PD=await projData();$('#defCount').textContent=PD.flatMap(d=>d.pins).filter(p=>p.status==='failed').length||'';const C=countRows(PD),open=$('#counts').open;const tr=(r)=>`<tr><td>${esc(TYPES[r.t].n)}</td><td>${r.n}</td><td class="st-passed">${r.te}</td><td class="st-in">${r.ip}</td><td class="st-not">${r.un}</td></tr>`,sum=rs=>rs.reduce((a,r)=>[a[0]+r.n,a[1]+r.te,a[2]+r.ip,a[3]+r.un],[0,0,0,0]);
+ const t=sum(C.total);$('#counts').innerHTML=`<summary><b>Device counts</b> · project ${t[0]} (${t[1]} tested, ${t[2]} in progress, ${t[3]} untested)</summary><table><tr><th></th><th>#</th><th>tested</th><th>in prog.</th><th>untested</th></tr>${C.plans.filter(b=>b.rows.length).map(b=>`<tr><th colspan="5">${esc(plName(b.pl))}</th></tr>${b.rows.map(tr).join('')}`).join('')}<tr><th colspan="5">Project total</th></tr>${C.total.map(tr).join('')}<tr><td><b>All devices</b></td>${t.map(v=>`<td><b>${v}</b></td>`).join('')}</tr></table>`;$('#counts').open=open;return C}
+$('#countCsv').onclick=async()=>{const C=await renderCounts(),rows=[['plan','type','total','tested','in progress','untested']];for(const b of C.plans)for(const r of b.rows)rows.push([b.pl.name,TYPES[r.t].n,r.n,r.te,r.ip,r.un]);for(const r of C.total)rows.push(['PROJECT TOTAL',TYPES[r.t].n,r.n,r.te,r.ip,r.un]);csvDl(rows,'-device-counts.csv')};
+const cntSt=a=>{const c={passed:0,failed:0,ip:0,nt:0};for(const p of a)p.status==='passed'?c.passed++:p.status==='failed'?c.failed++:p.status==='in progress'?c.ip++:c.nt++;c.t=a.length;c.pct=c.t?Math.round((c.passed+c.failed)*100/c.t):0;return c};
+function renderSummary(){const cnt=a=>{const c={passed:0,failed:0,ip:0,nt:0};for(const p of a)p.status==='passed'?c.passed++:p.status==='failed'?c.failed++:p.status==='in progress'?c.ip++:c.nt++;c.t=a.length;c.pct=c.t?Math.round((c.passed+c.failed)*100/c.t):0;return c};
+ const row=(l,a)=>{const c=cnt(a);return `<tr><td>${esc(l)}</td><td>${c.t}</td><td class="st-passed">${c.passed}</td><td class="st-failed">${c.failed}</td><td class="st-in">${c.ip}</td><td class="st-not">${c.nt}</td><td><b>${c.pct}%</b></td></tr>`};
  const grp=(key,lab)=>{const m=new Map();for(const p of pins){const k=key(p);if(!m.has(k))m.set(k,[]);m.get(k).push(p)}return[...m].sort((a,b)=>String(a[0]).localeCompare(b[0],undefined,{numeric:true})).map(([k,a])=>row(lab(k),a)).join('')};
  const o=cnt(pins),open=$('#sum').open;
- $('#sum').innerHTML=`<summary><b>${o.pct}% tested</b> · <span class="st-passed">${o.passed} passed</span> · <span class="st-failed">${o.failed} failed</span> · <span class="st-not">${o.nt} not tested</span> of ${o.t}</summary>${o.t?`<table><tr><th></th><th>#</th><th>✔</th><th>✖</th><th>?</th><th>done</th></tr>${row('All pages',pins)}<tr><th colspan="6">By loop</th></tr>${grp(p=>p.loop||'',k=>k?'Loop '+k:'No loop')}<tr><th colspan="6">By type</th></tr>${grp(p=>p.type,k=>TYPES[k]?.n||k)}</table>`:''}`;$('#sum').open=open}
+ $('#sum').innerHTML=`<summary><b>${o.pct}% tested</b> · <span class="st-passed">${o.passed} passed</span> · <span class="st-failed">${o.failed} failed</span> · <span class="st-in">${o.ip} in progress</span> · <span class="st-not">${o.nt} not tested</span> of ${o.t}</summary>${o.t?`<table><tr><th></th><th>#</th><th>✔</th><th>✖</th><th>◐</th><th>–</th><th>done</th></tr>${row('All pages',pins)}<tr><th colspan="7">By loop</th></tr>${grp(p=>p.loop||'',k=>k?'Loop '+k:'No loop')}<tr><th colspan="7">By type</th></tr>${grp(p=>p.type,k=>TYPES[k]?.n||k)}</table>`:''}`;$('#sum').open=open}
 $('#testerBtn').onclick=()=>getTester(true);
 $('#csvBtn').onclick=async()=>{if(!project)return;const rows=[['plan','page','type','address','loop','status','tested','tester','notes']];
  for(const pl of(await all('plans')).filter(p=>p.projectId===project.id).sort((a,b)=>a.added-b.added))for(const p of(await byIdx('pins','planId',pl.id)).sort((a,b)=>a.page-b.page||String(a.address).localeCompare(b.address,undefined,{numeric:true})))
@@ -258,7 +283,7 @@ $('#csvBtn').onclick=async()=>{if(!project)return;const rows=[['plan','page','ty
  const cell=v=>{v=String(v??'');if(/^[=+\-@\t\r]/.test(v))v="'"+v;return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
  dl(new Blob(['\ufeff'+rows.map(r=>r.map(cell).join(',')).join('\r\n')],{type:'text/csv'}),project.name.replace(/[\\/:*?"<>|]/g,'_')+'-devices.csv')};
 // ---------- export ----------
-function drawLegend(x,ps){const pp=pins.filter(p=>p.page===page);if(!pp.length)return;const types=[...new Set(pp.map(p=>p.type))],sts=['passed','failed','not tested'].filter(s=>pp.some(p=>(p.status||'not tested')===s));
+function drawLegend(x,ps){const pp=pins.filter(p=>p.page===page);if(!pp.length)return;const types=[...new Set(pp.map(p=>p.type))],sts=STATUSES.filter(s=>pp.some(p=>(p.status||'not tested')===s));
  const u=1/ps,row=26*u,pad=10*u,rows=1+types.length+sts.length,w=190*u,h=pad*2+rows*row,X=12*u,Y=pageH-h-12*u;
  x.save();x.fillStyle='rgba(255,255,255,.93)';x.strokeStyle='#334155';x.lineWidth=1.5*u;x.fillRect(X,Y,w,h);x.strokeRect(X,Y,w,h);x.fillStyle='#111';x.font=`bold ${13*u}px sans-serif`;x.textBaseline='middle';x.textAlign='left';x.fillText('Legend',X+pad,Y+pad+row/2);
  let y=Y+pad+row*1.5;for(const t of types){drawPin(x,{type:t,x:X+pad+14*u,y},ps,false,true);x.fillStyle='#111';x.font=`${12*u}px sans-serif`;x.textAlign='left';x.textBaseline='middle';x.fillText(TYPES[t]?.n||t,X+pad+34*u,y);y+=row}
@@ -273,8 +298,7 @@ $('#exPdf').onclick=async()=>{if(!plan)return;busy(1,'Exporting');try{const c=aw
  doc.addImage(c.toDataURL('image/jpeg',.9),'JPEG',0,0,pageW,pageH);
  const ps=pins.filter(p=>p.page===page);if(ps.length){doc.addPage([612,792],'p');doc.setFontSize(14);doc.text(`Device list - ${plan.name} page ${page}`,40,40);doc.setFontSize(10);let y=64;
   for(const p of ps){if(y>760){doc.addPage([612,792],'p');y=40}doc.text(`${TYPES[p.type].n} | Addr ${p.address||'-'} | Loop ${p.loop||'-'} | ${p.status}${p.testedAt?' '+fmtT(p.testedAt):''}${p.tester?' by '+p.tester:''}${p.notes?' | '+p.notes.slice(0,50):''}`.slice(0,120),40,y);y+=16}}
- const C=countRows(await projData());if(C.total.length){doc.addPage([612,792],'p');doc.setFontSize(14);doc.text(`Device counts - ${project.name}`,40,40);doc.setFontSize(10);let y=64;const row=(a,b,c,d,bold)=>{if(y>760){doc.addPage([612,792],'p');y=40}doc.setFont(undefined,bold?'bold':'normal');doc.text(String(a),40,y);doc.text(String(b),330,y);doc.text(String(c),400,y);doc.text(String(d),480,y);y+=15};
-  row('Type','Total','Tested','Untested',1);for(const b of C.plans.filter(b=>b.rows.length)){y+=4;row(b.pl.name.slice(0,60),'','','',1);for(const r of b.rows)row('  '+TYPES[r.t].n,r.n,r.te,r.un)}y+=4;row('Project total','','','',1);for(const r of C.total)row('  '+TYPES[r.t].n,r.n,r.te,r.un);const t=C.total.reduce((a,r)=>[a[0]+r.n,a[1]+r.te,a[2]+r.un],[0,0,0]);row('All devices',...t,1)}
+ const C=countRows(await projData());if(C.total.length){doc.addPage([612,792],'p');doc.setFontSize(14);doc.text(`Device counts - ${project.name}`,40,40);pdfCounts(doc,C,64)}
  dl(doc.output('blob'),base()+'.pdf')}catch(e){showErr('PDF export failed: '+e.message)}finally{busy(0)}};
 // ---------- projects ----------
 async function refreshProjects(){const ps=(await all('projects')).sort((a,b)=>a.created-b.created);$('#projSel').innerHTML=ps.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');if(project)$('#projSel').value=project.id;return ps}
@@ -321,3 +345,35 @@ const annUp=()=>{const d=ann.drag;ann.drag=null;if(d&&(d.t==='pen'?d.pts.length>
 document.querySelectorAll('[data-at]').forEach(b=>b.onclick=()=>{ann.tool=b.dataset.at;document.querySelectorAll('[data-at]').forEach(x=>x.classList.toggle('on',x===b))});
 $('#annUndo').onclick=()=>{ann.shapes.pop();annDraw()};$('#annCancel').onclick=()=>$('#annDlg').close();
 $('#annSave').onclick=async()=>{const m=ann.m;if(ann.shapes.length){annDraw();m.annot=await new Promise(r=>acv.toBlob(r,'image/jpeg',.9));m.annShapes=structuredClone(ann.shapes)}else{delete m.annot;delete m.annShapes}m.showOrig=false;await put('media',m);$('#annDlg').close();showMedia();if($('#panel').classList.contains('defmode'))renderDefs()};
+
+// ---------- inspection report + checklist CSV ----------
+function pdfCounts(doc,C,y){doc.setFontSize(10);const row=(a,b,c,d,e,bold)=>{if(y>760){doc.addPage([612,792],'p');y=40}doc.setFont(undefined,bold?'bold':'normal');doc.text(String(a),40,y);[b,c,d,e].forEach((v,i)=>doc.text(String(v),300+i*70,y));y+=14};
+ row('Type','Total','Tested','In progress','Untested',1);for(const b of C.plans.filter(b=>b.rows.length)){y+=4;row(b.pl.name.slice(0,55),'','','','',1);for(const r of b.rows)row('  '+TYPES[r.t].n,r.n,r.te,r.ip,r.un)}
+ y+=4;row('Project total','','','','',1);for(const r of C.total)row('  '+TYPES[r.t].n,r.n,r.te,r.ip,r.un);const t=C.total.reduce((a,r)=>[a[0]+r.n,a[1]+r.te,a[2]+r.ip,a[3]+r.un],[0,0,0,0]);row('All devices',...t,1);doc.setFont(undefined,'normal');return y}
+const sortAddr=(a,b)=>String(a.loop||'').localeCompare(String(b.loop||''),undefined,{numeric:true})||String(a.address).localeCompare(b.address,undefined,{numeric:true});
+$('#reportPdf').onclick=async()=>{if(!project)return;busy(1,'Building report');try{const D=await projData(),all_=D.flatMap(d=>d.pins),c=cntSt(all_),{jsPDF}=window.jspdf,doc=new jsPDF({unit:'pt',format:'letter'});const tn=tester===null?await get('meta','tester'):tester;
+ let y=0;const need=h=>{if(y+h>760){doc.addPage();y=44}},H=t=>{need(40);y+=8;doc.setFontSize(13);doc.setFont(undefined,'bold');doc.text(t,40,y+12);doc.setFont(undefined,'normal');doc.setDrawColor(150);doc.line(40,y+17,572,y+17);y+=30;doc.setFontSize(10)},L=(t,x=40,col)=>{const ls=doc.splitTextToSize(String(t),572-x);need(ls.length*13);if(col)doc.setTextColor(...col);doc.text(ls,x,y+10);doc.setTextColor(0,0,0);y+=ls.length*13};
+ doc.setFillColor(30,41,59);doc.rect(0,0,612,78,'F');doc.setTextColor(255,255,255);doc.setFontSize(18);doc.setFont(undefined,'bold');doc.text('Fire Alarm Inspection Report',40,34);doc.setFont(undefined,'normal');doc.setFontSize(11);
+ doc.text(`Project: ${project.name}`,40,54);doc.text(`Date: ${fmtT(Date.now())}    Tester: ${tn||'-'}    Plans: ${D.length}`,40,68);doc.setTextColor(0,0,0);y=92;
+ H('Summary');L(`${c.pct}% tested (${c.passed+c.failed} of ${c.t} devices)`);L(`Passed: ${c.passed}    Failed: ${c.failed}    In progress: ${c.ip}    Not tested: ${c.nt}`);
+ need(16);const bw=532;let bx=40;for(const[k,v]of[['passed',c.passed],['failed',c.failed],['in progress',c.ip],['not tested',c.nt]]){if(!c.t||!v)continue;const w=bw*v/c.t,h=ST[k];doc.setFillColor(parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16));doc.rect(bx,y+2,w,10,'F');bx+=w}y+=18;
+ H('Device counts');y=pdfCounts(doc,countRows(D),y+10)+4;
+ const defs=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='failed').map(p=>({pl,p}))).sort((a,b)=>(a.p.severity==='Critical'?0:1)-(b.p.severity==='Critical'?0:1));
+ H(`Deficiencies (${defs.length})`);if(!defs.length)L('None.');
+ for(const{pl,p}of defs){const ph=await firstPhoto(p.id);let im=null;if(ph)try{im=await blobJpeg(ph,600)}catch{}const ih=im?Math.min(110,im.h*(150/im.w)):0;need(Math.max(ih,56)+8);const y0=y;
+  doc.setFont(undefined,'bold');L(`${p.severity||'-'}: ${TYPES[p.type]?.n||p.type} ${p.address||''}${p.loop?' (Loop '+p.loop+')':''}`,40,p.severity==='Critical'?[185,28,28]:null);doc.setFont(undefined,'normal');
+  L(`Reason: ${p.reason||'-'}${p.reasonText?' - '+p.reasonText:''}`,48);L(`${pl.name} pg ${p.page} · ${p.testedAt?fmtT(p.testedAt):'-'}${p.tester?' · '+p.tester:''}${p.notes?' · '+p.notes:''}`,48);
+  if(im){doc.addImage(im.d,'JPEG',422,y0+2,150,ih);y=Math.max(y,y0+ih+4)}y+=6}
+ H('Device checklist results');
+ for(const{pl,pins:ps}of D){if(!ps.length)continue;need(30);doc.setFontSize(12);doc.setFont(undefined,'bold');L(pl.name);doc.setFontSize(10);doc.setFont(undefined,'normal');let lp=null;
+  for(const p of ps.slice().sort(sortAddr)){if((p.loop||'')!==lp){lp=p.loop||'';need(20);doc.setFont(undefined,'bold');L(lp?`Loop ${lp}`:'No loop',44,[71,85,105]);doc.setFont(undefined,'normal')}
+   const h=ST[p.status]||ST['not tested'];need(28);doc.setFillColor(parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16));doc.circle(54,y+7,4,'F');
+   doc.setFont(undefined,'bold');L(`${TYPES[p.type]?.n||p.type} ${p.address||'(no address)'} - ${p.status}${p.testedAt?'  '+fmtT(p.testedAt):''}${p.tester?' by '+p.tester:''}`,64);doc.setFont(undefined,'normal');
+   for(const ck of p.checks||[]){need(13);doc.text(ck.t,72,y+10);const v=ck.v||'';doc.setTextColor(...(v==='fail'?[185,28,28]:v==='pass'?[21,128,61]:[100,116,139]));doc.text(CV[v]||'—',470,y+10);doc.setTextColor(0,0,0);y+=13}
+   if(!p.checks)L('(no checklist recorded)',72,[100,116,139]);y+=4}}
+ const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(120);doc.text(`${project.name} · Inspection report · page ${i} of ${n}`,40,780);doc.setTextColor(0)}
+ dl(doc.output('blob'),project.name.replace(/[\\/:*?"<>|]/g,'_')+'-inspection-report.pdf')}catch(e){showErr('Report failed: '+e.message)}finally{busy(0)}};
+$('#checkCsv').onclick=async()=>{const rows=[['plan','page','type','address','loop','status','item','result','tested','tester']];
+ for(const{pl,pins:ps}of await projData())for(const p of ps.slice().sort(sortAddr)){const base=[pl.name,p.page,TYPES[p.type]?.n||p.type,p.address,p.loop,p.status];const tt=[p.testedAt?fmtT(p.testedAt):'',p.tester||''];
+  if(p.checks?.length)for(const c of p.checks)rows.push([...base,c.t,CV[c.v]||'',...tt]);else rows.push([...base,'(no checklist)','',...tt])}
+ csvDl(rows,'-checklists.csv')};
