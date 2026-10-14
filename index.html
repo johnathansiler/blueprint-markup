@@ -31,17 +31,22 @@
  <button id="fit" class="tool" title="Fit">⤢</button>
 </div>
 <main id="stage"><canvas id="cv"></canvas><canvas id="ov"></canvas><div id="empty">Open a PDF plan set (or image) with 📂</div><div id="busy" hidden><span id="busyTxt">Rendering</span> <b id="busyPct">…</b><div id="busyTrack"><div id="busyBar"></div></div><button type="button" class="btn" id="stop">Stop</button></div><div id="err" hidden><span id="errTxt"></span><button type="button" class="btn" id="errX" title="Dismiss">✕</button></div></main>
-<aside id="panel" hidden><div class="ph"><b>Pins</b><span class="sp"></span><button class="btn" id="csvBtn" title="Export device list (CSV, whole project)">CSV</button><button class="btn" id="testerBtn" title="Tester name">👤</button><button class="btn" id="closeList">✕</button></div>
+<aside id="panel" hidden><div class="ph"><button class="btn tab on" id="modePins">Pins</button><button class="btn tab" id="modeDefs">⚠ Deficiencies <b id="defCount"></b></button><span class="sp"></span><button class="btn" id="csvBtn" title="Export device list (CSV, whole project)">CSV</button><button class="btn" id="testerBtn" title="Tester name">👤</button><button class="btn" id="closeList">✕</button></div>
  <input id="q" placeholder="Search address, type, loop, notes…">
  <div class="row"><select id="fType"><option value="">All types</option></select>
  <select id="fStat"><option value="">All status</option><option>passed</option><option>failed</option><option>not tested</option></select>
  <select id="fLoop"><option value="">All loops</option></select>
- <label><input type="checkbox" id="allPages"> all pages</label></div><details id="sum" open></details><ul id="pinList"></ul></aside>
+ <label><input type="checkbox" id="allPages"> all pages</label></div><details id="sum" open></details><details id="counts"></details><div class="row pinsOnly"><button class="btn" id="countCsv">Counts CSV</button></div><ul id="pinList"></ul>
+ <div class="row defsOnly"><button class="btn" id="defCsv">Deficiencies CSV</button><button class="btn" id="defPdf">Deficiencies PDF</button></div><ul id="defList" class="defsOnly"></ul></aside>
+<dialog id="annDlg"><div class="row"><b>Annotate photo</b><span class="sp"></span><button type="button" class="btn" id="annCancel">Cancel</button><button type="button" class="btn pri" id="annSave">Save copy</button></div>
+ <div class="row" id="annTools"><button type="button" class="tool on" data-at="arrow" title="Arrow">↗</button><button type="button" class="tool" data-at="circle" title="Circle">◯</button><button type="button" class="tool" data-at="box" title="Box">▢</button><button type="button" class="tool" data-at="pen" title="Pen">✏</button><button type="button" class="tool" data-at="text" title="Text">T</button><input type="color" id="annColor" value="#e11d48" title="Color"><button type="button" class="tool" id="annUndo" title="Undo">↶</button></div>
+ <div id="annWrap"><canvas id="annCv"></canvas></div><small style="color:#94a3b8">The original photo is kept; this saves an annotated copy used in exports.</small></dialog>
 <dialog id="pinDlg"><form method="dialog" id="pinForm">
  <div style="width:40px;height:4px;background:#64748b;border-radius:2px;margin:0 auto 6px"></div><h3 style="margin:4px 0">Device pin</h3>
  <label>Type <select name="type" id="dType"></select></label>
  <label>Address <input name="address"></label><label>Loop <input name="loop"></label>
  <label>Status <select name="status"><option>not tested</option><option>passed</option><option>failed</option></select></label><small id="testedInfo" style="color:#94a3b8"></small>
+ <div id="failBox" hidden><label>Fail reason <select name="reason"><option value="">— pick —</option><option>No alarm</option><option>Trouble</option><option>Damaged</option><option>Missing</option><option>Obstructed</option><option>Wrong location</option><option>Dirty/needs cleaning</option><option>Other</option></select></label><label>Reason detail <input name="reasonText" placeholder="optional"></label><label>Severity <select name="severity"><option>Non-critical</option><option>Critical</option></select></label></div>
  <label>Notes <textarea name="notes" rows="3"></textarea></label>
  <div class="row"><label class="btn">📷 Photo<input type="file" id="addPhoto" accept="image/*" capture="environment" hidden></label>
  <label class="btn">🎥 Video<input type="file" id="addVideo" accept="video/*" capture="environment" hidden></label>

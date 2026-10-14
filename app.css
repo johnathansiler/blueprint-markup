@@ -54,3 +54,13 @@ dialog input,dialog select,dialog textarea{font-size:16px;min-height:42px}
 #sum{font-size:13px;background:#0f172a;border:1px solid #334155;border-radius:6px;padding:4px 6px;max-height:40%;overflow:auto;flex:none}#sum summary{cursor:pointer}
 #sum table{width:100%;border-collapse:collapse;margin-top:4px}#sum td,#sum th{padding:2px 4px;text-align:right;border-bottom:1px solid #1e293b}#sum td:first-child,#sum th[colspan]{text-align:left}#sum th[colspan]{color:#94a3b8;font-weight:600}
 #tools{flex-wrap:wrap}
+
+.tab.on{background:#2563eb;border-color:#60a5fa}#panel .ph .btn{padding:5px 8px}
+.defsOnly{display:none}#panel.defmode .defsOnly{display:flex}#panel.defmode #defList{display:block}#panel.defmode #pinList,#panel.defmode #sum,#panel.defmode #counts,#panel.defmode .pinsOnly,#panel.defmode #q,#panel.defmode .row:not(.defsOnly){display:none}
+#defList{list-style:none;margin:0;padding:0;overflow:auto;flex:1}#defList li{padding:8px;border-bottom:1px solid #334155;cursor:pointer;display:flex;gap:8px;align-items:flex-start;font-size:13px}
+.thumb{width:56px;height:56px;object-fit:cover;border-radius:6px;flex:none;background:#334155}
+#counts{font-size:13px;background:#0f172a;border:1px solid #334155;border-radius:6px;padding:4px 6px;max-height:35%;overflow:auto;flex:none}#counts summary{cursor:pointer}#counts table{width:100%;border-collapse:collapse}#counts td,#counts th{padding:2px 4px;text-align:right}#counts td:first-child,#counts th[colspan]{text-align:left}#counts th[colspan]{color:#94a3b8}
+#annDlg{margin:auto;width:100vw;max-width:100vw;height:100vh;max-height:100vh;border-radius:0;display:none;flex-direction:column;gap:6px}#annDlg[open]{display:flex}
+#annWrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}#annCv{touch-action:none;background:#000}
+#annTools{flex-wrap:wrap}.mbar{margin-top:4px}
+#media .m .mbar button{position:static}
