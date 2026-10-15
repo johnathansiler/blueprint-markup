@@ -42,12 +42,13 @@ const pshOf=o=>{const t=typeof o==='string'?o:o&&o.type,v=PSH[t]||PSH.other;if(P
 // bpm-v31: pin location field; 'Other' reason textbox; removed checklist JSON import/export
 // bpm-v30: DH status border 1.2pt (~60%); relay clearer cyan-teal #2dd4bf
 // bpm-v39: clean outset — fill uses the print path; the gray stroke uses the path expanded by OUT(t)=LW/2+print-line margin along every edge normal, so the stroke's inner edge sits fully outside the black print line (no gray over black)
-const PRINT_LW=.7;const OUT=t=>pinLW(t)/2+PRINT_LW/2+.1;
-function pinPath(c,t,d=0){const[k,w,h]=pshOf(t);let a=w/2,b=h/2;if(k==='rect'){a+=d;b+=d;c.rect(-a,-b,2*a,2*b)}else if(k==='dia'){const L=Math.hypot(a,b);a+=d*L/b;b+=d*L/a-0;c.moveTo(-a,0);c.lineTo(0,-b);c.lineTo(a,0);c.lineTo(0,b);c.closePath()}
- else if(k==='hex'){const s=Math.hypot(a/2,b),A=a+d*s/b,B=b+d;a=A;b=B;c.moveTo(-a,0);c.lineTo(-a/2,-b);c.lineTo(a/2,-b);c.lineTo(a,0);c.lineTo(a/2,b);c.lineTo(-a/2,b);c.closePath()}else c.arc(0,0,a+d,0,7)}
-function pinFS(c,t){c.beginPath();pinPath(c,t);c.fill();c.beginPath();pinPath(c,t,OUT(t));c.stroke()}
-const pinHalf=t=>{const[k,w,h]=pshOf(t),r=k==='circ'?w/2:k==='rect'?Math.hypot(w,h)/2:Math.max(w,h)/2;return r+OUT(t)+pinLW(t)/2}; // print half + half stroke (outer edge)
-const pinLW=t=>{const k=typeof t==='string'?t:t&&t.type;return k==='doorholder'?1.2:2}; // bpm-v30: DH status border ~60% so pink fill dominates; others stay 2pt
+// bpm-v41: fill = print interior (d=-PRINT_LW/2 inside the measured outer-black size); status stroke on a true polygon offset so its inner edge sits just outside the black line; flow/tamper use a thinner ring so adjacent TS don't merge
+const PRINT_LW=.7;const OUT=t=>pinLW(t)/2+.15;
+function pinPath(c,t,d=0){const[k,w,h]=pshOf(t);let a=w/2-PRINT_LW/2,b=h/2-PRINT_LW/2;if(k==='rect'){a+=d;b+=d;c.rect(-a,-b,2*a,2*b)}else if(k==='dia'){const L=Math.hypot(a,b),A=a+d*L/b,B=b+d*L/a;c.moveTo(-A,0);c.lineTo(0,-B);c.lineTo(A,0);c.lineTo(0,B);c.closePath()}
+ else if(k==='hex'){const s=Math.hypot(a/2,b),A=a+d*s/b,B=b+d,X=a/2+(d*s-a*d/2)/b;c.moveTo(-A,0);c.lineTo(-X,-B);c.lineTo(X,-B);c.lineTo(A,0);c.lineTo(X,B);c.lineTo(-X,B);c.closePath()}else c.arc(0,0,Math.max(.1,a+d),0,7)}
+function pinFS(c,t){c.beginPath();pinPath(c,t,-PRINT_LW/2);c.fill();c.beginPath();pinPath(c,t,PRINT_LW/2+OUT(t));c.stroke()}
+const pinHalf=t=>{const[k,w,h]=pshOf(t),r=k==='circ'?w/2:k==='rect'?Math.hypot(w,h)/2:Math.max(w,h)/2;return r+OUT(t)+pinLW(t)/2-PRINT_LW/2}; // print half + half stroke (outer edge)
+const pinLW=t=>{const k=typeof t==='string'?t:t&&t.type;return k==='doorholder'||k==='flow'||k==='tamper'?1.2:2}; // bpm-v30: DH status border ~60% so pink fill dominates; others stay 2pt
 const clampOp=v=>Math.max(.15,Math.min(1,+(v??1)));
 const opOf=(o,isPin)=>clampOp(o&&o.opacity!=null?o.opacity:(isPin?PIN_OP:MK_OP));
 
@@ -121,7 +122,7 @@ function updZoom(){const el=$('#zoomPct');if(!el)return;el.textContent=plan&&pag
 // crisp re-render: render the page at current zoom*dpr, capped by pixel budget
 // Perf: a small full-page base bitmap is rendered once per page; zoomed-in views render only the visible
 // region (plus margin) at screen resolution, capped by a pixel budget. Markups live on a separate overlay canvas.
-const MAXPX=matchMedia('(pointer:coarse)').matches?16e6:24e6,BASEPX=4e6,FIRSTPX=1.2e6;
+let SUPER=0;const MAXPX=matchMedia('(pointer:coarse)').matches?16e6:24e6,BASEPX=4e6,FIRSTPX=1.2e6;
 function wantScale(){return Math.min(view.s*dpr(),10)}
 function visRect(){const W=stage.clientWidth,H=stage.clientHeight,P=[toW(0,0),toW(W,0),toW(0,H),toW(W,H)],xs=P.map(p=>p.x),ys=P.map(p=>p.y),x=Math.min(...xs),y=Math.min(...ys);return{x,y,w:Math.max(...xs)-x,h:Math.max(...ys)-y}}
 function covered(t){const v=visRect();return Math.max(0,v.x)>=t.x-1&&Math.max(0,v.y)>=t.y-1&&Math.min(pageW,v.x+v.w)<=t.x+t.w+1&&Math.min(pageH,v.y+v.h)<=t.y+t.h+1}
@@ -140,14 +141,17 @@ async function raster(pg,s,r,showProg){s=Math.max(s,.02);const k=Math.min(1,Math
  // pdf.js has no render-progress API: phase % (40% = page ready) plus a live count of drawing operations received
  if(showProg)t.onContinue=cont=>{let n=0;try{for(const st of pg._intentStates?.values()||[])n=Math.max(n,st.operatorList?.fnArray?.length||0)}catch{}if(n)$('#busyPct').textContent=`40% · ${n>=1e4?Math.round(n/1e3)+'k':n} ops`;cont()};
  const to=setTimeout(()=>{if(renderTask===t){t.cancel();t.timedOut=1}},45000);
- try{await t.promise}catch(e){if(!/cancel/i.test(e?.name+e?.message))console.warn('render failed',e);return null}finally{clearTimeout(to)}if(renderTask!==t)return null;renderTask=null;if(showProg)prog(1);c._s=s;return c}
-async function renderPage(first){if(!pdf){draw();return}const pn=page,seq=opSeq;if(renderTask){renderTask.cancel();renderTask=null}
+ try{await t.promise}catch(e){if(!/cancel/i.test(e?.name+e?.message))console.warn('render failed',e);return null}finally{clearTimeout(to)}if(renderTask!==t){SUPER=1;return null}renderTask=null;if(showProg)prog(1);c._s=s;return c}
+async function renderPage(first){if(!pdf){draw();return}SUPER=0;const pn=page,seq=opSeq;if(renderTask){renderTask.cancel();renderTask=null}
  const pg=await pdf.getPage(pn);if(pn!==page||seq!==opSeq)return;
- if(!baseBm){const full=Math.min(wantScale(),Math.sqrt(BASEPX/(pageW*pageH)));let s=first?Math.min(full,Math.sqrt(FIRSTPX/(pageW*pageH))):full,c=null;for(let i=0;i<3&&!c;i++,s/=2){c=await raster(pg,s,{x:0,y:0,w:pageW,h:pageH},first);if(pn!==page||seq!==opSeq)return}if(!c)return false;baseBm={c,s:c._s};bmpScale=c._s;pcPut(pn,baseBm);draw();
+ if(!baseBm){const full=Math.min(wantScale(),Math.sqrt(BASEPX/(pageW*pageH)));let s=first?Math.min(full,Math.sqrt(FIRSTPX/(pageW*pageH))):full,c=null;for(let i=0;i<6&&!c;i++,s/=2){c=await raster(pg,s,{x:0,y:0,w:pageW,h:pageH},first);if(pn!==page||seq!==opSeq||SUPER)return}
+  if(!c){const r=visRect(),R={x:Math.max(0,r.x),y:Math.max(0,r.y),w:Math.max(1,Math.min(pageW,r.x+r.w)-Math.max(0,r.x)),h:Math.max(1,Math.min(pageH,r.y+r.h)-Math.max(0,r.y))};for(let q=Math.min(wantScale(),Math.sqrt(4e6/(R.w*R.h))),i=0;i<4&&!c;i++,q/=2){c=await raster(pg,q,R);if(pn!==page||seq!==opSeq||SUPER)return}if(c){tile={c,s:c._s,...R};bmpScale=c._s;errClr();draw();return}return false}
+  errClr();baseBm={c,s:c._s};bmpScale=c._s;pcPut(pn,baseBm);draw();
   // progressive: sharpen the full-page base in the background once the first paint is up
   if(c._s<full*.87){setTimeout(()=>upgradeBase(pn,seq,full),60);return}}
  const want=wantScale();if(baseOK(want)){tile=null;draw();return}
- const r=wantRect(want),c=await raster(pg,want,r);if(!c||pn!==page)return;tile={c,s:c._s,...r};bmpScale=c._s;draw()}
+ const r=wantRect(want);let c=await raster(pg,want,r);if(!c&&!SUPER&&pn===page)c=await raster(pg,want/2,r);if(!c||pn!==page)return;tile={c,s:c._s,...r};bmpScale=c._s;errClr();draw()}
+function errClr(){if(!$('#err').hidden&&/Could not render|Stopped rendering/.test($('#errTxt').textContent))hideErr()}
 function busy(b,txt){$('#busy').hidden=!b;if(b){$('#busyTxt').textContent=txt||'Working';prog(null)}}
 function prog(f){const pc=f==null?null:Math.round(Math.max(0,Math.min(1,f))*100);$('#busyBar').style.width=(pc||0)+'%';$('#busyPct').textContent=pc==null?'…':pc+'%'}
 function showErr(m){$('#errTxt').textContent=m;$('#err').hidden=false;busy(0);if(!plan||!pageW)$('#empty').hidden=false}
@@ -717,7 +721,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v40',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v41',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
