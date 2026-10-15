@@ -2,7 +2,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Blueprint Markup</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1e293b">
 <link rel="icon" href="icon.svg"><link rel="apple-touch-icon" href="icon-192.png"><link rel="stylesheet" href="app.css"></head><body>
-<div id="proj"><span title="Project">🗂</span><select id="projSel" title="Project"></select><button class="btn" id="projNew" title="New project">＋</button><button class="btn" id="projRen" title="Rename project">✎</button><button class="btn" id="projDel" title="Delete project">🗑</button></div>
+<div id="proj"><span title="Project">🗂</span><select id="projSel" title="Project"></select><button class="btn" id="projNew" title="New project">＋</button><button class="btn" id="projRen" title="Rename project">✎</button><button class="btn" id="projDel" title="Delete project">🗑</button><button class="btn" id="projSave" title="Save project file (.bpm) / export plans">💾<span class="lbl"> Save</span></button><label class="btn" id="projOpen" title="Open project file (.bpm)">📥<span class="lbl"> Open</span><input id="bpmFile" type="file" accept=".bpm,application/zip,application/octet-stream" hidden></label></div>
 <header id="top">
  <label class="btn" title="Open plan">📂<input id="file" type="file" accept="application/pdf,image/png,image/jpeg" hidden></label>
  <select id="planSel" title="Plan"></select><button class="btn" id="planDel" title="Delete this plan">🗑</button>
@@ -73,4 +73,21 @@
  <div id="media"></div>
  <div class="row"><button type="button" class="btn danger" id="pinDel">Delete pin</button><span class="sp"></span><button class="btn" value="cancel">Close</button><button class="btn pri" id="pinSave" value="save">Save</button></div>
 </form></dialog>
+<dialog id="saveDlg"><form method="dialog"><h3 style="margin:4px 0">💾 Project file</h3>
+ <b>Save project</b><small style="display:block;color:#94a3b8">One <code>.bpm</code> file with every plan, markup, pin, checklist, photo/video/voice note and layer setting. Open it on any device with 📥.</small>
+ <label><input type="checkbox" id="svLearned" style="width:auto"> Include learned detection rules <small id="svLN"></small></label>
+ <div class="row"><span class="sp"></span><button type="button" class="btn pri" id="svGo">💾 Save .bpm</button></div>
+ <hr style="border-color:#334155"><b>Export plans</b><small style="display:block;color:#94a3b8">Marked-up PDFs of every page of every plan (markups, pins, legend). Uses each plan's 👁 settings when "apply to exports" is on there.</small>
+ <div class="lay"><label><input type="radio" name="exMode" value="one" checked> One combined PDF</label><label><input type="radio" name="exMode" value="zip"> ZIP: one PDF per plan</label><label><input type="checkbox" id="exOrig"> Include the original clean PDFs (gives a ZIP)</label></div>
+ <div class="row"><small id="exInfo" style="color:#94a3b8"></small><span class="sp"></span><button type="button" class="btn pri" id="exGo">📑 Export plans</button></div>
+ <div class="row"><span class="sp"></span><button class="btn" value="cancel">Close</button></div></form></dialog>
+<dialog id="openDlg"><form method="dialog"><h3 style="margin:4px 0">📥 Open project file</h3><div id="opInfo"></div>
+ <div class="lay"><label><input type="radio" name="opMode" value="new" checked> Open as a new project</label><label><input type="radio" name="opMode" value="replace"> Replace the current project <b id="opCur"></b></label></div>
+ <div class="row"><span class="sp"></span><button class="btn" value="cancel">Cancel</button><button type="button" class="btn pri" id="opGo">Open</button></div></form></dialog>
+<dialog id="bulkDlg"><form method="dialog"><h3 style="margin:4px 0">✎ Edit <span id="bkN"></span></h3>
+ <div id="bkM"><b>Markups</b><label><input type="checkbox" id="bkCOn" style="width:auto"> Color <input type="color" id="bkColor" value="#e11d48" style="width:60px;display:inline-block;vertical-align:middle"></label>
+ <label>Line / text size <select id="bkSize"><option value="">unchanged</option><option value="0">S</option><option value="1">M</option><option value="2">L</option><option value="3">XL</option></select></label></div>
+ <div id="bkP"><b>Pins</b><label>Status <select id="bkStatus"><option value="">unchanged</option><option>passed</option><option>failed</option><option>in progress</option><option>not tested</option></select></label>
+ <label>Type <select id="bkType"><option value="">unchanged</option></select></label><label>Loop <input id="bkLoop" placeholder="unchanged"></label></div>
+ <div class="row"><span class="sp"></span><button class="btn" value="cancel">Cancel</button><button type="button" class="btn pri" id="bkGo">Apply</button></div></form></dialog>
 <script src="vendor/pdf.min.js"></script><script src="vendor/jspdf.umd.min.js"></script><script src="app.js"></script></body></html>

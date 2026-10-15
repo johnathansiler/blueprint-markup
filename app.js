@@ -32,7 +32,7 @@ async function tx(store,mode,fn){const d=await db();return new Promise((res,rej)
 const put=(s,v,k)=>tx(s,'readwrite',o=>o.put(v,k)),get=(s,k)=>tx(s,'readonly',o=>o.get(k)),del=(s,k)=>tx(s,'readwrite',o=>o.delete(k)),all=s=>tx(s,'readonly',o=>o.getAll()),byIdx=(s,i,v)=>tx(s,'readonly',o=>o.index(i).getAll(v));
 // ---------- state ----------
 const cv=$('#cv'),ctx=cv.getContext('2d'),stage=$('#stage');
-let plan=null,pdf=null,page=1,pageW=0,pageH=0,bmp=null,bmpScale=0,renderTask=null,renderTimer=0,baseBm=null,tile=null,project=null;
+let plan=null,pdf=null,page=1,pageW=0,pageH=0,curPH=()=>pageH,bmp=null,bmpScale=0,renderTask=null,renderTimer=0,baseBm=null,tile=null,project=null;
 const ov=$('#ov'),octx=ov.getContext('2d');
 let markups=[],pins=[],view={s:1,x:0,y:0},tool='pan',sel=null,draft=null,ghosts=[],det=null,detW=null,msel=[],clip=null,pasteArm=false,lpT=0,walk=null;
 const LAY0={shapes:true,clouds:true,text:true,pins:true,labels:true,ghosts:true,only:'',dim:false,exp:false};let lay={...LAY0};
@@ -158,6 +158,9 @@ stage.addEventListener('pointerdown',e=>{if(!plan||e.target!==cv)return;stage.se
  const w=toW(e.offsetX,e.offsetY);const start={sx:e.offsetX,sy:e.offsetY,moved:false};
  if(tool==='pan'||e.button===1){gesture={type:'pan',...start,v:{...view}};return}
  if(tool==='select'){if(sel?.kind==='m'){const hi=handleHit(sel.o,e.offsetX,e.offsetY);if(hi>=0){gesture={type:'resize',h:hi,...start,orig:structuredClone(sel.o)};return}}
+  {const h0=hit(w),onP=msel.filter(o=>o.page===page);if(h0&&msel.includes(h0.o)){sel=null;gesture={type:'mmove',...start,v:{...view},items:onP,orig:onP.map(o=>structuredClone(o)),tapO:h0.o};return}
+   if(!h0&&boxOn){gesture={type:'box',...start,moved:false,w0:w,w1:w};showBox();return}
+   if(multiOn){gesture=h0?{type:'mtap',...start,v:{...view},o:h0.o}:{type:'pan',...start,v:{...view}};return}}
   const prev=sel?.o;sel=hit(w);if(sel)gesture={type:'move',...start,w,orig:JSON.parse(JSON.stringify(sel.o)),wasSel:prev===sel.o};else gesture={type:'pan',...start,v:{...view}};requestDraw(false);
   const G0=gesture,hitO=sel?.o;clearTimeout(lpT);lpT=setTimeout(()=>{if(gesture!==G0||G0.moved||ptrs.size!==1)return;if(hitO){gesture=null;toggleMsel(hitO);if(navigator.vibrate)navigator.vibrate(20)}else{gesture={type:'box',...start,moved:false,w0:w,w1:w};showBox()}},450);return}
  if(tool==='pin'){gesture={type:'pin',...start,w};return}
@@ -167,6 +170,8 @@ stage.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.s
  if(gesture.type==='pinch'&&ptrs.size>=2){const[a,b]=[...ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y),c={x:(a.x+b.x)/2,y:(a.y+b.y)/2},g=gesture,s=clampS(g.v.s*d/g.d),wx=(g.c.x-g.v.x)/g.v.s,wy=(g.c.y-g.v.y)/g.v.s;view={s,x:c.x-wx*s,y:c.y-wy*s};fastView();return}
  const dx=e.offsetX-gesture.sx,dy=e.offsetY-gesture.sy;if(Math.hypot(dx,dy)>4)gesture.moved=true;
  if(gesture.type==='pan'){view.x=gesture.v.x+dx;view.y=gesture.v.y+dy;fastView()}
+ else if(gesture.type==='mmove'){const ddx=dx/view.s,ddy=dy/view.s;gesture.items.forEach((o,i)=>{const g=gesture.orig[i];if('x1'in g){o.x1=g.x1+ddx;o.x2=g.x2+ddx;o.y1=g.y1+ddy;o.y2=g.y2+ddy}else{o.x=g.x+ddx;o.y=g.y+ddy}});requestDraw(false)}
+ else if(gesture.type==='mtap'){if(gesture.moved){view.x=gesture.v.x+dx;view.y=gesture.v.y+dy;fastView()}}
  else if(gesture.type==='move'){const o=sel.o,g=gesture.orig,ddx=dx/view.s,ddy=dy/view.s;if(sel.kind==='p'){o.x=g.x+ddx;o.y=g.y+ddy}else{o.x1=g.x1+ddx;o.x2=g.x2+ddx;o.y1=g.y1+ddy;o.y2=g.y2+ddy}requestDraw(false)}
  else if(gesture.type==='resize'){resizeTo(sel.o,gesture.orig,gesture.h,toW(e.offsetX,e.offsetY));requestDraw(false)}
  else if(gesture.type==='draw'){const w=toW(e.offsetX,e.offsetY);draft.x2=w.x;draft.y2=w.y;requestDraw(false)}
@@ -174,8 +179,10 @@ stage.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.s
 async function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);clearTimeout(lpT);const g=gesture;if(g?.type==='pinch'){if(ptrs.size===0){gesture=null;requestDraw()}return}gesture=null;if(!g)return;if(g.type==='pan')requestDraw();
  const w=toW(e.offsetX,e.offsetY);
  if(g.type==='box'){boxSelect(g.w0,g.w1);return}
+ if(g.type==='mmove'){if(g.moved){const L=g.items.map((o,i)=>({store:'x1'in o?'markups':'pins',id:o.id,before:g.orig[i],after:structuredClone(o)}));await changeMulti(L);toast(`Moved ${L.length} item${L.length>1?'s':''}`,true)}else toggleMsel(g.tapO);return}
+ if(g.type==='mtap'){if(!g.moved)toggleMsel(g.o);else requestDraw();return}
  if(pasteArm&&!g.moved&&g.type!=='pinch'){pasteArm=false;draft=null;await doPaste(w);return}
- if(tool==='select'&&!g.moved&&g.type==='pan'&&msel.length){msel=[];renderSelBar();requestDraw(false)}
+ if(tool==='select'&&!g.moved&&g.type==='pan'&&msel.length&&!multiOn){msel=[];renderSelBar();requestDraw(false)}
  if(!g.moved&&(g.type==='pan'||g.type==='move')){const gh=ghostHit(w);if(gh&&!(g.type==='move'&&g.wasSel)){sel=null;openGhost(gh);return}const h=hit(w);if(h&&h.kind==='p'){openPin(h.o);return}}
  if(!g.moved&&(g.type==='resize'||g.type==='move'&&g.wasSel)&&sel?.o.type==='text'){const t=prompt('Edit text:',sel.o.text);if(t!==null&&t.trim()&&t!==sel.o.text){const b=structuredClone(sel.o);await change('markups',b,textBox({...b,text:t.trim()}))}return}
  if((g.type==='move'||g.type==='resize')&&g.moved&&sel)await change(sel.kind==='p'?'pins':'markups',g.orig,sel.o);
@@ -187,7 +194,7 @@ stage.addEventListener('pointerup',up);stage.addEventListener('pointercancel',up
 const clampS=s=>Math.max(.02,Math.min(s,40));
 stage.addEventListener('wheel',e=>{if(!plan)return;e.preventDefault();const k=Math.exp(-e.deltaY*(e.ctrlKey?.01:.0015)),s=clampS(view.s*k),wx=(e.offsetX-view.x)/view.s,wy=(e.offsetY-view.y)/view.s;view={s,x:e.offsetX-wx*s,y:e.offsetY-wy*s};fastView()},{passive:false});
 document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{tool=b.dataset.t;document.querySelectorAll('[data-t]').forEach(x=>x.classList.toggle('on',x===b));if(tool!=='select'){sel=null;draw()}});
-async function deleteSel(){if(!sel)return;const o=sel.o,k=sel.kind;sel=null;if(o.planId!==plan?.id)return;if(k==='p')await deletePin(o);else await change('markups',o,null);draw()}
+async function deleteSel(){if(msel.length)return bulkDelete();if(!sel)return;const o=sel.o,k=sel.kind;sel=null;if(o.planId!==plan?.id)return;if(k==='p')await deletePin(o);else await change('markups',o,null);draw()}
 $('#del').onclick=deleteSel;document.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)||dlg.open)return;if(e.key==='Delete'||e.key==='Backspace')deleteSel();else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo()}else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo()}});
 $('#color').onchange=async e=>{if(sel?.kind==='m'&&sel.o.color!==e.target.value){const b=structuredClone(sel.o);await change('markups',b,{...b,color:e.target.value})}};
 // size: S/M/L/XL -> stroke width (screen px) and text height (screen px at the zoom it was placed)
@@ -204,7 +211,7 @@ async function redo(){if(!plan)return;const h=H(),op=h.r.pop();if(!op)return;if(
 async function changeMulti(list){if(!plan||!list.length)return;for(const b of list)await applyState(b.store,b.id,b.after);const h=H();h.u.push({multi:list.map(b=>({...b,before:b.before&&structuredClone(b.before),after:b.after&&structuredClone(b.after)}))});if(h.u.length>300)h.u.shift();h.r=[];afterChange()}
 async function changeBatch(store,afters,gh){if(!plan||!afters.length)return;for(const a of afters)await applyState(store,a.id,a);const h=H();h.u.push({store,batch:afters.map(a=>({id:a.id,before:null,after:structuredClone(a)})),ghosts:gh&&structuredClone(gh)});if(h.u.length>300)h.u.shift();h.r=[];afterChange()}
 function updUR(){const h=plan&&hist[plan.id];$('#undo').disabled=!h?.u.length;$('#redo').disabled=!h?.r.length}
-function afterChange(){updUR();draw();renderList();renderGhostBar();if(plan)fillPageSel(null)}
+function afterChange(){if(msel.length)msel=msel.map(o=>pins.find(p=>p.id===o.id)||markups.find(m=>m.id===o.id)).filter(Boolean);updUR();draw();renderList();renderGhostBar();if(plan)fillPageSel(null)}
 $('#undo').onclick=undo;$('#redo').onclick=redo;
 // ---------- pin dialog ----------
 const dlg=$('#pinDlg'),form=$('#pinForm');let cur=null,urls=[];
@@ -298,7 +305,7 @@ $('#csvBtn').onclick=async()=>{if(!project)return;const rows=[['plan','page','ty
  const cell=v=>{v=String(v??'');if(/^[=+\-@\t\r]/.test(v))v="'"+v;return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
  dl(new Blob(['\ufeff'+rows.map(r=>r.map(cell).join(',')).join('\r\n')],{type:'text/csv'}),project.name.replace(/[\\/:*?"<>|]/g,'_')+'-devices.csv')};
 // ---------- export ----------
-function drawLegend(x,ps){const pp=pins.filter(p=>p.page===page&&(!lay.exp||pVis(p)));if(!pp.length)return;const types=[...new Set(pp.map(p=>p.type))],sts=STATUSES.filter(s=>pp.some(p=>(p.status||'not tested')===s));
+function drawLegend(x,ps,PP,PH){const pp=PP||pins.filter(p=>p.page===page&&(!lay.exp||pVis(p)));if(!pp.length)return;const pageH=PH||curPH();const types=[...new Set(pp.map(p=>p.type))],sts=STATUSES.filter(s=>pp.some(p=>(p.status||'not tested')===s));
  const u=1/ps,row=26*u,pad=10*u,rows=1+types.length+sts.length,w=190*u,h=pad*2+rows*row,X=12*u,Y=pageH-h-12*u;
  x.save();x.fillStyle='rgba(255,255,255,.93)';x.strokeStyle='#334155';x.lineWidth=1.5*u;x.fillRect(X,Y,w,h);x.strokeRect(X,Y,w,h);x.fillStyle='#111';x.font=`bold ${13*u}px sans-serif`;x.textBaseline='middle';x.textAlign='left';x.fillText('Legend',X+pad,Y+pad+row/2);
  let y=Y+pad+row*1.5;for(const t of types){drawPin(x,{type:t,x:X+pad+14*u,y},ps,false,true);x.fillStyle='#111';x.font=`${12*u}px sans-serif`;x.textAlign='left';x.textBaseline='middle';x.fillText(TYPES[t]?.n||t,X+pad+34*u,y);y+=row}
@@ -472,11 +479,14 @@ function showBox(){let d=$('#selBox');if(!d){d=document.createElement('div');d.i
  const a={x:g.w0.x*view.s+view.x,y:g.w0.y*view.s+view.y},b={x:g.w1.x*view.s+view.x,y:g.w1.y*view.s+view.y};Object.assign(d.style,{left:Math.min(a.x,b.x)+'px',top:Math.min(a.y,b.y)+'px',width:Math.abs(b.x-a.x)+'px',height:Math.abs(b.y-a.y)+'px'})}
 function boxSelect(a,b){$('#selBox')?.remove();const x=Math.min(a.x,b.x),X=Math.max(a.x,b.x),y=Math.min(a.y,b.y),Y=Math.max(a.y,b.y),inn=o=>{const q=bb(o),cx=(q.x+q.X)/2,cy=(q.y+q.Y)/2;return cx>=x&&cx<=X&&cy>=y&&cy<=Y};
  const L=[...markups.filter(m=>m.page===page&&mVis(m)&&inn(m)),...pins.filter(p=>p.page===page&&pVis(p)&&inn(p))];for(const o of L)if(!msel.includes(o))msel.push(o);sel=null;renderSelBar();requestDraw(false);toast(`${msel.length} selected`)}
-let clipPins=false;
-function renderSelBar(){const b=$('#selBar'),it=tool==='select'?selItems():msel;if(walk||(!it.length&&!clip)){b.hidden=true;b.innerHTML='';return}const np=it.filter(isPinO).length;
- b.innerHTML=(it.length?`<b>${it.length} selected</b><button type="button" class="btn" id="cpBtn">⧉ Copy</button><button type="button" class="btn" id="cutBtn">✂ Cut</button>${np?`<label><input type="checkbox" id="cpPins" ${clipPins?'checked':''}> incl. ${np} pin${np>1?'s':''}</label>`:''}<button type="button" class="btn" id="selX" title="Clear selection">✕</button>`:'')
+let clipPins=false,multiOn=false,boxOn=false;
+function renderSelBar(){const b=$('#selBar'),it=tool==='select'?selItems():msel,ST0=tool==='select'&&plan;if(walk||(!it.length&&!clip&&!ST0)){b.hidden=true;b.innerHTML='';return}const np=it.filter(isPinO).length;
+ b.innerHTML=(ST0?`<button type="button" class="btn${multiOn?' on':''}" id="multiBtn" title="Multi-select: tap items to add/remove them">${multiOn?'☑':'☐'} Multi</button><button type="button" class="btn${boxOn?' on':''}" id="boxBtn" title="Box select: drag on empty space to select everything inside">▭ Box</button><select id="selAll" title="Select all on this page"><option value="">All…</option><option value="all">All on page</option><option value="m">Markups</option><option value="p">Pins</option></select>`:'')
+  +(it.length?`<b>${it.length} sel.</b><button type="button" class="btn" id="cpBtn">⧉ Copy</button><button type="button" class="btn" id="cutBtn">✂ Cut</button>${np?`<label><input type="checkbox" id="cpPins" ${clipPins?'checked':''}> incl. ${np} pin${np>1?'s':''}</label>`:''}<button type="button" class="btn" id="bulkEd" title="Edit color, size, pin status/type/loop">✎ Edit</button><button type="button" class="btn danger" id="bulkDel" title="Delete selected">🗑</button><button type="button" class="btn" id="selX" title="Clear selection">✕</button>`:'')
   +(clip?`<button type="button" class="btn pri" id="pasteBtn" title="Paste at the same plan position">📋 Paste ${clip.m.length+clip.p.length}</button><button type="button" class="btn" id="pasteAt" title="Paste centred on the next point you tap">📍 at tap</button><button type="button" class="btn" id="clipX" title="Clear clipboard">✕</button>`:'');
  b.hidden=false;const q=x=>b.querySelector(x);
+ if(q('#multiBtn'))q('#multiBtn').onclick=()=>{multiOn=!multiOn;if(multiOn&&sel){if(!msel.includes(sel.o))msel.push(sel.o);sel=null}renderSelBar();requestDraw(false)};if(q('#boxBtn'))q('#boxBtn').onclick=()=>{boxOn=!boxOn;renderSelBar()};
+ if(q('#selAll'))q('#selAll').onchange=e=>selectAll(e.target.value);if(q('#bulkDel'))q('#bulkDel').onclick=bulkDelete;if(q('#bulkEd'))q('#bulkEd').onclick=openBulk;
  if(q('#cpPins'))q('#cpPins').onchange=e=>clipPins=e.target.checked;
  if(q('#cpBtn'))q('#cpBtn').onclick=()=>doCopy(false);if(q('#cutBtn'))q('#cutBtn').onclick=()=>doCopy(true);if(q('#selX'))q('#selX').onclick=()=>{msel=[];sel=null;renderSelBar();draw()};
  if(q('#pasteBtn'))q('#pasteBtn').onclick=()=>doPaste(null);if(q('#pasteAt'))q('#pasteAt').onclick=()=>{pasteArm=true;toast('Tap where the copied items should go')};if(q('#clipX'))q('#clipX').onclick=()=>{clip=null;pasteArm=false;renderSelBar()}}
@@ -570,3 +580,106 @@ async function learn(fp,g){if(!fp)return;const rules=await learnedRules(),m=matc
 function groupFor(type,orig){if(DG[orig]?.t===type)return orig;const ks=Object.keys(DG);return ks.find(k=>DG[k].t===type&&!DG[k].x)||ks.find(k=>DG[k].t===type)||'oth'}
 async function learnInfoUpd(){const n=(await learnedRules()).length;$('#learnInfo').textContent=n?`🧠 Learned ${n} symbol${n>1?'s':''} from your corrections (used first).`:'🧠 No learned symbols yet. Rejecting or retyping a suggestion teaches the detector.';$('#learnReset').hidden=!n}
 $('#learnReset').onclick=async()=>{if(!confirm('Forget all learned symbols (in every project)?'))return;await tx('learned','readwrite',o=>o.clear());lrCache=null;learnInfoUpd()};
+
+// ---------- v10: multi-select tools ----------
+function selectAll(f){if(!plan||!f)return;const L=[...(f!=='p'?markups.filter(m=>m.page===page&&mVis(m)):[]),...(f!=='m'?pins.filter(p=>p.page===page&&pVis(p)):[])];msel=L;sel=null;if(L.length)multiOn=true;renderSelBar();requestDraw(false);toast(L.length?`${L.length} selected`:'Nothing visible on this page')}
+async function bulkDelete(){const it=selItems().filter(o=>o.planId===plan?.id);if(!it.length)return;const L=[];for(const o of it){if(isPinO(o))L.push({store:'pins',id:o.id,before:o,after:null,media:await byIdx('media','pinId',o.id)});else L.push({store:'markups',id:o.id,before:o,after:null})}
+ msel=[];sel=null;await changeMulti(L);renderSelBar();toast(`Deleted ${L.length} item${L.length>1?'s':''}`,true)}
+$('#bkType').innerHTML='<option value="">unchanged</option>'+Object.entries(TYPES).map(([k,v])=>`<option value="${k}">${esc(v.n)}</option>`).join('');
+function openBulk(){const it=selItems();if(!it.length)return;const nm=it.filter(o=>!isPinO(o)).length,np=it.length-nm;$('#bkN').textContent=`${it.length} item${it.length>1?'s':''}`;$('#bkM').hidden=!nm;$('#bkP').hidden=!np;
+ $('#bkCOn').checked=false;$('#bkColor').value=$('#color').value;$('#bkSize').value='';$('#bkStatus').value='';$('#bkType').value='';$('#bkLoop').value='';$('#bulkDlg').showModal()}
+$('#bkColor').oninput=()=>$('#bkCOn').checked=true;
+$('#bkGo').onclick=async()=>{$('#bulkDlg').close();await bulkApply({color:$('#bkCOn').checked?$('#bkColor').value:null,size:$('#bkSize').value,status:$('#bkStatus').value,type:$('#bkType').value,loop:$('#bkLoop').value.trim()})};
+async function bulkApply(o){const it=selItems().filter(x=>x.planId===plan?.id),L=[],now=Date.now();let who=null;
+ for(const x of it){const b=structuredClone(x);let a=structuredClone(x);
+  if(isPinO(x)){if(o.type&&o.type!==a.type)a.type=o.type;if(o.loop)a.loop=o.loop;
+   if(o.status&&o.status!==b.status){if(o.status==='passed'||o.status==='failed'){who??=await getTester();a.testedAt=now;a.tester=who}
+    if(o.status==='passed'){a.checks=(b.checks||checkItems(a.type)).map(c=>({...c,v:'pass'}));a.reason=a.reasonText=a.severity=''}
+    else if(o.status==='failed'){a.reason=b.reason||'Other';a.severity=b.severity||'Non-critical'}
+    else if(o.status==='not tested'){for(const k of['checks','testedAt','tester','reason','reasonText','severity'])delete a[k]}
+    a.status=o.status}}
+  else{if(o.color)a.color=o.color;if(o.size!==''&&o.size!=null){const i=+o.size;a=a.type==='text'?textBox({...a,fs:SZT[i]/view.s}):{...a,w:SZ[i]}}}
+  if(JSON.stringify(a)!==JSON.stringify(b))L.push({store:isPinO(x)?'pins':'markups',id:x.id,before:b,after:a})}
+ if(!L.length){toast('Nothing to change');return}await changeMulti(L);renderSelBar();toast(`Updated ${L.length} item${L.length>1?'s':''}`,true)}
+// ---------- v10: .bpm project file (ZIP, stored entries, see FORMAT.md) ----------
+const BPM_VER=1,BPM_FMT='blueprint-markup-project';
+const CRCT=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+async function crcBlob(b,onP){let c=0xFFFFFFFF;const CH=4<<20;for(let o=0;o<b.size;o+=CH){const u=new Uint8Array(await b.slice(o,o+CH).arrayBuffer());for(let i=0;i<u.length;i++)c=CRCT[(c^u[i])&255]^(c>>>8);onP&&onP(u.length)}return(c^0xFFFFFFFF)>>>0}
+// store-only ZIP: the output Blob references the source blobs, so big videos are never copied into one buffer
+async function zipBlob(files,onP){const parts=[],cd=[],enc=new TextEncoder();let off=0;if(files.length>65000)throw new Error('too many files for one archive');
+ for(const f of files){const nm=enc.encode(f.name),sz=f.blob.size,crc=await crcBlob(f.blob,onP);if(sz>=0xFFFFFFFF||off+sz+nm.length+30>=0xFFFFFFFF)throw new Error('the project is over 4 GB, too large for one file');
+  const h=new DataView(new ArrayBuffer(30));h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(12,0x21,true);h.setUint32(14,crc,true);h.setUint32(18,sz,true);h.setUint32(22,sz,true);h.setUint16(26,nm.length,true);parts.push(h.buffer,nm,f.blob);
+  const c=new DataView(new ArrayBuffer(46));c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint16(14,0x21,true);c.setUint32(16,crc,true);c.setUint32(20,sz,true);c.setUint32(24,sz,true);c.setUint16(28,nm.length,true);c.setUint32(42,off,true);cd.push(c.buffer,nm);off+=30+nm.length+sz}
+ const cs=cd.reduce((a,b)=>a+b.byteLength,0),e=new DataView(new ArrayBuffer(22));e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,cs,true);e.setUint32(16,off,true);
+ return new Blob([...parts,...cd,e.buffer],{type:'application/zip'})}
+async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(await b.slice(T).arrayBuffer());let i=tail.byteLength-22;for(;i>=0;i--)if(tail.getUint32(i,true)===0x06054b50)break;if(i<0)throw new Error('this is not a .bpm project file (no ZIP directory found)');
+ const n=tail.getUint16(i+10,true),cs=tail.getUint32(i+12,true),co=tail.getUint32(i+16,true);if(co+cs>b.size)throw new Error('the file is truncated');const cdv=new DataView(await b.slice(co,co+cs).arrayBuffer()),out=new Map(),dec=new TextDecoder();let p=0;
+ for(let k=0;k<n;k++){if(cdv.getUint32(p,true)!==0x02014b50)throw new Error('the file is damaged (bad directory)');const meth=cdv.getUint16(p+10,true),crc=cdv.getUint32(p+16,true),csz=cdv.getUint32(p+20,true),nl=cdv.getUint16(p+28,true),el=cdv.getUint16(p+30,true),cl=cdv.getUint16(p+32,true),lo=cdv.getUint32(p+42,true),name=dec.decode(new Uint8Array(cdv.buffer,p+46,nl));p+=46+nl+el+cl;
+  const lh=new DataView(await b.slice(lo,lo+30).arrayBuffer());if(lh.getUint32(0,true)!==0x04034b50)throw new Error('the file is damaged ('+name+')');const ds=lo+30+lh.getUint16(26,true)+lh.getUint16(28,true);let blob=b.slice(ds,ds+csz);
+  if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
+const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
+async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v10',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null};
+ for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
+  man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
+  for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
+  const ly=await get('meta','layers:'+pl.id);if(ly)man.layers[pl.id]=ly}
+ const last=await get('meta','last:'+pid);if(last)man.meta.last=last;if(withLearned)man.learned=await all('learned');
+ files.unshift({name:'project.json',blob:new Blob([JSON.stringify(man)],{type:'application/json'})});const tot=files.reduce((a,f)=>a+f.blob.size,0);let done=0;return zipBlob(files,n=>{done+=n;onP&&onP(done/tot)})}
+async function readBpm(file){const z=await unzipBlob(file),mj=z.get('project.json');if(!mj)throw new Error('this file has no project.json, it is not a Blueprint Markup project');let man;try{man=JSON.parse(await mj.blob.text())}catch{throw new Error('project.json is damaged')}
+ if(man.format!==BPM_FMT)throw new Error('this is not a Blueprint Markup project file');if(!Number.isInteger(man.version)||man.version<1)throw new Error('unknown project file version');if(man.version>BPM_VER)throw new Error(`this file was saved by a newer app (format v${man.version}; this app reads up to v${BPM_VER}). Reload the app to update it, then try again.`);
+ for(const k of['plans','markups','pins','media'])if(!Array.isArray(man[k]))throw new Error('project.json is missing '+k);return{z,man}}
+async function importBpm(file,replaceId,onP){const{z,man}=await readBpm(file);
+ const ent=async(n,type)=>{const e=z.get(n);if(!e)throw new Error('the file is missing '+n);if(await crcBlob(e.blob)!==e.crc)throw new Error(n+' is damaged (checksum mismatch)');return new Blob([await e.blob.arrayBuffer()],{type:type||''})};
+ const idm=new Map(),nid=o=>{if(!idm.has(o))idm.set(o,uid()+Math.random().toString(36).slice(2,5));return idm.get(o)};
+ const pid=replaceId||'p'+uid(),names=(await all('projects')).filter(p=>p.id!==replaceId).map(p=>p.name);let name=man.project?.name||file.name.replace(/\.bpm$/i,'');if(!replaceId&&names.includes(name))name+=' (opened)';
+ // 1) read + verify every blob before touching the database
+ const plans=[],media=[],N=man.plans.length+man.media.length;let k=0;const tick=()=>onP&&onP(++k/Math.max(1,N));
+ for(const m of man.plans){const{file:f,type,size,...r}=m;plans.push({...r,id:nid(m.id),projectId:pid,blob:f?await ent(f,type):new Blob([])});tick()}
+ const planIds=new Set(man.plans.map(p=>p.id)),pinsIn=man.pins.filter(p=>planIds.has(p.planId)),pinIds=new Set(pinsIn.map(p=>p.id));
+ for(const m of man.media){if(!pinIds.has(m.pinId))continue;const{file:f,type,size,annotFile,annotType,...r}=m,o={...r,id:nid(m.id),pinId:nid(m.pinId)};if(f)o.blob=await ent(f,type);if(annotFile)o.annot=await ent(annotFile,annotType);media.push(o);tick()}
+ const mk=man.markups.filter(m=>planIds.has(m.planId)).map(m=>({...m,id:nid(m.id),planId:nid(m.planId)})),pn=pinsIn.map(p=>({...p,id:nid(p.id),planId:nid(p.planId)}));
+ // 2) write everything; on failure remove what was written
+ const wrote=[];try{for(const p of plans){await put('plans',p);wrote.push(['plans',p.id])}for(const m of mk){await put('markups',m);wrote.push(['markups',m.id])}for(const p of pn){await put('pins',p);wrote.push(['pins',p.id])}for(const m of media){await put('media',m);wrote.push(['media',m.id])}
+  for(const[o,l]of Object.entries(man.layers||{}))if(idm.has(o))await put('meta',l,'layers:'+idm.get(o));
+  let nl=0;if(Array.isArray(man.learned)&&man.learned.length){const have=new Set((await all('learned')).map(r=>r.id));for(const r of man.learned)if(r&&r.fp&&r.g&&!have.has(r.id)){await put('learned',r);nl++}lrCache=null;learnInfoUpd()}
+  if(replaceId){const old=(await all('plans')).filter(p=>p.projectId===replaceId&&!plans.some(x=>x.id===p.id));for(const o of old)await deletePlanData(o.id);const pr=await get('projects',replaceId);await put('projects',{...pr,...man.project,id:replaceId,name,created:pr?.created||Date.now()})}
+  else await put('projects',{...man.project,id:pid,name,created:Date.now()});
+  if(man.meta?.last&&idm.has(man.meta.last))await put('meta',idm.get(man.meta.last),'last:'+pid);
+  return{pid,name,plans:plans.length,markups:mk.length,pins:pn.length,media:media.length,learned:nl}}
+ catch(e){for(const[s,id]of wrote.reverse())try{await del(s,id)}catch{}throw e}}
+// deliver a file: save picker (desktop Chrome/Edge), else share sheet, else a normal download
+async function deliver(name,mime,ext,make){let h=null;if(window.showSaveFilePicker){try{h=await showSaveFilePicker({suggestedName:name,types:[{description:ext==='.bpm'?'Blueprint Markup project':ext.toUpperCase().slice(1)+' file',accept:{[mime]:[ext]}}]})}catch(e){if(e.name==='AbortError')return null;h=null}}
+ const blob=await make();if(h){const w=await h.createWritable();await w.write(blob);await w.close();return'saved as '+h.name}
+ const f=new File([blob],name,{type:mime});if(navigator.canShare&&navigator.share&&matchMedia('(pointer:coarse)').matches){try{if(navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});return'shared'}}catch(e){if(e.name==='AbortError')return null}}
+ dl(blob,name);return'downloaded'}
+$('#projSave').onclick=async()=>{if(!project)return;const n=(await learnedRules()).length;$('#svLN').textContent=n?`(${n})`:'(none yet)';$('#svLearned').disabled=!n;$('#exInfo').textContent='';$('#saveDlg').showModal()};
+$('#svGo').onclick=async()=>{const pr=project,wl=$('#svLearned').checked;$('#saveDlg').close();busy(1,'Saving project');prog(0);
+ try{const r=await deliver(fsafe(pr.name)+'.bpm','application/octet-stream','.bpm',async()=>{const b=await buildBpm(pr.id,wl,prog);window.__lastBpm=b;return b});if(r)toast(`Project "${pr.name}" ${r} (${(window.__lastBpm.size/1048576).toFixed(1)} MB)`)}catch(e){showErr('Saving the project failed: '+e.message)}finally{busy(0)}};
+let opFile=null;$('#bpmFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;hideErr();try{const{man}=await readBpm(f);opFile=f;
+ $('#opInfo').innerHTML=`<b>${esc(man.project?.name||f.name)}</b><br><small style="color:#94a3b8">${man.plans.length} plan(s), ${man.markups.length} markups, ${man.pins.length} pins, ${man.media.length} media · saved ${esc((man.saved||'').slice(0,16).replace('T',' '))} UTC${man.learned?.length?` · ${man.learned.length} learned rules (merged)`:''}</small>`;
+ $('#opCur').textContent=project?`"${project.name}"`:'';document.querySelector('#openDlg [name=opMode][value=new]').checked=true;$('#openDlg').showModal()}catch(err){showErr(`Could not open "${f.name}": ${err.message}`)}};
+$('#opGo').onclick=async()=>{const f=opFile,rep=document.querySelector('#openDlg [name=opMode]:checked').value==='replace'&&project;if(!f)return;
+ if(rep&&!confirm(`Replace project "${project.name}" with the contents of this file? Its current plans, markups, pins and media will be deleted.`))return;$('#openDlg').close();opFile=null;stopAll();busy(1,'Opening project');prog(0);
+ try{const r=await importBpm(f,rep?project.id:null,prog);if(rep)project=null;busy(0);await loadProject(r.pid);toast(`Opened "${r.name}": ${r.plans} plan(s), ${r.pins} pins, ${r.markups} markups, ${r.media} media`)}catch(e){showErr('Opening the project failed: '+e.message)}finally{busy(0)}};
+// ---------- v10: export all plans as marked-up PDFs ----------
+async function planPdf(pl,onPage,doc=null){const L={...LAY0,...((await get('meta','layers:'+pl.id))||{})},mks=await byIdx('markups','planId',pl.id),pns=await byIdx('pins','planId',pl.id);let d=null,n=1;const{jsPDF}=window.jspdf;
+ if(pl.kind==='pdf'){d=await pdfjsLib.getDocument({data:new Uint8Array(await pl.blob.arrayBuffer())}).promise;n=d.numPages}
+ try{for(let i=1;i<=n;i++){let W,Hh,sc,c=document.createElement('canvas'),x=c.getContext('2d');
+  if(d){const pg=await d.getPage(i),v1=pg.getViewport({scale:1});W=v1.width;Hh=v1.height;sc=Math.min(2.5,Math.sqrt(14e6/(W*Hh)));c.width=Math.round(W*sc);c.height=Math.round(Hh*sc);x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);await pg.render({canvasContext:x,viewport:pg.getViewport({scale:sc})}).promise;pg.cleanup()}
+  else{const im=await createImageBitmap(pl.blob);W=im.width;Hh=im.height;sc=Math.min(1,Math.sqrt(14e6/(W*Hh)));c.width=Math.round(W*sc);c.height=Math.round(Hh*sc);x.drawImage(im,0,0,c.width,c.height)}
+  // synchronous block: temporarily use this plan's layer settings for the shared draw helpers
+  const keep=lay;lay=L;try{x.setTransform(sc,0,0,sc,0,0);const ps=1/Math.max(1,Math.max(W,Hh)/1200),E=L.exp;for(const m of mks)if(m.page===i&&(!E||mVis(m)))drawMarkup(x,m,1/1.5);const pp=pns.filter(p=>p.page===i&&(!E||pVis(p)));for(const p of pp)(E?drawPinL:drawPin)(x,p,ps,false);drawLegend(x,ps,pp,Hh)}finally{lay=keep}
+  const o=W>Hh?'l':'p';if(!doc)doc=new jsPDF({orientation:o,unit:'pt',format:[W,Hh]});else doc.addPage([W,Hh],o);doc.addImage(c.toDataURL('image/jpeg',.85),'JPEG',0,0,W,Hh,undefined,'FAST');c.width=c.height=0;onPage&&onPage(i,n)}}finally{if(d)d.destroy()}
+ return{doc,pages:n}}
+$('#exGo').onclick=async()=>{if(!project)return;const pr=project,mode=document.querySelector('#saveDlg [name=exMode]:checked').value,orig=$('#exOrig').checked;$('#saveDlg').close();busy(1,'Exporting plans');prog(0);
+ try{const pls=(await all('plans')).filter(p=>p.projectId===pr.id).sort((a,b)=>a.added-b.added);if(!pls.length)throw new Error('this project has no plans');const zipOut=mode==='zip'||orig,base=fsafe(pr.name);
+  const r=await deliver(base+(zipOut?'-plans.zip':'-plans.pdf'),zipOut?'application/zip':'application/pdf',zipOut?'.zip':'.pdf',async()=>{const files=[],used=new Set(),uniq=n=>{let o=n,k=2;while(used.has(o.toLowerCase()))o=n.replace(/(\.[^.]+)?$/,` (${k++})$1`);used.add(o.toLowerCase());return o};let tot=0;
+   let one=null;const bt=t=>$('#busyTxt').textContent=t;
+   for(let j=0;j<pls.length;j++){const pl=pls[j],stem=fsafe(pl.name.replace(/\.[^.]+$/,'')),op=(i,n)=>{bt(`Exporting ${j+1}/${pls.length}: page ${i}/${n}`);prog((j+i/n)/pls.length)};
+    if(mode==='one'){const r=await planPdf(pl,op,one);one=r.doc;tot+=r.pages}
+    else{const r=await planPdf(pl,op);r.doc.setProperties({title:pl.name+' (marked up)'});files.push({name:uniq(`${stem}-marked.pdf`),blob:r.doc.output('blob')});tot+=r.pages}
+    if(orig&&pl.blob?.size)files.push({name:uniq('original/'+fsafe(pl.name)),blob:pl.blob})}
+   if(one){one.setProperties({title:pr.name+' plans (marked up)'});files.unshift({name:uniq(base+'-plans.pdf'),blob:one.output('blob')})}
+   window.__lastExport={pages:tot,files:files.map(f=>[f.name,f.blob.size])};return zipOut?zipBlob(files):files[0].blob});
+  if(r)toast(`Exported ${window.__lastExport.pages} page(s) from ${pls.length} plan(s), ${r}`)}catch(e){showErr('Export failed: '+e.message)}finally{busy(0)}};
