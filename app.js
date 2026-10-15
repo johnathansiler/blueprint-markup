@@ -1,7 +1,7 @@
 'use strict';
 pdfjsLib.GlobalWorkerOptions.workerSrc='vendor/pdf.worker.min.js';
 const $=s=>document.querySelector(s);
-const TYPES={smoke:{c:'#dc2626',l:'S',n:'Smoke'},heat:{c:'#ea580c',l:'H',n:'Heat'},pull:{c:'#be185d',l:'P',n:'Pull station'},horn:{c:'#7c3aed',l:'HS',n:'Horn/strobe'},panel:{c:'#991b1b',l:'FACP',n:'FACP – Fire Alarm Control Panel',sq:1},dact:{c:'#ca8a04',l:'DACT',n:'DACT – Digital Alarm Communicator Transmitter',sq:1},fatc:{c:'#0e7490',l:'FATC',n:'FATC – Fire Alarm Terminal Cabinet',sq:1},panelbox:{c:'#0f766e',l:'ANN',n:'Annunciator',sq:1},rai:{c:'#e11d48',l:'RI',n:'Remote alarm indicator'},module:{c:'#2563eb',l:'M',n:'Monitor/control module',sq:1},duct:{c:'#b45309',l:'D',n:'Duct detector'},flow:{c:'#0369a1',l:'WF',n:'Waterflow switch'},tamper:{c:'#4d7c0f',l:'TS',n:'Tamper switch'},spkstrobe:{c:'#9333ea',l:'SS',n:'Speaker/strobe'},strobe:{c:'#c026d3',l:'ST',n:'Strobe'},linearray:{c:'#4f46e5',l:'LA',n:'Line array speaker'},relay:{c:'#78350f',l:'R',n:'Relay',sq:1},doorholder:{c:'#db2777',l:'DH',n:'Door holder'},jbox:{c:'#64748b',l:'J',n:'Junction box',sq:1},surge:{c:'#16a34a',l:'SS',n:'Surge protector (TVSS / SPD)',sq:1},other:{c:'#475569',l:'?',n:'Other'}};
+const TYPES={smoke:{c:'#dc2626',l:'S',n:'Smoke'},heat:{c:'#ea580c',l:'H',n:'Heat'},pull:{c:'#be185d',l:'P',n:'Pull station'},horn:{c:'#7c3aed',l:'HS',n:'Horn/strobe'},panel:{c:'#991b1b',l:'FACP',n:'FACP – Fire Alarm Control Panel',sq:1},dact:{c:'#ca8a04',l:'DACT',n:'DACT – Digital Alarm Communicator Transmitter',sq:1},fatc:{c:'#0e7490',l:'FATC',n:'FATC – Fire Alarm Terminal Cabinet',sq:1},panelbox:{c:'#0f766e',l:'ANN',n:'Annunciator',sq:1},rai:{c:'#e11d48',l:'RI',n:'Remote alarm indicator'},module:{c:'#2563eb',l:'M',n:'Monitor/control module',sq:1},duct:{c:'#b45309',l:'D',n:'Duct detector'},flow:{c:'#0369a1',l:'WF',n:'Waterflow switch'},tamper:{c:'#4d7c0f',l:'TS',n:'Tamper switch'},spkstrobe:{c:'#9333ea',l:'SS',n:'Speaker/strobe'},strobe:{c:'#c026d3',l:'ST',n:'Strobe'},linearray:{c:'#4f46e5',l:'LA',n:'Line array speaker'},relay:{c:'#0d9488',l:'R',n:'Relay',sq:1},doorholder:{c:'#db2777',l:'DH',n:'Door holder'},jbox:{c:'#64748b',l:'J',n:'Junction box',sq:1},surge:{c:'#16a34a',l:'SS',n:'Surge protector (TVSS / SPD)',sq:1},other:{c:'#475569',l:'?',n:'Other'}};
 const ST={passed:'#16a34a',failed:'#dc2626','in progress':'#f59e0b','not tested':'#94a3b8'},STATUSES=['passed','failed','in progress','not tested'];
 // NFPA 72-style default inspection/test items per device type (snapshotted onto each pin when first answered)
 const CHECKS={smoke:['Alarm received at panel','Correct address/label at panel','LED/base condition OK','Sensitivity within range','Clean/unobstructed'],
@@ -30,12 +30,13 @@ const PIN_OP=.5,MK_OP=.8;const pinR=()=>9.6;
 // bpm-v26/27: pin silhouettes match the printed plan symbols (shape + size in plan points, measured from the test plan legend:
 // hex smoke/duct/module ~15pt, flat flow/tamper diamond ~24x9, 13pt square for pull/notification/J/relay, wide boxes for panels/DH)
 const PSH={smoke:['hex',15,13],duct:['hex',15,13],module:['hex',15,13],heat:['circ',13,13],pull:['rect',13,13],horn:['rect',13,13],spkstrobe:['rect',13,13],strobe:['rect',13,13],linearray:['rect',13,13],
- panel:['rect',26,13],dact:['rect',26,13],fatc:['rect',26,13],panelbox:['rect',26,13],doorholder:['rect',24,10],relay:['hex',15,13],jbox:['rect',13,13],surge:['rect',13,13],
- flow:['dia',24,9],tamper:['dia',24,9],rai:['circ',6,6],other:['circ',12,12]};
+ panel:['rect',26,13],dact:['rect',26,13],fatc:['rect',26,13],panelbox:['rect',26,13],doorholder:['rect',7,14],relay:['hex',15,13],jbox:['rect',13,13],surge:['rect',13,13],
+ flow:['dia',24,9],tamper:['dia',24,9],rai:['circ',6,6],jceil:['circ',13,13],other:['circ',12,12]};
 const PSC=1.3;const PANEL_S=new Set(['panel','dact','fatc','panelbox']);
 // bpm-v27: panels take the printed box size+orientation (bw/bh from detection), inset by the stroke so the fill sits inside and never overflows; WF/TS diamonds at print size (no 1.3x) so they sit flush on the printed diamond
-const pshOf=o=>{const t=typeof o==='string'?o:o&&o.type,v=PSH[t]||PSH.other;if(PANEL_S.has(t)){if(o&&o.bw>4&&o.bh>4)return['rect',o.bw-2.5,o.bh-2.5];if(o&&o.vert)return['rect',v[2]-1,v[1]-1];return['rect',v[1]-1,v[2]-1]}if(v[0]==='dia')return[v[0],v[1],v[2]];if(o&&o.bw>4&&o.bh>4&&v[0]==='rect')return['rect',o.bw-2.5,o.bh-2.5];return[v[0],Math.max(3,v[1]-2.5),Math.max(3,v[2]-2.5)]};
-// bpm-v28: every pin type fits inside its printed symbol: print size (no 1.3x) minus the stroke, so the plan outline stays outside the pin border; surge square 13pt like the printed SS box
+const pinInset=(w,h)=>{const pad=pinLW()+1;return[Math.max(3,w-pad),Math.max(3,h-pad)]}; // stroke+1pt so plan outline stays clearly outside pin border
+const pshOf=o=>{const t=typeof o==='string'?o:o&&o.type,v=PSH[t]||PSH.other;if(PANEL_S.has(t)){if(o&&o.bw>4&&o.bh>4)return['rect',...pinInset(o.bw,o.bh)];if(o&&o.vert)return['rect',...pinInset(v[2],v[1])];return['rect',...pinInset(v[1],v[2])]}if(v[0]==='dia')return[v[0],v[1],v[2]];if(o&&o.bw>4&&o.bh>4&&(v[0]==='rect'||v[0]==='hex'||v[0]==='circ')){const[iw,ih]=pinInset(o.bw,o.bh);return[v[0],iw,ih]}return[v[0],...pinInset(v[1],v[2])]};
+// bpm-v29: every pin + ghost uses print-matched silhouette inset inside the plan outline; door holder 14x7 (rect_small); relay teal; ceiling jbox = circle
 function pinPath(c,t){const[k,w,h]=pshOf(t),a=w/2,b=h/2;if(k==='rect')c.rect(-a,-b,w,h);else if(k==='dia'){c.moveTo(-a,0);c.lineTo(0,-b);c.lineTo(a,0);c.lineTo(0,b);c.closePath()}
  else if(k==='hex'){c.moveTo(-a,0);c.lineTo(-a/2,-b);c.lineTo(a/2,-b);c.lineTo(a,0);c.lineTo(a/2,b);c.lineTo(-a/2,b);c.closePath()}else c.arc(0,0,a,0,7)}
 const pinHalf=t=>{const[k,w,h]=pshOf(t);return k==='circ'?w/2:k==='rect'?Math.hypot(w,h)/2:Math.max(w,h)/2}; // plan points — scales with zoom (constant on the blueprint); bpm-v25: 80% of prior 12
@@ -511,16 +512,20 @@ async function runDetect(groups,all){const want=groups.flatMap(g=>DG[g].d),pl=pl
      else if(it.type==='FLOW_TAMPER')it.type='FLOW'}
    }catch{}
    const rules=await learnedRules();let nl=0;const items=[];for(const it of r.items){let g=D2G[it.type],lr=null;const m=matchRule(rules,it.fp);if(m){lr=m.g;nl++;if(m.g==='none')continue;g=m.g}if(groups.includes(g)||(lr&&DG[g]?.x))items.push({...it,g,learned:!!lr})}
-   for(const it of items){if(!(it.bw||it.vert))continue;const p=pins.find(p=>p.page===n&&PANEL_S.has(p.type)&&!p.bw&&Math.hypot(p.x-it.x,p.y-it.y)<36);if(p){if(it.bw){p.bw=it.bw;p.bh=it.bh;p.x=it.x;p.y=it.y}else p.vert=true;put('pins',p)}}
+   // bpm-v29: backfill measured bw/bh onto existing pins of any matching type (DH/jbox/surge/panels) so inset uses print size
+   for(const it of items){if(!(it.bw||it.vert))continue;const want=DG[it.g]&&DG[it.g].t;const p=pins.find(p=>p.page===n&&!p.bw&&Math.hypot(p.x-it.x,p.y-it.y)<36&&(PANEL_S.has(p.type)||(want&&p.type===want)));if(p){if(it.bw){p.bw=it.bw;p.bh=it.bh;p.x=it.x;p.y=it.y}else if(PANEL_S.has(p.type))p.vert=true;put('pins',p)}}
    const add=items.filter(it=>!near(it.x,it.y)).map(it=>({id:uid(),page:n,x:it.x,y:it.y,bw:it.bw,bh:it.bh,vert:it.vert,det:it.type,g:it.g,fp:it.fp,learned:it.learned}));ghosts.push(...add);found+=add.length;
    R.stats.push({page:n,ops:ol.fnArray.length,paths:r.paths,found:items.length,kept:add.length,skipped:items.length-add.length,learnedHits:nl,opsMs:Math.round(t1-t0),workerMs:Math.round(r.ms),totalMs:Math.round(performance.now()-t0),k:r.k});
    prog((i+1)/pages.length);if(n===page)draw();renderGhostBar()}
   window.__detStats=R.stats;if(!found)showErr(`No ${groups.length===Object.keys(DG).length?'':'matching '}device symbols found${all?'':' on this page'}. Detection works on CAD-exported vector plans with standard symbols.`)}
  catch(e){if(!R.cancel)showErr('Detect devices failed: '+(e&&e.message||e))}
  finally{if(det===R){det=null;busy(0)}draw();renderGhostBar()}}
-function drawGhosts(c){const r=pinR()*1.15;for(const g of ghosts){if(g.page!==page)continue;const T=gT(g);c.save();const oo=OFFMAP&&OFFMAP.get(g.id||g);if(oo)drawLeader(c,g.x,g.y,g.x+oo.dx,g.y+oo.dy,T.c);c.translate(g.x+(oo?oo.dx:0),g.y+(oo?oo.dy:0));c.setLineDash([4,3]);c.lineWidth=2.5;c.strokeStyle=T.c;c.fillStyle='rgba(255,255,255,.55)';c.beginPath();c.arc(0,0,r,0,7);c.fill();c.stroke();c.setLineDash([]);
- c.fillStyle=T.c;c.font=`bold ${T.l.length>2?7:10}px sans-serif`;c.textAlign='center';c.textBaseline='middle';c.fillText(T.l,0,0);c.fillStyle='#111';c.font=`bold 8px sans-serif`;c.fillText('?',r*.95,-r*.95);c.restore()}}
-function ghostHit(w){if(!lay.ghosts)return null;let best=null,bd=Math.max(pinR()*1.8,18/view.s);for(const g of ghosts){if(g.page!==page)continue;const o=SCRNOFF&&SCRNOFF.get(g.id||g),d=Math.min(Math.hypot(g.x-w.x,g.y-w.y),o?Math.hypot(g.x+o.dx-w.x,g.y+o.dy-w.y):1e9);if(d<bd){bd=d;best=g}}return best}
+// bpm-v29: ghosts use the same print-matched inset silhouette as accepted pins (dashed stroke + ?), never the old lettered dashed circle
+function gPin(g){const t=g.det==='JBOX_CEIL'?'jceil':(DG[g.g]&&DG[g.g].t||'other');return{type:t,bw:g.bw,bh:g.bh,vert:g.vert}}
+function drawGhosts(c){for(const g of ghosts){if(g.page!==page)continue;const T=gT(g),pin=gPin(g);c.save();const oo=OFFMAP&&OFFMAP.get(g.id||g);if(oo)drawLeader(c,g.x,g.y,g.x+oo.dx,g.y+oo.dy,T.c);c.translate(g.x+(oo?oo.dx:0),g.y+(oo?oo.dy:0));if(CR)c.rotate(-CR);
+ c.globalAlpha=.55;c.fillStyle=T.c;c.strokeStyle=T.c;c.lineWidth=pinLW();c.setLineDash([3,2]);c.beginPath();pinPath(c,pin);c.fill();c.stroke();c.setLineDash([]);
+ c.globalAlpha=1;c.fillStyle='#111';c.strokeStyle='#fff';c.lineWidth=1;c.font='bold 8px sans-serif';c.textAlign='center';c.textBaseline='middle';const[,pw,ph]=pshOf(pin);c.beginPath();c.arc(pw/2+1,-ph/2-1,5,0,7);c.fillStyle='#fff';c.fill();c.strokeStyle=T.c;c.stroke();c.fillStyle='#111';c.fillText('?',pw/2+1,-ph/2-1);c.restore()}}
+function ghostHit(w){if(!lay.ghosts)return null;let best=null,bd=1e9;for(const g of ghosts){if(g.page!==page)continue;const pr=Math.max(pinHalf(gPin(g))*1.3,14/view.s),o=SCRNOFF&&SCRNOFF.get(g.id||g),d=Math.min(Math.hypot(g.x-w.x,g.y-w.y),o?Math.hypot(g.x+o.dx-w.x,g.y+o.dy-w.y):1e9);if(d<pr&&d<bd){bd=d;best=g}}return best}
 let curG=null;function openGhost(g){curG=g;$('#ghType').value=g.g;ghInfoUpd();$('#ghDlg').showModal()}
 function ghInfoUpd(){const g=curG;if(!g)return;const n=ghosts.filter(x=>x.g===$('#ghType').value).length;$('#ghHead').textContent='Suggested: '+DG[$('#ghType').value].n;$('#ghInfo').textContent=`Becomes a "${TYPES[DG[$('#ghType').value].t].n}" pin (blank address/loop, not tested). Detected as ${g.det.replace(/_/g,' ').toLowerCase()}, page ${g.page}.`;$('#ghAllType').textContent=`Accept all ${n} of this type`}
 $('#ghType').onchange=()=>{if(curG){curG.g=$('#ghType').value;if(curG.fp)learn(curG.fp,curG.g);ghInfoUpd();draw();renderGhostBar()}};
@@ -698,7 +703,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v28',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v29',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -1130,7 +1135,7 @@ stage.addEventListener('pointerdown',e=>{if(ted&&e.target!==ted.el)tedEnd(true)}
 var OFFMAP=null,SCRNOFF=null;
 const PANEL_T=new Set(['panel','dact','fatc','panelbox']),PANEL_G=new Set(['facp','dact','fatc','panelbox']);
 function isPanelO(o){return PANEL_T.has(o.type)||PANEL_G.has(o.g)}
-function pinFoot(o){const r=pinR(),hw=pinLW()/2;if(o.g!=null)return pinR()*1.15+1.25;return pinHalf(o)+hw}
+function pinFoot(o){const hw=pinLW()/2;if(o.g!=null)return pinHalf(gPin(o))+hw;return pinHalf(o)+hw}
 function pinOffsets(list){list=list.filter(o=>!['flow','tamper'].includes(o.type)&&!/FLOW|TAMPER/.test(o.det||''));const M=new Map(),n=list.length;if(n<2)return M;const key=o=>o.id||o;
  // v20: min center distance = sum of outer radii (fill r + half stroke). Canvas strokes are centered on the
  // path, so D≈r*2 left borders overlapping. Status dots ignored (may touch neighbors). Tiny gap for AA.
