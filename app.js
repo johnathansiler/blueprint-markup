@@ -188,11 +188,15 @@ function drawMarkup(c,m,s){s=MK_S;c.save();c.globalAlpha=opOf(m,false);c.strokeS
  else if(m.type==='check'){c.lineWidth=Math.max(c.lineWidth,Math.min(w,h)/8);c.beginPath();c.moveTo(x,y+h*.55);c.lineTo(x+w*.38,y+h);c.lineTo(x+w,y);c.stroke()}
  else if(m.type==='cloud')cloudPath(c,m.x1,m.y1,m.x2,m.y2,s);
  else if(m.type==='arrow'||m.type==='line'){c.beginPath();c.moveTo(m.x1,m.y1);c.lineTo(m.x2,m.y2);c.stroke();if(m.type==='arrow'){const a=Math.atan2(m.y2-m.y1,m.x2-m.x1),L=Math.max(c.lineWidth*4,12/s);c.beginPath();c.moveTo(m.x2-L*Math.cos(a-.45),m.y2-L*Math.sin(a-.45));c.lineTo(m.x2,m.y2);c.lineTo(m.x2-L*Math.cos(a+.45),m.y2-L*Math.sin(a+.45));c.stroke()}}
+ else if(m.type==='zig'||m.type==='zarrow'){const P=zPts(m);if(P.length>1){c.lineJoin='miter';c.miterLimit=10;c.beginPath();P.forEach(([px,py],i)=>i?c.lineTo(px,py):c.moveTo(px,py));c.stroke();if(m.type==='zarrow'){const[ax,ay]=P[P.length-2],[bx,by]=P[P.length-1],a=Math.atan2(by-ay,bx-ax),L=Math.max(c.lineWidth*4,12/s);c.lineJoin='round';c.beginPath();c.moveTo(bx-L*Math.cos(a-.45),by-L*Math.sin(a-.45));c.lineTo(bx,by);c.lineTo(bx-L*Math.cos(a+.45),by-L*Math.sin(a+.45));c.stroke()}}}
  else if(m.type==='dim'||m.type==='cal'||m.type==='darea'||m.type==='dpath')drawMeasure(c,m,s);
  else if(m.type==='text'){c.font=`bold ${m.fs}px sans-serif`;c.textBaseline='top';c.textAlign='left';c.lineWidth=m.fs/5;c.strokeStyle='#fff';c.strokeText(m.text,m.x1,m.y1);c.fillStyle=m.color;c.fillText(m.text,m.x1,m.y1)}c.restore()}
+// bpm-v54: zigzag polyline (zig) / zigzag arrow (zarrow); points stored relative to x1,y1 so move works unchanged
+const ZT=['zig','zarrow'],zPts=m=>(m.rp||[]).map(([dx,dy])=>[m.x1+dx,m.y1+dy]);
+function zFinish(m,P){const xs=P.map(p=>p[0]),ys=P.map(p=>p[1]);m.x1=Math.min(...xs);m.y1=Math.min(...ys);m.x2=Math.max(...xs);m.y2=Math.max(...ys);m.rp=P.map(([x,y])=>[x-m.x1,y-m.y1]);return m}
 const isLine=m=>m.type==='arrow'||m.type==='line'||m.type==='dim'||m.type==='cal';
 function textBox(m){octx.save();octx.font=`bold ${m.fs}px sans-serif`;const w=octx.measureText(m.text).width;octx.restore();m.x2=m.x1+w;m.y2=m.y1+m.fs*1.15;return m}
-function handles(m){if(m.type==='dpath')return[];if(isLine(m))return[[m.x1,m.y1],[m.x2,m.y2]];const x=Math.min(m.x1,m.x2),y=Math.min(m.y1,m.y2),X=Math.max(m.x1,m.x2),Y=Math.max(m.y1,m.y2);return[[x,y],[X,y],[X,Y],[x,Y]]}
+function handles(m){if(m.type==='dpath'||ZT.includes(m.type))return[];if(isLine(m))return[[m.x1,m.y1],[m.x2,m.y2]];const x=Math.min(m.x1,m.x2),y=Math.min(m.y1,m.y2),X=Math.max(m.x1,m.x2),Y=Math.max(m.y1,m.y2);return[[x,y],[X,y],[X,Y],[x,Y]]}
 function handleHit(m,sx,sy){const hs=handles(m),rad=Math.max(8*view.s,18);for(let i=hs.length-1;i>=0;i--){const q=toS(hs[i][0],hs[i][1]);if(Math.hypot(q.x-sx,q.y-sy)<rad)return i}return -1}
 function resizeTo(m,o,h,w){if(isLine(m)){if(h===0){m.x1=w.x;m.y1=w.y}else{m.x2=w.x;m.y2=w.y}return}
  const x0=Math.min(o.x1,o.x2),y0=Math.min(o.y1,o.y2),X0=Math.max(o.x1,o.x2),Y0=Math.max(o.y1,o.y2),L=h===0||h===3,T=h===0||h===1;
@@ -222,7 +226,7 @@ let raf=0,rafB=0;function requestDraw(b=true){if(b)rafB=1;if(!raf)raf=requestAni
 // ---------- hit testing ----------
 function hit(w){const tol=10/view.s,pr=Math.max(pinR()*1.4,16/view.s);for(const p of[...pins].reverse()){if(p.page!==page||!pVis(p))continue;const o=SCRNOFF&&SCRNOFF.get(p.id);if(o&&Math.hypot(p.x+o.dx-w.x,p.y+o.dy-w.y)<pr)return{kind:'p',o:p}}
  for(const p of[...pins].reverse())if(p.page===page&&pVis(p)&&Math.hypot(p.x-w.x,p.y-w.y)<pr*(SCRNOFF&&SCRNOFF.get(p.id)?.6:1))return{kind:'p',o:p};
- for(const m of[...markups].reverse()){if(m.page!==page||!mVis(m))continue;if(isLine(m)){const dx=m.x2-m.x1,dy=m.y2-m.y1,t=Math.max(0,Math.min(1,((w.x-m.x1)*dx+(w.y-m.y1)*dy)/((dx*dx+dy*dy)||1)));if(Math.hypot(m.x1+t*dx-w.x,m.y1+t*dy-w.y)<tol*1.4)return{kind:'m',o:m};continue}const x=Math.min(m.x1,m.x2),y=Math.min(m.y1,m.y2),X=Math.max(m.x1,m.x2),Y=Math.max(m.y1,m.y2);if(w.x>x-tol&&w.x<X+tol&&w.y>y-tol&&w.y<Y+tol)return{kind:'m',o:m}}return null}
+ for(const m of[...markups].reverse()){if(m.page!==page||!mVis(m))continue;if(ZT.includes(m.type)){const P=zPts(m);for(let i=1;i<P.length;i++){const[ax,ay]=P[i-1],dx=P[i][0]-ax,dy=P[i][1]-ay,t=Math.max(0,Math.min(1,((w.x-ax)*dx+(w.y-ay)*dy)/((dx*dx+dy*dy)||1)));if(Math.hypot(ax+t*dx-w.x,ay+t*dy-w.y)<tol*1.4)return{kind:'m',o:m}}continue}if(isLine(m)){const dx=m.x2-m.x1,dy=m.y2-m.y1,t=Math.max(0,Math.min(1,((w.x-m.x1)*dx+(w.y-m.y1)*dy)/((dx*dx+dy*dy)||1)));if(Math.hypot(m.x1+t*dx-w.x,m.y1+t*dy-w.y)<tol*1.4)return{kind:'m',o:m};continue}const x=Math.min(m.x1,m.x2),y=Math.min(m.y1,m.y2),X=Math.max(m.x1,m.x2),Y=Math.max(m.y1,m.y2);if(w.x>x-tol&&w.x<X+tol&&w.y>y-tol&&w.y<Y+tol)return{kind:'m',o:m}}return null}
 // ---------- input ----------
 const ptrs=new Map();let gesture=null;
 // bpm-v40: constrained draw (45° lines/arrows, equal-ratio shapes) when tool is selected OR while holding the tool button
@@ -243,6 +247,7 @@ stage.addEventListener('pointerdown',e=>{if(!plan||e.target!==cv)return;stage.se
  if(tool==='pin'){gesture={type:'pin',...start,w};return}
  if(tool==='text'){gesture={type:'text',...start,w};return}
  if(tool==='measure'){if(MS.mode==='path'&&!MS.cal){gesture={type:'mpath',...start,w,v:{...view}};return}const p0=mSnap(w);draft={id:uid(),planId:plan.id,page,type:MS.cal?'cal':MS.mode==='area'?'darea':'dim',x1:p0.x,y1:p0.y,x2:p0.x,y2:p0.y,color:MS.cal?'#0ea5e9':$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false)};gesture={type:'draw',...start};mRead();return}
+ if(ZT.includes(tool)){const p=mkSnap(w);draft={id:uid(),planId:plan.id,page,type:tool,x1:p.x,y1:p.y,x2:p.x,y2:p.y,rp:[[0,0],[0,0]],color:$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false)};gesture={type:'zig',...start,V:[[p.x,p.y]],S:[]};return}
  {let p=w;if(['rect','ellipse','cloud','arrow','line','check'].includes(tool))p=mkSnap(w);draft={id:uid(),planId:plan.id,page,type:tool,x1:p.x,y1:p.y,x2:p.x,y2:p.y,color:$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false)};gesture={type:'draw',...start}}});
 stage.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,{x:e.offsetX,y:e.offsetY});if(!gesture)return;
  if(gesture.type==='pinch'&&ptrs.size>=2){const[a,b]=[...ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y),c={x:(a.x+b.x)/2,y:(a.y+b.y)/2},g=gesture,s=clampS(g.v.s*d/g.d),wx=(g.c.x-g.v.x)/g.v.s,wy=(g.c.y-g.v.y)/g.v.s;view={s,x:c.x-wx*s,y:c.y-wy*s};fastView();return}
@@ -253,6 +258,7 @@ stage.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.s
  else if(gesture.type==='move'){const o=sel.o,g=gesture.orig;let ddx=dx/view.s,ddy=dy/view.s;if(sel.kind==='p'){o.x=g.x+ddx;o.y=g.y+ddy}else{const s=mkSnapMove(g,ddx,ddy,o);ddx=s.ddx;ddy=s.ddy;o.x1=g.x1+ddx;o.x2=g.x2+ddx;o.y1=g.y1+ddy;o.y2=g.y2+ddy}requestDraw(false)}
  else if(gesture.type==='resize'){resizeTo(sel.o,gesture.orig,gesture.h,mkSnap(toW(e.offsetX,e.offsetY),sel.o));requestDraw(false)}
  else if(gesture.type==='draw'){let w=toW(e.offsetX,e.offsetY);if(draft.type==='dim'||draft.type==='cal')w=mSnap(w,draft);else if(['rect','ellipse','cloud','arrow','line','check'].includes(draft.type))w=mkSnap(w,draft);if(holdT||['rect','ellipse','cloud','arrow','line','check','dim'].includes(draft.type))w=constrainPt(draft,w);draft.x2=w.x;draft.y2=w.y;mRead();requestDraw(false)}
+ else if(gesture.type==='zig'){zMove(gesture,toW(e.offsetX,e.offsetY));requestDraw(false)}
  else if(gesture.type==='mpath'){if(gesture.moved){view.x=gesture.v.x+dx;view.y=gesture.v.y+dy;fastView()}else{MS.hover=toW(e.offsetX,e.offsetY)}}
  else if(gesture.type==='box'){gesture.w1=toW(e.offsetX,e.offsetY);showBox()}});
 async function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);clearTimeout(lpT);const g=gesture;if(g?.type==='pinch'){if(ptrs.size===0){gesture=null;requestDraw()}return}gesture=null;if(!g)return;if(g.type==='pan')requestDraw();
@@ -269,9 +275,16 @@ async function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);c
  if(g.type==='text'&&!g.moved){inlineText(null,g.w)}
  if(g.type==='pin'){const p={id:uid(),planId:plan.id,page,x:g.w.x,y:g.w.y,type:$('#pinType').value,address:'',loop:'',status:'not tested',notes:'',created:Date.now(),opacity:toolOp(true)};await change('pins',null,p);openPin(pins.find(x=>x.id===p.id))}
  if(g.type==='mpath'){if(g.moved){requestDraw();return}await mPathTap(mSnap(w));return}
+ if(g.type==='zig'){const d=draft;draft=null;const V=g.V.slice();if(g.tip)V.push(g.tip);if(V.length>1&&Math.hypot(V[V.length-1][0]-V[0][0],V[V.length-1][1]-V[0][1])+(V.length-2)>3/view.s){zFinish(d,V);await change('markups',null,d)}else drawOverlay();return}
  if(g.type==='draw'&&draft?.type==='cal'){const d=draft;draft=null;drawOverlay();await mCalibrate(d);return}
  if(g.type==='draw'){const d=draft;draft=null;if(d.type==='check'&&!g.moved){const s=24/view.s;d.x1=w.x-s*.4;d.y1=w.y-s*.6;d.x2=w.x+s*.6;d.y2=w.y+s*.4}
   if(Math.abs(d.x2-d.x1)+Math.abs(d.y2-d.y1)>3/view.s)await change('markups',null,d);else drawOverlay()}}
+// zigzag: while held, samples since the last corner are checked against the straight chord; when the path bends away by more than ~9px (screen), a sharp corner is dropped at the bend point
+function zSeg(a,p){if(!holdT)return p;const dx=p[0]-a[0],dy=p[1]-a[1],L=Math.hypot(dx,dy),t=Math.round(Math.atan2(dy,dx)/(Math.PI/4))*(Math.PI/4);return[a[0]+L*Math.cos(t),a[1]+L*Math.sin(t)]}
+function zMove(g,w){const tol=9/view.s,A=g.V[g.V.length-1],p=[w.x,w.y];g.S.push(p);
+ const dx=p[0]-A[0],dy=p[1]-A[1],L=Math.hypot(dx,dy);if(L>tol*2){let bi=-1,bd=tol;for(let i=0;i<g.S.length-1;i++){const q=g.S[i],dd=Math.abs((q[0]-A[0])*dy-(q[1]-A[1])*dx)/L;if(dd>bd){bd=dd;bi=i}}
+  if(bi>=0){const q=g.S[bi];if(Math.hypot(q[0]-A[0],q[1]-A[1])>tol){const v=zSeg(A,q);g.V.push(v);g.S=g.S.slice(bi+1)}}}
+ const B=g.V[g.V.length-1];let t=zSeg(B,p);{const sp=mkSnap({x:t[0],y:t[1]},draft);if(!holdT)t=[sp.x,sp.y]}g.tip=t;zFinish(draft,[...g.V,t]);mRead()}
 stage.addEventListener('pointerup',up);stage.addEventListener('pointercancel',up);
 const clampS=s=>Math.max(.02,Math.min(s,40));
 stage.addEventListener('wheel',e=>{if(!plan)return;e.preventDefault();const k=Math.exp(-e.deltaY*(e.ctrlKey?.01:.0015)),s=clampS(view.s*k),wx=(e.offsetX-view.x)/view.s,wy=(e.offsetY-view.y)/view.s;view={s,x:e.offsetX-wx*s,y:e.offsetY-wy*s};fastView()},{passive:false});
@@ -740,7 +753,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v53',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v54',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
