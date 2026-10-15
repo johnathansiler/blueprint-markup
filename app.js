@@ -46,7 +46,8 @@ const pshOf=o=>{const t=typeof o==='string'?o:o&&o.type,v=PSH[t]||PSH.other;if(P
 const PRINT_LW=.7;const OUT=t=>pinLW(t)/2+.15;
 function pinPath(c,t,d=0){const[k,w,h]=pshOf(t);let a=w/2-PRINT_LW/2,b=h/2-PRINT_LW/2;if(k==='rect'){a+=d;b+=d;c.rect(-a,-b,2*a,2*b)}else if(k==='dia'){const L=Math.hypot(a,b),A=a+d*L/b,B=b+d*L/a;c.moveTo(-A,0);c.lineTo(0,-B);c.lineTo(A,0);c.lineTo(0,B);c.closePath()}
  else if(k==='hex'){const s=Math.hypot(a/2,b),A=a+d*s/b,B=b+d,X=a/2+(d*s-a*d/2)/b;c.moveTo(-A,0);c.lineTo(-X,-B);c.lineTo(X,-B);c.lineTo(A,0);c.lineTo(X,B);c.lineTo(-X,B);c.closePath()}else c.arc(0,0,Math.max(.1,a+d),0,7)}
-function pinFS(c,t){c.beginPath();pinPath(c,t,-PRINT_LW/2);c.fill();c.beginPath();pinPath(c,t,PRINT_LW/2+OUT(t));c.stroke()}
+// bpm-v42: sandwich — fill to black centerline (black covers its edge → no white gap), crisp black print ring, status ring fully outside black
+function pinFS(c,t,ghost){c.beginPath();pinPath(c,t,0);c.fill();if(!ghost){const ss=c.strokeStyle,lw=c.lineWidth,ld=c.getLineDash();c.setLineDash([]);c.strokeStyle='#000';c.lineWidth=PRINT_LW;c.lineJoin='miter';c.beginPath();pinPath(c,t,0);c.stroke();c.strokeStyle=ss;c.lineWidth=lw;c.setLineDash(ld)}c.beginPath();pinPath(c,t,PRINT_LW/2+OUT(t));c.stroke()}
 const pinHalf=t=>{const[k,w,h]=pshOf(t),r=k==='circ'?w/2:k==='rect'?Math.hypot(w,h)/2:Math.max(w,h)/2;return r+OUT(t)+pinLW(t)/2-PRINT_LW/2}; // print half + half stroke (outer edge)
 const pinLW=t=>{const k=typeof t==='string'?t:t&&t.type;return k==='doorholder'||k==='flow'||k==='tamper'?1.2:2}; // bpm-v30: DH status border ~60% so pink fill dominates; others stay 2pt
 const clampOp=v=>Math.max(.15,Math.min(1,+(v??1)));
@@ -541,7 +542,7 @@ async function runDetect(groups,all){const want=groups.flatMap(g=>DG[g].d),pl=pl
 // bpm-v29/v37: ghosts use the same print-matched tight-outset silhouette as accepted pins (dashed stroke + ?), never the old lettered dashed circle
 function gPin(g){const t=g.det==='JBOX_CEIL'?'jceil':(DG[g.g]&&DG[g.g].t||'other');return{type:t,bw:g.bw,bh:g.bh,vert:g.vert}}
 function drawGhosts(c){for(const g of ghosts){if(g.page!==page)continue;const T=gT(g),pin=gPin(g);c.save();const oo=OFFMAP&&OFFMAP.get(g.id||g);if(oo)drawLeader(c,g.x,g.y,g.x+oo.dx,g.y+oo.dy,T.c);c.translate(g.x+(oo?oo.dx:0),g.y+(oo?oo.dy:0));if(CR)c.rotate(-CR);
- c.globalAlpha=.55;c.fillStyle=T.c;c.strokeStyle=T.c;c.lineWidth=pinLW(pin);c.setLineDash([3,2]);pinFS(c,pin);c.setLineDash([]);
+ c.globalAlpha=.55;c.fillStyle=T.c;c.strokeStyle=T.c;c.lineWidth=pinLW(pin);c.setLineDash([3,2]);pinFS(c,pin,1);c.setLineDash([]);
  c.globalAlpha=1;c.fillStyle='#111';c.strokeStyle='#fff';c.lineWidth=1;c.font='bold 8px sans-serif';c.textAlign='center';c.textBaseline='middle';const[,pw,ph]=pshOf(pin);c.beginPath();c.arc(pw/2+1,-ph/2-1,5,0,7);c.fillStyle='#fff';c.fill();c.strokeStyle=T.c;c.stroke();c.fillStyle='#111';c.fillText('?',pw/2+1,-ph/2-1);c.restore()}}
 function ghostHit(w){if(!lay.ghosts)return null;let best=null,bd=1e9;for(const g of ghosts){if(g.page!==page)continue;const pr=Math.max(pinHalf(gPin(g))*1.3,14/view.s),o=SCRNOFF&&SCRNOFF.get(g.id||g),d=Math.min(Math.hypot(g.x-w.x,g.y-w.y),o?Math.hypot(g.x+o.dx-w.x,g.y+o.dy-w.y):1e9);if(d<pr&&d<bd){bd=d;best=g}}return best}
 let curG=null;function openGhost(g){curG=g;$('#ghType').value=g.g;ghInfoUpd();$('#ghDlg').showModal()}
@@ -721,7 +722,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v41',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v42',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
