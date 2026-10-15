@@ -95,6 +95,11 @@ function detect(P,W,H,want){const TB=W>H?W*.825:W;let G=P.filter(g=>dark(g)&&g.x
  const sq=out.filter(o=>o.type.startsWith('SPK'));
  for(const g of circles){const w=g.w;if(!(w>5*k&&w<11*k))continue;const c=ctr(g);if(sq.some(o=>dist(c,o.c)<8*k))continue;
   const rad=near(c,w*.5+6*k).filter(h=>h.k==='l'&&dist(ctr(h),c)>2*k&&Math.max(h.w,h.h)<7*k);
+  // v23 remote alarm indicator (legend RI, Siemens TSM-1X): filled disc + rays + vertical stem down from the disc to a horizontal base line
+  if(rad.length>=3){const bot=c[1]+w/2,vs=near(c,w+16*k).find(h=>h.k==='l'&&h.w<1*k&&h.h>6*k&&Math.abs(h.cx-c[0])<1*k&&Math.abs(h.y0-bot)<2*k);
+   if(vs&&(g.fill!=null||near(c,2*k).some(h=>h!==g&&h.fill!=null))&&near([c[0],vs.y1],3*k).some(h=>h.k==='l'&&h.h<1*k&&h.w>6*k&&Math.abs(h.cy-vs.y1)<1.5*k)
+    // the same disc+stem is the plan's wall strobe; the RI symbol carries an "RI" path label up-right (R = ~10-seg glyph, I = vertical bar just right of it)
+    &&near([c[0]+1.3*w,c[1]-.7*w],w).some(r=>r.segs.length>=8&&r.segs.length<=12&&/^l+$/.test(r.k)&&r.h>.35*w&&r.h<.8*w&&r.cx>c[0]+.7*w&&r.cy<c[1]&&near([r.x1+.3*w,r.cy],.6*w).some(i=>i.k==='l'&&i.w<.1*w&&Math.abs(i.h-r.h)<.15*w&&i.cx>r.x1&&i.cx<r.x1+.6*w))){out.push({type:'RAI',c,fp:{s:'rai',gl:'',v:[w/k,0,Math.min(rad.length,8)/4,0,1,1,0]}});continue}}
   if(rad.length>=3){const f=g.fill!=null||near(c,2*k).some(h=>h!==g&&h.fill!=null);out.push({type:f?'STROBE_BOH':'STROBE_FOH',c,fp:{s:'strobe',gl:'',v:[w/k,0,Math.min(rad.length,8)/4,0,0,f?1:0,0]}})}}
  const res=[];for(const o of out){const thr=(o.type==='FLOW'||o.type==='TAMPER'||o.type==='FACP'||o.type==='DACT'||o.type==='FATC'||o.type==='PANEL_BOX'?12:4)*k;
  if(res.some(r=>r.type===o.type&&dist(o.c,r.c)<thr))continue;res.push(o)}
