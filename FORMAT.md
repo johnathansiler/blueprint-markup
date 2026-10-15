@@ -32,3 +32,7 @@ Every entry's CRC-32 is checked before anything is written. All project, plan, m
 Limits: under 4 GB in total (no ZIP64) and under 65,000 entries.
 
 Personal `mycodes` are merged on open (existing ids kept). Built-in `codes.json` is app-static and not stored in the .bpm.
+
+## v14 measurement
+- `scales`: optional `{ [planId]: {def: ppf|null, pages: {[page]: ppf}} }` — ppf = plan points per real foot. Stored locally in `meta` as `scale:<planId>`.
+- Markup types `dim` (x1,y1→x2,y2), `darea` (rect), `dpath` (bbox x1..y2 + `rp`: points relative to x1,y1). Labels are computed from the plan's scale at draw/export time. Older apps ignore these types.

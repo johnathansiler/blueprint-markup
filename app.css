@@ -109,3 +109,8 @@ label.opac span{font-size:11px;color:#94a3b8;min-width:28px;text-align:right}
 @media(min-width:600px){label.opac input[type=range]{width:72px}}
 #clrDlg .lay label{display:flex;align-items:center;gap:8px;justify-content:flex-start}#clrDlg .lay input{width:auto;min-height:0;flex:none}
 #panel select{max-width:100%;min-width:0}#fType{flex:1 1 0;width:0}
+
+#mBar{position:absolute;left:6px;top:6px;z-index:3;background:#000d;border-radius:8px;padding:4px 6px;display:flex;flex-direction:column;gap:3px;font-size:13px;max-width:calc(100% - 12px)}
+#mBar .row{gap:4px}#mBar .btn,#mBar select{padding:3px 7px;min-height:34px;font-size:13px}#mBar label{display:flex;align-items:center;gap:3px}#mBar input[type=checkbox]{width:auto;min-height:0}
+#mBar .chip{font-size:12px;padding:2px 7px;min-height:28px}#mBar .chip.on{background:#2563eb;border-color:#60a5fa}#mBar .mnote{color:#fbbf24;font-size:11px}#mBar #mRead{color:#fde68a}#mBar .btn.mini{min-height:26px;padding:1px 6px;font-size:11px}
+#mBar .chip{border-radius:12px;border:1.5px solid #475569;background:#1e293b;color:#e2e8f0;cursor:pointer}

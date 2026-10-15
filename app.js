@@ -68,13 +68,13 @@ async function openPlan(id,pg=1){const p=await get('plans',id);if(!p)return;if(d
    const data=new Uint8Array(await withTimeout(p.blob.arrayBuffer(),30000,'reading the stored file timed out'));if(seq!==opSeq)return;prog(.1);
    const t=pdfjsLib.getDocument({data,disableFontFace:false});loadTask=t;t.onProgress=e=>{if(e.total)prog(.1+.2*Math.min(1,e.loaded/e.total))};
    const d=await withTimeout(t.promise,60000,'the PDF engine did not respond within 60 s');if(seq!==opSeq||loadTask!==t){d.destroy();return}loadTask=null;pdf=d;p.pages=d.numPages}else p.pages=1;
-  prog(.3);lay={...LAY0,...((await get('meta','layers:'+id))||{})};layMark();markups=await byIdx('markups','planId',id);pins=await byIdx('pins','planId',id);
+  prog(.3);lay={...LAY0,...((await get('meta','layers:'+id))||{})};layMark();await loadScale(id);MS.pts=[];setTimeout(renderMBar,0);markups=await byIdx('markups','planId',id);pins=await byIdx('pins','planId',id);
   await put('meta',id,'last:'+p.projectId);await refreshPlans();$('#empty').hidden=true;await gotoPage(Math.min(pg,p.pages)||1,seq)}
  catch(e){if(seq===opSeq){if(loadTask){try{loadTask.destroy()}catch{}loadTask=null}showErr(`Could not open "${p.name}": ${e&&e.message||e}`)}}
  finally{if(seq===opSeq)busy(0)}}
 async function buildPageSel(){fillPageSel(null);let labels=null;try{labels=pdf&&await withTimeout(pdf.getPageLabels(),5000,'labels')}catch{}if(labels)fillPageSel(labels)}
 function fillPageSel(labels){if(!plan)return;const sel=$('#pageSel');sel.innerHTML='';for(let i=1;i<=plan.pages;i++){const n=pins.filter(x=>x.page===i).length;sel.add(new Option(`${labels?.[i-1]||'Pg '+i} / ${plan.pages}${n?` (${n}📍)`:''}`,i))}sel.value=page}
-$('#pageSel').onchange=e=>gotoPage(+e.target.value);$('#prev').onclick=()=>plan&&page>1&&gotoPage(page-1);$('#next').onclick=()=>plan&&page<plan.pages&&gotoPage(page+1);
+$('#pageSel').onchange=e=>gotoPage(+e.target.value).then(()=>{MS.pts=[];renderMBar()});$('#prev').onclick=()=>plan&&page>1&&gotoPage(page-1);$('#next').onclick=()=>plan&&page<plan.pages&&gotoPage(page+1);
 async function gotoPage(n,seq){if(!plan)return;const own=seq===undefined;if(own){if(renderTask){try{renderTask.cancel()}catch{}renderTask=null}seq=++opSeq;hideErr()}
  page=n;sel=null;msel=[];updUR();renderGhostBar();renderSelBar();bmp=null;bmpScale=0;baseBm=tile=null;busy(1,'Rendering');prog(.3);
  try{if(pdf){const pg=await withTimeout(pdf.getPage(n),30000,'reading page '+n+' timed out');if(seq!==opSeq)return;const vp=pg.getViewport({scale:1});pageW=vp.width;pageH=vp.height}
@@ -129,10 +129,11 @@ function drawMarkup(c,m,s){c.save();c.globalAlpha=opOf(m,false);c.strokeStyle=m.
  else if(m.type==='check'){c.lineWidth=Math.max(c.lineWidth,Math.min(w,h)/8);c.beginPath();c.moveTo(x,y+h*.55);c.lineTo(x+w*.38,y+h);c.lineTo(x+w,y);c.stroke()}
  else if(m.type==='cloud')cloudPath(c,m.x1,m.y1,m.x2,m.y2,s);
  else if(m.type==='arrow'||m.type==='line'){c.beginPath();c.moveTo(m.x1,m.y1);c.lineTo(m.x2,m.y2);c.stroke();if(m.type==='arrow'){const a=Math.atan2(m.y2-m.y1,m.x2-m.x1),L=Math.max(c.lineWidth*4,12/s);c.beginPath();c.moveTo(m.x2-L*Math.cos(a-.45),m.y2-L*Math.sin(a-.45));c.lineTo(m.x2,m.y2);c.lineTo(m.x2-L*Math.cos(a+.45),m.y2-L*Math.sin(a+.45));c.stroke()}}
+ else if(m.type==='dim'||m.type==='cal'||m.type==='darea'||m.type==='dpath')drawMeasure(c,m,s);
  else if(m.type==='text'){c.font=`bold ${m.fs}px sans-serif`;c.textBaseline='top';c.textAlign='left';c.lineWidth=m.fs/5;c.strokeStyle='#fff';c.strokeText(m.text,m.x1,m.y1);c.fillStyle=m.color;c.fillText(m.text,m.x1,m.y1)}c.restore()}
-const isLine=m=>m.type==='arrow'||m.type==='line';
+const isLine=m=>m.type==='arrow'||m.type==='line'||m.type==='dim'||m.type==='cal';
 function textBox(m){octx.save();octx.font=`bold ${m.fs}px sans-serif`;const w=octx.measureText(m.text).width;octx.restore();m.x2=m.x1+w;m.y2=m.y1+m.fs*1.15;return m}
-function handles(m){if(isLine(m))return[[m.x1,m.y1],[m.x2,m.y2]];const x=Math.min(m.x1,m.x2),y=Math.min(m.y1,m.y2),X=Math.max(m.x1,m.x2),Y=Math.max(m.y1,m.y2);return[[x,y],[X,y],[X,Y],[x,Y]]}
+function handles(m){if(m.type==='dpath')return[];if(isLine(m))return[[m.x1,m.y1],[m.x2,m.y2]];const x=Math.min(m.x1,m.x2),y=Math.min(m.y1,m.y2),X=Math.max(m.x1,m.x2),Y=Math.max(m.y1,m.y2);return[[x,y],[X,y],[X,Y],[x,Y]]}
 function handleHit(m,sx,sy){const hs=handles(m),rad=Math.max(8*view.s,18);for(let i=hs.length-1;i>=0;i--)if(Math.hypot(hs[i][0]*view.s+view.x-sx,hs[i][1]*view.s+view.y-sy)<rad)return i;return -1}
 function resizeTo(m,o,h,w){if(isLine(m)){if(h===0){m.x1=w.x;m.y1=w.y}else{m.x2=w.x;m.y2=w.y}return}
  const x0=Math.min(o.x1,o.x2),y0=Math.min(o.y1,o.y2),X0=Math.max(o.x1,o.x2),Y0=Math.max(o.y1,o.y2),L=h===0||h===3,T=h===0||h===1;
@@ -175,6 +176,7 @@ stage.addEventListener('pointerdown',e=>{if(!plan||e.target!==cv)return;stage.se
   const G0=gesture,hitO=sel?.o;clearTimeout(lpT);lpT=setTimeout(()=>{if(gesture!==G0||G0.moved||ptrs.size!==1)return;if(hitO){gesture=null;toggleMsel(hitO);if(navigator.vibrate)navigator.vibrate(20)}else{gesture={type:'box',...start,moved:false,w0:w,w1:w};showBox()}},450);return}
  if(tool==='pin'){gesture={type:'pin',...start,w};return}
  if(tool==='text'){gesture={type:'text',...start,w};return}
+ if(tool==='measure'){if(MS.mode==='path'&&!MS.cal){gesture={type:'mpath',...start,w,v:{...view}};return}const p0=mSnap(w);draft={id:uid(),planId:plan.id,page,type:MS.cal?'cal':MS.mode==='area'?'darea':'dim',x1:p0.x,y1:p0.y,x2:p0.x,y2:p0.y,color:MS.cal?'#0ea5e9':$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false)};gesture={type:'draw',...start};mRead();return}
  draft={id:uid(),planId:plan.id,page,type:tool,x1:w.x,y1:w.y,x2:w.x,y2:w.y,color:$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false)};gesture={type:'draw',...start}});
 stage.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,{x:e.offsetX,y:e.offsetY});if(!gesture)return;
  if(gesture.type==='pinch'&&ptrs.size>=2){const[a,b]=[...ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y),c={x:(a.x+b.x)/2,y:(a.y+b.y)/2},g=gesture,s=clampS(g.v.s*d/g.d),wx=(g.c.x-g.v.x)/g.v.s,wy=(g.c.y-g.v.y)/g.v.s;view={s,x:c.x-wx*s,y:c.y-wy*s};fastView();return}
@@ -184,7 +186,8 @@ stage.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.s
  else if(gesture.type==='mtap'){if(gesture.moved){view.x=gesture.v.x+dx;view.y=gesture.v.y+dy;fastView()}}
  else if(gesture.type==='move'){const o=sel.o,g=gesture.orig,ddx=dx/view.s,ddy=dy/view.s;if(sel.kind==='p'){o.x=g.x+ddx;o.y=g.y+ddy}else{o.x1=g.x1+ddx;o.x2=g.x2+ddx;o.y1=g.y1+ddy;o.y2=g.y2+ddy}requestDraw(false)}
  else if(gesture.type==='resize'){resizeTo(sel.o,gesture.orig,gesture.h,toW(e.offsetX,e.offsetY));requestDraw(false)}
- else if(gesture.type==='draw'){const w=toW(e.offsetX,e.offsetY);draft.x2=w.x;draft.y2=w.y;requestDraw(false)}
+ else if(gesture.type==='draw'){let w=toW(e.offsetX,e.offsetY);if(draft.type==='dim'||draft.type==='cal')w=mSnap(w,draft);draft.x2=w.x;draft.y2=w.y;mRead();requestDraw(false)}
+ else if(gesture.type==='mpath'){if(gesture.moved){view.x=gesture.v.x+dx;view.y=gesture.v.y+dy;fastView()}else{MS.hover=toW(e.offsetX,e.offsetY)}}
  else if(gesture.type==='box'){gesture.w1=toW(e.offsetX,e.offsetY);showBox()}});
 async function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);clearTimeout(lpT);const g=gesture;if(g?.type==='pinch'){if(ptrs.size===0){gesture=null;requestDraw()}return}gesture=null;if(!g)return;if(g.type==='pan')requestDraw();
  const w=toW(e.offsetX,e.offsetY);
@@ -198,6 +201,8 @@ async function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);c
  if((g.type==='move'||g.type==='resize')&&g.moved&&sel)await change(sel.kind==='p'?'pins':'markups',g.orig,sel.o);
  if(g.type==='text'&&!g.moved){const t=prompt('Text label:');if(t&&t.trim())await change('markups',null,textBox({id:uid(),planId:plan.id,page,type:'text',text:t.trim(),x1:g.w.x,y1:g.w.y,fs:(SZT[$('#size').value]||18)/view.s,color:$('#color').value,w:3,opacity:toolOp(false)}))}
  if(g.type==='pin'){const p={id:uid(),planId:plan.id,page,x:g.w.x,y:g.w.y,type:$('#pinType').value,address:'',loop:'',status:'not tested',notes:'',created:Date.now(),opacity:toolOp(true)};await change('pins',null,p);openPin(pins.find(x=>x.id===p.id))}
+ if(g.type==='mpath'){if(g.moved){requestDraw();return}await mPathTap(mSnap(w));return}
+ if(g.type==='draw'&&draft?.type==='cal'){const d=draft;draft=null;drawOverlay();await mCalibrate(d);return}
  if(g.type==='draw'){const d=draft;draft=null;if(d.type==='check'&&!g.moved){const s=24/view.s;d.x1=w.x-s*.4;d.y1=w.y-s*.6;d.x2=w.x+s*.6;d.y2=w.y+s*.4}
   if(Math.abs(d.x2-d.x1)+Math.abs(d.y2-d.y1)>3/view.s)await change('markups',null,d);else drawOverlay()}}
 stage.addEventListener('pointerup',up);stage.addEventListener('pointercancel',up);
@@ -537,7 +542,7 @@ async function doPaste(at){if(!clip||!plan)return;const dx=at?at.x-clip.cx:0,dy=
  for(const p of clip.p){const n={...structuredClone(p),id:uid(),planId:plan.id,page,x:p.x+dx,y:p.y+dy,address:'',status:'not tested',created:now,opacity:opOf(p,true)};for(const k of['checks','testedAt','tester','reason','reasonText','severity','codes','fp','detected','detG'])delete n[k];L.push({store:'pins',id:n.id,before:null,after:n})}
  await changeMulti(L);const ids=new Set(L.map(x=>x.id));msel=[...markups,...pins].filter(o=>ids.has(o.id));renderSelBar();draw();toast(`Pasted ${L.length} item${L.length>1?'s':''}${at?' at the tapped point':''}`,true)}
 document.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)||document.querySelector('dialog[open]'))return;const k=e.key.toLowerCase();if(!(e.ctrlKey||e.metaKey))return;if(k==='c'&&selItems().length){e.preventDefault();doCopy(false)}else if(k==='x'&&selItems().length){e.preventDefault();doCopy(true)}else if(k==='v'&&clip){e.preventDefault();doPaste(null)}});
-document.querySelectorAll('[data-t]').forEach(b=>b.addEventListener('click',()=>{if(tool!=='select')msel=[];renderSelBar()}));
+document.querySelectorAll('[data-t]').forEach(b=>b.addEventListener('click',()=>{if(tool!=='select')msel=[];renderSelBar();if(tool!=='measure'){MS.pts=[];MS.cal=false}renderMBar()}));
 // keep the selection bar in sync with taps in select mode
 stage.addEventListener('pointerup',()=>setTimeout(()=>{if(tool==='select'||clip)renderSelBar()},0));
 // ---------- toast with undo ----------
@@ -656,11 +661,11 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v13',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v14',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
-  const ly=await get('meta','layers:'+pl.id);if(ly)man.layers[pl.id]=ly}
+  const ly=await get('meta','layers:'+pl.id);if(ly)man.layers[pl.id]=ly;const sc=await get('meta','scale:'+pl.id);if(sc)(man.scales??={})[pl.id]=sc}
  const last=await get('meta','last:'+pid);if(last)man.meta.last=last;const job=await get('meta','job:'+pid);if(job)man.meta.job=job;if(withLearned)man.learned=await all('learned');man.mycodes=await all('mycodes');
  files.unshift({name:'project.json',blob:new Blob([JSON.stringify(man)],{type:'application/json'})});const tot=files.reduce((a,f)=>a+f.blob.size,0);let done=0;return zipBlob(files,n=>{done+=n;onP&&onP(done/tot)})}
 async function readBpm(file){const z=await unzipBlob(file),mj=z.get('project.json');if(!mj)throw new Error('this file has no project.json, it is not a Blueprint Markup project');let man;try{man=JSON.parse(await mj.blob.text())}catch{throw new Error('project.json is damaged')}
@@ -679,6 +684,7 @@ async function importBpm(file,replaceId,onP){const{z,man}=await readBpm(file);
  // 2) write everything; on failure remove what was written
  const wrote=[];try{for(const p of plans){await put('plans',p);wrote.push(['plans',p.id])}for(const m of mk){await put('markups',m);wrote.push(['markups',m.id])}for(const p of pn){await put('pins',p);wrote.push(['pins',p.id])}for(const m of media){await put('media',m);wrote.push(['media',m.id])}
   for(const[o,l]of Object.entries(man.layers||{}))if(idm.has(o))await put('meta',l,'layers:'+idm.get(o));
+  for(const[o,l]of Object.entries(man.scales||{}))if(idm.has(o)&&l&&typeof l==='object')await put('meta',l,'scale:'+idm.get(o));
   let nl=0;if(Array.isArray(man.learned)&&man.learned.length){const have=new Set((await all('learned')).map(r=>r.id));for(const r of man.learned)if(r&&r.fp&&r.g&&!have.has(r.id)){await put('learned',r);nl++}lrCache=null;learnInfoUpd()}
   let nm=0;if(Array.isArray(man.mycodes)&&man.mycodes.length){const have=new Set((await all('mycodes')).map(r=>r.id));for(const r of man.mycodes)if(r&&r.section&&r.title&&!have.has(r.id)){await put('mycodes',{...r,id:r.id||uid(),personal:true});nm++}MY_CODES=null}
   if(replaceId){const old=(await all('plans')).filter(p=>p.projectId===replaceId&&!plans.some(x=>x.id===p.id));for(const o of old)await deletePlanData(o.id);const pr=await get('projects',replaceId);await put('projects',{...pr,...man.project,id:replaceId,name,created:pr?.created||Date.now()})}
@@ -703,7 +709,7 @@ $('#opGo').onclick=async()=>{const f=opFile,rep=document.querySelector('#openDlg
  try{const r=await importBpm(f,rep?project.id:null,prog);if(rep)project=null;busy(0);await loadProject(r.pid);toast(`Opened "${r.name}": ${r.plans} plan(s), ${r.pins} pins, ${r.markups} markups, ${r.media} media`)}catch(e){showErr('Opening the project failed: '+e.message)}finally{busy(0)}};
 // ---------- v10/v11: export all plans (vector overlay via pdf-lib) ----------
 async function planPdf(pl,onPage,outDoc=null){
- const L={...LAY0,...((await get('meta','layers:'+pl.id))||{})},mks=await byIdx('markups','planId',pl.id),pns=await byIdx('pins','planId',pl.id);
+ await loadScale(pl.id);const L={...LAY0,...((await get('meta','layers:'+pl.id))||{})},mks=await byIdx('markups','planId',pl.id),pns=await byIdx('pins','planId',pl.id);
  const r=await exportPlanPdf(pl,mks,pns,L,onPage,outDoc);return r}
 $('#exGo').onclick=async()=>{if(!project)return;const pr=project,mode=document.querySelector('#saveDlg [name=exMode]:checked').value,orig=$('#exOrig').checked;$('#saveDlg').close();busy(1,'Exporting plans');prog(0);
  try{const pls=(await all('plans')).filter(p=>p.projectId===pr.id).sort((a,b)=>a.added-b.added);if(!pls.length)throw new Error('this project has no plans');const zipOut=mode==='zip'||orig,base=fsafe(pr.name);
@@ -912,3 +918,63 @@ $('#clrGo').onclick=async()=>{const v=document.querySelector('#clrDlg [name=clr]
 function migPanelType(p){if(p.type!=='panel'&&p.type!=='other')return null;const d=String(p.detected||'')+' '+String(p.detG||'')+' '+String(p.notes||'');
  if(/\bDACT\b|communicator/i.test(d))return'dact';if(/\bFATC\b|terminal cabinet/i.test(d))return'fatc';if(/PANEL_BOX|panelbox|equipment box/i.test(d))return'panelbox';if(p.type==='other'&&/\bFACP\b/i.test(d))return'panel';return null}
 async function migratePanels(){if(await get('meta','mig:v13'))return 0;let n=0;for(const p of await all('pins')){const t=migPanelType(p);if(t&&t!==p.type){p.type=t;await put('pins',p);n++}}await put('meta',1,'mig:v13');return n}
+
+// ---------- v14: measure to scale ----------
+// Scale is stored per plan in meta 'scale:<planId>' = {def:ppf|null, pages:{[n]:ppf}}; ppf = plan points per real foot.
+const SCL={},MS={mode:'line',cal:false,pts:[],hover:null,snap:true,unit:'ft',refs:{smoke:false,pull:false,exit:false}};
+const FA_REFS={smoke:{ft:30,n:'Smoke spacing ~30′'},pull:{ft:200,n:'Pull travel 200′'},exit:{ft:5,n:'Pull ≤5′ from exit'}};
+async function loadScale(pid){const v=await get('meta','scale:'+pid);SCL[pid]=v&&typeof v==='object'?{def:v.def||null,pages:v.pages||{}}:{def:null,pages:{}};return SCL[pid]}
+const ppfOf=(pid,pg)=>{const v=SCL[pid];if(!v)return null;return v.pages?.[pg]||v.def||null};
+function parseLen(str){const t=String(str||'').trim().toLowerCase().replace(/[’′]/g,"'").replace(/[”″]/g,'"').replace(/,/g,'.');if(!t)return null;let m;
+ if(m=t.match(/^(\d+(?:\.\d+)?)\s*(m|meters?|metres?)$/))return +m[1]/0.3048;
+ if(m=t.match(/^(\d+(?:\.\d+)?)\s*(cm)$/))return +m[1]/30.48;
+ if(m=t.match(/^(\d+(?:\.\d+)?)\s*(mm)$/))return +m[1]/304.8;
+ if(m=t.match(/^(\d+(?:\.\d+)?)\s*(?:'|ft|feet|foot)\s*-?\s*(?:(\d+(?:\.\d+)?)\s*(?:"|in|inch(?:es)?)?)?$/))return +m[1]+(m[2]?+m[2]/12:0);
+ if(m=t.match(/^(\d+(?:\.\d+)?)\s*(?:"|in|inch(?:es)?)$/))return +m[1]/12;
+ if(m=t.match(/^(\d+(?:\.\d+)?)$/))return +m[1];return null}
+function fmtLen(ft){if(ft==null||!isFinite(ft))return'?';if(MS.unit==='m'){const v=ft*0.3048;return(v<10?v.toFixed(2):v.toFixed(1))+' m'}let i=Math.round(ft*12),f=Math.floor(i/12);i-=f*12;return`${f}′ ${i}″`}
+function fmtArea(sqft){if(MS.unit==='m'){const v=sqft*0.092903;return(v<100?v.toFixed(1):Math.round(v))+' m²'}return Math.round(sqft).toLocaleString()+' ft²'}
+function fmtScale(ppf){if(!ppf)return'not calibrated';const fpi=72/ppf,ratio=Math.round(fpi*12);if(MS.unit==='m')return`1:${ratio} (at PDF size)`;const ft=Math.floor(fpi),inch=Math.round((fpi-ft)*12);return`1″ = ${ft}′-${inch}″ · 1:${ratio}`}
+const mPts=m=>m.type==='dpath'?(m.rp||[]).map(([dx,dy])=>[m.x1+dx,m.y1+dy]):[[m.x1,m.y1],[m.x2,m.y2]];
+function mPathLen(P){let L=0;for(let i=1;i<P.length;i++)L+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);return L}
+function mLabel(m){const ppf=ppfOf(m.planId,m.page);if(m.type==='cal')return'calibrate';
+ if(!ppf)return'⚠ set scale';if(m.type==='darea'){const w=Math.abs(m.x2-m.x1)/ppf,h=Math.abs(m.y2-m.y1)/ppf;return`${fmtLen(w)} × ${fmtLen(h)} · ${fmtArea(w*h)}`}
+ return fmtLen(mPathLen(mPts(m))/ppf)}
+function mRealLen(m){const ppf=ppfOf(m.planId,m.page);if(!ppf)return null;return m.type==='darea'?null:mPathLen(mPts(m))/ppf}
+function refNote(ft){if(ft==null)return'';const o=[];for(const[k,r]of Object.entries(FA_REFS))if(MS.refs[k])o.push(`${ft<=r.ft?'≤':'>'}${r.ft}′ ${k}${ft<=r.ft?' ✓':' !'}`);return o.join(' · ')}
+function drawMeasure(c,m,s){const P=mPts(m),lw=c.lineWidth;
+ if(m.type==='cal')c.setLineDash([8/s,5/s]);
+ if(m.type==='darea'){const x=Math.min(m.x1,m.x2),y=Math.min(m.y1,m.y2),w=Math.abs(m.x2-m.x1),h=Math.abs(m.y2-m.y1);c.save();c.globalAlpha*=.12;c.fillStyle=m.color;c.fillRect(x,y,w,h);c.restore();c.strokeRect(x,y,w,h)}
+ else{c.beginPath();P.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.stroke();
+  // end ticks (perpendicular), and vertex dots for paths
+  const tk=(a,b)=>{const ang=Math.atan2(b[1]-a[1],b[0]-a[0])+Math.PI/2,L=Math.max(lw*3,8/s);c.beginPath();c.moveTo(a[0]-L*Math.cos(ang),a[1]-L*Math.sin(ang));c.lineTo(a[0]+L*Math.cos(ang),a[1]+L*Math.sin(ang));c.stroke()};
+  c.setLineDash([]);if(P.length>=2){tk(P[0],P[1]);tk(P[P.length-1],P[P.length-2])}if(m.type==='dpath')for(const[x,y]of P.slice(1,-1)){c.beginPath();c.arc(x,y,Math.max(lw,3/s),0,7);c.fillStyle=m.color;c.fill()}}
+ c.setLineDash([]);let lab=m.label||mLabel(m);if(m===draft&&MS.refs){const n=refNote(mRealLen(m));if(n)lab+=' · '+n}
+ let lx,ly;if(m.type==='darea'){lx=(m.x1+m.x2)/2;ly=(m.y1+m.y2)/2}else if(m.type==='dpath'){[lx,ly]=P[P.length-1]}else{lx=(m.x1+m.x2)/2;ly=(m.y1+m.y2)/2}
+ const fs=13/s;c.font=`bold ${fs}px sans-serif`;c.textAlign='center';c.textBaseline='bottom';c.lineJoin='round';c.lineWidth=fs/3.5;c.strokeStyle='#fff';c.globalAlpha=Math.max(c.globalAlpha,.9);c.strokeText(lab,lx,ly-4/s);c.fillStyle=m.type==='cal'?'#0369a1':m.color;c.fillText(lab,lx,ly-4/s)}
+function mSnap(w,self){if(!MS.snap)return w;const r=14/view.s;let best=null,bd=r;for(const m of markups){if(m===self||m.page!==page||!['dim','dpath','darea','line','arrow'].includes(m.type))continue;
+ const P=m.type==='darea'?[[m.x1,m.y1],[m.x2,m.y1],[m.x2,m.y2],[m.x1,m.y2]]:mPts(m);for(const[x,y]of P){const d=Math.hypot(x-w.x,y-w.y);if(d<bd){bd=d;best={x,y}}}}
+ for(const[x,y]of MS.pts){const d=Math.hypot(x-w.x,y-w.y);if(d<bd&&MS.pts.length>2){bd=d;best={x,y}}}return best||w}
+function mPathDraft(){if(!MS.pts.length)return null;const P=MS.hover?[...MS.pts,[MS.hover.x,MS.hover.y]]:MS.pts;const xs=P.map(p=>p[0]),ys=P.map(p=>p[1]),x1=Math.min(...xs),y1=Math.min(...ys);
+ return{id:'mp',planId:plan.id,page,type:'dpath',x1,y1,x2:Math.max(...xs),y2:Math.max(...ys),rp:P.map(([x,y])=>[x-x1,y-y1]),color:$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false),_live:1}}
+let mLastTap=0;
+async function mPathTap(w){const now=Date.now(),last=MS.pts[MS.pts.length-1];if(last&&now-mLastTap<380&&Math.hypot(last[0]-w.x,last[1]-w.y)<20/view.s){mLastTap=0;await mPathDone();return}mLastTap=now;MS.pts.push([w.x,w.y]);MS.hover=null;draft=mPathDraft();mRead();renderMBar();requestDraw(false)}
+async function mPathDone(){const d=MS.pts.length>=2?(MS.hover=null,mPathDraft()):null;MS.pts=[];draft=null;if(d){delete d._live;d.id=uid();await change('markups',null,d);toast('Path saved: '+mLabel(d),true)}renderMBar();mRead();drawOverlay()}
+async function mCalibrate(d){const px=Math.hypot(d.x2-d.x1,d.y2-d.y1);if(px<4/view.s){toast('Drag along a known dimension to calibrate');return}
+ const v=prompt('Real length of that line?\nExamples: 10\'  ·  10\' 6"  ·  10.5 ft  ·  126 in  ·  3.2 m','');if(v===null)return;const ft=parseLen(v);if(!ft||ft<=0){alert('Could not read that length. Try 10\' 6", 10.5 ft or 3.2 m.');return}
+ const ppf=px/ft,cur=SCL[plan.id]||{def:null,pages:{}};const all_=pdf&&pdf.numPages>1?confirm(`Scale set: ${fmtLen(ft)} = ${px.toFixed(0)} pt.\n\nOK = use for ALL pages of this plan\nCancel = this page (${page}) only`):true;
+ const nv={def:all_?ppf:cur.def,pages:{...cur.pages}};if(all_){nv.pages={}}else nv.pages[page]=ppf;SCL[plan.id]=nv;await put('meta',nv,'scale:'+plan.id);MS.cal=false;renderMBar();draw();toast(`Scale: ${fmtScale(ppf)}${all_?'':' (page '+page+')'}`)}
+function mRead(){const el=document.getElementById('mRead');if(!el)return;let m=draft&&['dim','darea','dpath','cal'].includes(draft.type)?draft:null;if(m){const ppf=ppfOf(plan.id,page);
+  el.textContent=m.type==='cal'?`${Math.hypot(m.x2-m.x1,m.y2-m.y1).toFixed(0)} pt`:(ppf?mLabel(m)+(refNote(mRealLen(m))?' · '+refNote(mRealLen(m)):''):'⚠ calibrate first')}else el.textContent=MS.pts.length?`${MS.pts.length} pt(s) — tap to add, double-tap or ✔ to finish`:''}
+function renderMBar(){const b=$('#mBar');if(tool!=='measure'||!plan){b.hidden=true;return}b.hidden=false;const ppf=ppfOf(plan.id,page),pp=SCL[plan.id]?.pages?.[page];
+ b.innerHTML=`<div class="row"><b>📏</b><select id="mMode" title="Measure mode"><option value="line">Line</option><option value="path">Path</option><option value="area">Area</option></select><button type="button" class="btn${MS.cal?' pri':''}" id="mCal" title="Calibrate: drag along a known length">📐 ${MS.cal?'Drag known length…':'Calibrate'}</button><button type="button" class="btn" id="mUnit" title="Units">${MS.unit==='m'?'m':'ft'}</button><label title="Snap to measure endpoints"><input type="checkbox" id="mSnapC"${MS.snap?' checked':''}> snap</label>${MS.pts.length?'<button type="button" class="btn pri" id="mDone">✔ Done</button><button type="button" class="btn" id="mX">✕</button>':''}</div>
+ <div class="row"><small id="mScale" class="${ppf?'':'st-failed'}">Scale: ${esc(fmtScale(ppf))}${pp?' · this page':''}</small>${ppf?'<button type="button" class="btn mini" id="mClr" title="Remove calibration">reset</button>':''}</div>
+ <div class="row mrefs">${Object.entries(FA_REFS).map(([k,r])=>`<button type="button" class="chip${MS.refs[k]?' on':''}" data-ref="${k}">${esc(r.n)}</button>`).join('')}</div>
+ ${Object.values(MS.refs).some(Boolean)?'<small class="mnote">Typical values for reference only — not code enforcement. Verify against the adopted NFPA 72 / IFC edition and the AHJ.</small>':''}<b id="mRead"></b>`;
+ $('#mMode').value=MS.mode;$('#mMode').onchange=e=>{MS.mode=e.target.value;MS.pts=[];draft=null;drawOverlay();renderMBar()};
+ $('#mCal').onclick=()=>{MS.cal=!MS.cal;MS.pts=[];draft=null;renderMBar();if(MS.cal)toast('Drag along a dimension line or scale bar of known length')};
+ $('#mUnit').onclick=async()=>{MS.unit=MS.unit==='m'?'ft':'m';await put('meta',MS.unit,'munit');renderMBar();draw()};$('#mSnapC').onchange=e=>MS.snap=e.target.checked;
+ if($('#mDone'))$('#mDone').onclick=mPathDone;if($('#mX'))$('#mX').onclick=()=>{MS.pts=[];draft=null;renderMBar();drawOverlay()};
+ if($('#mClr'))$('#mClr').onclick=async()=>{if(!confirm(pp?`Remove the page ${page} scale (falls back to the plan scale if set)?`:'Remove this plan\'s scale?'))return;const v=SCL[plan.id];if(pp)delete v.pages[page];else v.def=null;await put('meta',v,'scale:'+plan.id);renderMBar();draw()};
+ b.querySelectorAll('[data-ref]').forEach(x=>x.onclick=()=>{MS.refs[x.dataset.ref]=!MS.refs[x.dataset.ref];renderMBar();mRead()});mRead()}
+get('meta','munit').then(u=>{if(u==='m'||u==='ft')MS.unit=u}).catch(()=>{});

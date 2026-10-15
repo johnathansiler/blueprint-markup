@@ -22,6 +22,7 @@
  <button data-t="arrow" class="tool" title="Arrow">↗</button>
  <button data-t="line" class="tool" title="Line">╱</button>
  <button data-t="text" class="tool" title="Text label">T</button>
+ <button data-t="measure" class="tool" title="Measure to scale (calibrate, length, path, area)">📏</button>
  <button data-t="pin" class="tool" title="Pin">📍</button>
  <select id="pinType" title="Pin type"></select>
  <input type="color" id="color" value="#e11d48" title="Color">
@@ -33,7 +34,7 @@
  <button id="fit" class="tool" title="Fit">⤢</button>
  <button id="detBtn" class="tool" title="Detect devices (suggest pins from the plan's symbols)">🔍</button>
 </div>
-<main id="stage"><canvas id="cv"></canvas><canvas id="ov"></canvas><div id="empty">Open a PDF plan set (or image) with 📂</div><div id="busy" hidden><span id="busyTxt">Rendering</span> <b id="busyPct">…</b><div id="busyTrack"><div id="busyBar"></div></div><button type="button" class="btn" id="stop">Stop</button></div><div id="ghBar" hidden></div><div id="selBar" hidden></div><div id="walk" hidden></div><div id="toast" hidden><span id="toastTxt"></span><button type="button" class="btn" id="toastUndo">↶ Undo</button></div><div id="err" hidden><span id="errTxt"></span><button type="button" class="btn" id="errX" title="Dismiss">✕</button></div></main>
+<main id="stage"><canvas id="cv"></canvas><canvas id="ov"></canvas><div id="empty">Open a PDF plan set (or image) with 📂</div><div id="busy" hidden><span id="busyTxt">Rendering</span> <b id="busyPct">…</b><div id="busyTrack"><div id="busyBar"></div></div><button type="button" class="btn" id="stop">Stop</button></div><div id="ghBar" hidden></div><div id="selBar" hidden></div><div id="mBar" hidden></div><div id="walk" hidden></div><div id="toast" hidden><span id="toastTxt"></span><button type="button" class="btn" id="toastUndo">↶ Undo</button></div><div id="err" hidden><span id="errTxt"></span><button type="button" class="btn" id="errX" title="Dismiss">✕</button></div></main>
 <aside id="panel" hidden><div class="ph"><button class="btn tab on" id="modePins">Pins</button><button class="btn tab" id="modeDefs">⚠ Deficiencies <b id="defCount"></b></button><span class="sp"></span><button class="btn" id="csvBtn" title="Export device list (CSV, whole project)">CSV</button><button class="btn" id="testerBtn" title="Tester name">👤</button><button class="btn danger" id="clrBtn" title="Clear pins">🗑 Clear</button><button class="btn" id="closeList">✕</button></div>
  <input id="q" placeholder="Search address, type, loop, notes…">
  <div class="row"><select id="fType"><option value="">All types</option></select>
