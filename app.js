@@ -33,20 +33,17 @@ const PSH={smoke:['hex',15,13],duct:['hex',15,13],module:['hex',15,13],heat:['ci
  panel:['rect',26,13],dact:['rect',26,13],fatc:['rect',26,13],panelbox:['rect',26,13],doorholder:['rect',7,14],relay:['hex',15,13],jbox:['rect',13,13],surge:['rect',13,13],
  flow:['dia',24,9],tamper:['dia',24,9],rai:['circ',6,6],jceil:['circ',13,13],other:['circ',12,12]};
 const PSC=1.3;const PANEL_S=new Set(['panel','dact','fatc','panelbox']);
-// bpm-v27: panels take the printed box size+orientation (bw/bh from detection), inset by the stroke so the fill sits inside and never overflows; WF/TS diamonds at print size (no 1.3x) so they sit flush on the printed diamond
-const pinInset=(w,h)=>{const pad=pinLW()+1;return[Math.max(3,w-pad),Math.max(3,h-pad)]}; // stroke+1pt so plan outline stays clearly outside pin border
-// bpm-v36: WF/TS diamonds inset like other pins: edges pulled in perpendicularly by the half the pin stroke so the stroke sits just inside the print line
-const diaInset=(w,h)=>{const A=w/2,B=h/2,d=pinLW()/2,k=Math.max(.3,1-d*Math.hypot(A,B)/(A*B));return[w*k,h*k]};
-const pshOf=o=>{const t=typeof o==='string'?o:o&&o.type,v=PSH[t]||PSH.other;if(PANEL_S.has(t)){if(o&&o.bw>4&&o.bh>4)return['rect',...pinInset(o.bw,o.bh)];if(o&&o.vert)return['rect',...pinInset(v[2],v[1])];return['rect',...pinInset(v[1],v[2])]}if(v[0]==='dia'){const W=(o&&o.bw>4&&o.bh>4)?o.bw:v[1],H=(o&&o.bw>4&&o.bh>4)?o.bh:v[2];return['dia',...diaInset(W,H)]}if(o&&o.bw>4&&o.bh>4&&(v[0]==='rect'||v[0]==='hex'||v[0]==='circ')){const[iw,ih]=pinInset(o.bw,o.bh);return[v[0],iw,ih]}return[v[0],...pinInset(v[1],v[2])]};
+// bpm-v37: tight outset — path = print outer size; canvas stroke is centered so gray outer edge = print + LW/2 (thin ring just outside black; no inset, no ~1.3× overhang, no color past the gray)
+const pshOf=o=>{const t=typeof o==='string'?o:o&&o.type,v=PSH[t]||PSH.other;if(PANEL_S.has(t)){if(o&&o.bw>4&&o.bh>4)return['rect',o.bw,o.bh];if(o&&o.vert)return['rect',v[2],v[1]];return['rect',v[1],v[2]]}if(v[0]==='dia'){const W=(o&&o.bw>4&&o.bh>4)?o.bw:v[1],H=(o&&o.bw>4&&o.bh>4)?o.bh:v[2];return['dia',W,H]}if(o&&o.bw>4&&o.bh>4&&(v[0]==='rect'||v[0]==='hex'||v[0]==='circ'))return[v[0],o.bw,o.bh];return[v[0],v[1],v[2]]};
 // bpm-v35: zoom % readout; pin progress summary = pass/fail/total/left/%
 // bpm-v34: default fit/page-switch zoom 60% closer (scale ×1.6)
 // bpm-v33: code chips (no checkboxes) + Confirm clears leftover suggestions; hide Loop from pin/bulk UI
 // bpm-v32: confirm selected code refs via checkboxes (reverted UI in v33)
 // bpm-v31: pin location field; 'Other' reason textbox; removed checklist JSON import/export
-// bpm-v30: DH status border 1.2pt (~60%); relay clearer cyan-teal #2dd4bf; print-matched inset silhouettes for all pins/ghosts
+// bpm-v30: DH status border 1.2pt (~60%); relay clearer cyan-teal #2dd4bf
 function pinPath(c,t){const[k,w,h]=pshOf(t),a=w/2,b=h/2;if(k==='rect')c.rect(-a,-b,w,h);else if(k==='dia'){c.moveTo(-a,0);c.lineTo(0,-b);c.lineTo(a,0);c.lineTo(0,b);c.closePath()}
  else if(k==='hex'){c.moveTo(-a,0);c.lineTo(-a/2,-b);c.lineTo(a/2,-b);c.lineTo(a,0);c.lineTo(a/2,b);c.lineTo(-a/2,b);c.closePath()}else c.arc(0,0,a,0,7)}
-const pinHalf=t=>{const[k,w,h]=pshOf(t);return k==='circ'?w/2:k==='rect'?Math.hypot(w,h)/2:Math.max(w,h)/2}; // plan points — scales with zoom (constant on the blueprint); bpm-v25: 80% of prior 12
+const pinHalf=t=>{const[k,w,h]=pshOf(t),r=k==='circ'?w/2:k==='rect'?Math.hypot(w,h)/2:Math.max(w,h)/2;return r+pinLW(t)/2}; // print half + half stroke (outer edge)
 const pinLW=t=>{const k=typeof t==='string'?t:t&&t.type;return k==='doorholder'?1.2:2}; // bpm-v30: DH status border ~60% so pink fill dominates; others stay 2pt
 const clampOp=v=>Math.max(.15,Math.min(1,+(v??1)));
 const opOf=(o,isPin)=>clampOp(o&&o.opacity!=null?o.opacity:(isPin?PIN_OP:MK_OP));
@@ -180,7 +177,7 @@ let CR=0;function drawPin(c,p,s,hl,bare,nolab){const T=TYPES[p.type]||TYPES.othe
  // s is kept for call-site compat; pin geometry is in plan points so it scales with view
  const sc=ST[p.status]||ST['not tested'];if(hl&&!bare){c.beginPath();c.arc(0,0,pinHalf(p)+5,0,7);c.fillStyle='rgba(56,189,248,.35)';c.fill()}
  c.fillStyle=T.c;c.strokeStyle=bare?'#fff':sc;c.lineWidth=bare?2:pinLW(p);c.beginPath();pinPath(c,p);
- c.fill();c.stroke();// bpm-v24+: badge is shape+color only, no type letters
+ c.fill();c.stroke();// bpm-v37: path=print size → gray outer = print+LW/2; bpm-v24+: shape+color only
 
  if(bare){c.restore();return}c.fillStyle=sc;c.strokeStyle='#fff';c.lineWidth=1.2;c.beginPath();{const[,pw,ph]=pshOf(p);c.arc(pw/2,-ph/2,2.5,0,7)}c.fill();c.stroke();
  if(p.address&&!nolab&&(!oo||!oo.cl||hl||view.s>=2.5)){c.globalAlpha=1;c.font=`10px sans-serif`;c.textAlign='left';c.lineWidth=2.5;c.lineJoin='round';c.strokeStyle='#fff';{const ax=pshOf(p)[1]/2+3;c.strokeText(p.address,ax,3);c.fillStyle='#111';c.fillText(p.address,ax,3)}}c.restore()}
@@ -521,7 +518,7 @@ async function runDetect(groups,all){const want=groups.flatMap(g=>DG[g].d),pl=pl
      else if(it.type==='FLOW_TAMPER')it.type='FLOW'}
    }catch{}
    const rules=await learnedRules();let nl=0;const items=[];for(const it of r.items){let g=D2G[it.type],lr=null;const m=matchRule(rules,it.fp);if(m){lr=m.g;nl++;if(m.g==='none')continue;g=m.g}if(groups.includes(g)||(lr&&DG[g]?.x))items.push({...it,g,learned:!!lr})}
-   // bpm-v29: backfill measured bw/bh onto existing pins of any matching type (DH/jbox/surge/panels) so inset uses print size
+   // bpm-v29: backfill measured bw/bh onto existing pins of any matching type (DH/jbox/surge/panels/hex/dia) so outset uses print size
    for(const it of items){if(!(it.bw||it.vert))continue;const want=DG[it.g]&&DG[it.g].t;const p=pins.find(p=>p.page===n&&!p.bw&&Math.hypot(p.x-it.x,p.y-it.y)<36&&(PANEL_S.has(p.type)||(want&&p.type===want)));if(p){if(it.bw){p.bw=it.bw;p.bh=it.bh;p.x=it.x;p.y=it.y}else if(PANEL_S.has(p.type))p.vert=true;put('pins',p)}}
    const add=items.filter(it=>!near(it.x,it.y)).map(it=>({id:uid(),page:n,x:it.x,y:it.y,bw:it.bw,bh:it.bh,vert:it.vert,det:it.type,g:it.g,fp:it.fp,learned:it.learned}));ghosts.push(...add);found+=add.length;
    R.stats.push({page:n,ops:ol.fnArray.length,paths:r.paths,found:items.length,kept:add.length,skipped:items.length-add.length,learnedHits:nl,opsMs:Math.round(t1-t0),workerMs:Math.round(r.ms),totalMs:Math.round(performance.now()-t0),k:r.k});
@@ -529,7 +526,7 @@ async function runDetect(groups,all){const want=groups.flatMap(g=>DG[g].d),pl=pl
   window.__detStats=R.stats;if(!found)showErr(`No ${groups.length===Object.keys(DG).length?'':'matching '}device symbols found${all?'':' on this page'}. Detection works on CAD-exported vector plans with standard symbols.`)}
  catch(e){if(!R.cancel)showErr('Detect devices failed: '+(e&&e.message||e))}
  finally{if(det===R){det=null;busy(0)}draw();renderGhostBar()}}
-// bpm-v29: ghosts use the same print-matched inset silhouette as accepted pins (dashed stroke + ?), never the old lettered dashed circle
+// bpm-v29/v37: ghosts use the same print-matched tight-outset silhouette as accepted pins (dashed stroke + ?), never the old lettered dashed circle
 function gPin(g){const t=g.det==='JBOX_CEIL'?'jceil':(DG[g.g]&&DG[g.g].t||'other');return{type:t,bw:g.bw,bh:g.bh,vert:g.vert}}
 function drawGhosts(c){for(const g of ghosts){if(g.page!==page)continue;const T=gT(g),pin=gPin(g);c.save();const oo=OFFMAP&&OFFMAP.get(g.id||g);if(oo)drawLeader(c,g.x,g.y,g.x+oo.dx,g.y+oo.dy,T.c);c.translate(g.x+(oo?oo.dx:0),g.y+(oo?oo.dy:0));if(CR)c.rotate(-CR);
  c.globalAlpha=.55;c.fillStyle=T.c;c.strokeStyle=T.c;c.lineWidth=pinLW(pin);c.setLineDash([3,2]);c.beginPath();pinPath(c,pin);c.fill();c.stroke();c.setLineDash([]);
@@ -566,7 +563,7 @@ $('#layReset').onclick=()=>{lay={...LAY0,exp:lay.exp};layToForm();laySave()};
 const isPinO=o=>pins.includes(o);
 function selItems(){return msel.length?msel:sel?[sel.o]:[]}
 function toggleMsel(o){if(sel&&sel.o!==o&&!msel.includes(sel.o))msel.push(sel.o);const i=msel.indexOf(o);if(i>=0)msel.splice(i,1);else msel.push(o);sel=null;renderSelBar();requestDraw(false)}
-function bb(o){if(isPinO(o)){const[,w,h]=pshOf(o);return{x:o.x-w/2,y:o.y-h/2,X:o.x+w/2,Y:o.y+h/2}}return isPinO(o)?0:{x:Math.min(o.x1,o.x2),y:Math.min(o.y1,o.y2),X:Math.max(o.x1,o.x2),Y:Math.max(o.y1,o.y2)}}
+function bb(o){if(isPinO(o)){const[,w,h]=pshOf(o),pad=pinLW(o)/2;return{x:o.x-w/2-pad,y:o.y-h/2-pad,X:o.x+w/2+pad,Y:o.y+h/2+pad}}return isPinO(o)?0:{x:Math.min(o.x1,o.x2),y:Math.min(o.y1,o.y2),X:Math.max(o.x1,o.x2),Y:Math.max(o.y1,o.y2)}}
 function drawMsel(c){if(!msel.length)return;c.save();c.setLineDash([5,4]);c.strokeStyle='#38bdf8';c.lineWidth=1.5;const p=pinR()*.6;for(const o of msel){if(o.page!==page)continue;const b=bb(o);c.strokeRect(b.x-p,b.y-p,b.X-b.x+2*p,b.Y-b.y+2*p)}c.restore()}
 function showBox(){let d=$('#selBox');if(!d){d=document.createElement('div');d.id='selBox';stage.append(d)}const g=gesture;if(!g||g.type!=='box'){d.remove();return}
  const a=toS(g.w0.x,g.w0.y),b=toS(g.w1.x,g.w1.y);Object.assign(d.style,{left:Math.min(a.x,b.x)+'px',top:Math.min(a.y,b.y)+'px',width:Math.abs(b.x-a.x)+'px',height:Math.abs(b.y-a.y)+'px'})}
@@ -712,7 +709,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v36',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v37',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
