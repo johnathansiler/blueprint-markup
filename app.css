@@ -107,3 +107,4 @@ label.opac{display:inline-flex;align-items:center;gap:3px;padding:2px 4px;min-he
 label.opac input[type=range]{width:56px;min-height:0;padding:0;accent-color:#38bdf8}
 label.opac span{font-size:11px;color:#94a3b8;min-width:28px;text-align:right}
 @media(min-width:600px){label.opac input[type=range]{width:72px}}
+#clrDlg .lay label{display:flex;align-items:center;gap:8px;justify-content:flex-start}#clrDlg .lay input{width:auto;min-height:0;flex:none}

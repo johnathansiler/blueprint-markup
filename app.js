@@ -654,7 +654,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v11',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v12',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -891,3 +891,17 @@ $('#nfpaDef').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1,
  catch(e){showErr('Deficiency list failed: '+e.message)}finally{busy(0)}};
 
 
+
+// ---------- v12: clear pins (page / plan / project) ----------
+async function clrCounts(){const pr=(await all('pins')).filter(p=>(planIdsOf.cache||[]).includes(p.planId));return{page:pins.filter(p=>p.page===page).length,plan:pins.length,proj:pr.length}}
+async function planIdsOf(){const ids=(await all('plans')).filter(p=>p.projectId===project.id).map(p=>p.id);planIdsOf.cache=ids;return ids}
+function clrInfoUpd(){const v=document.querySelector('#clrDlg [name=clr]:checked').value,n=clrInfoUpd.n||{};const c=n[v]||0;
+ $('#clrInfo').textContent=c?`Deletes ${c} pin${c>1?'s':''} plus their photos, videos, voice notes and checklists. `+(v==='proj'?'Pins on other plans cannot be undone — save a .bpm first if unsure.':'Undo (↶) restores them in one step.'):'No pins in this scope.';$('#clrGo').disabled=!c}
+$('#clrBtn').onclick=async()=>{if(!project)return;await planIdsOf();const n=await clrCounts();clrInfoUpd.n=n;$('#clrNpage').textContent=`(${n.page})`;$('#clrNplan').textContent=`(${n.plan})`;$('#clrNproj').textContent=`(${n.proj})`;
+ document.querySelectorAll('#clrDlg [name=clr]').forEach(r=>{r.disabled=r.value!=='proj'&&!plan;r.onchange=clrInfoUpd});if(!plan)document.querySelector('#clrDlg [value=proj]').checked=true;clrInfoUpd();$('#clrDlg').showModal()};
+$('#clrGo').onclick=async()=>{const v=document.querySelector('#clrDlg [name=clr]:checked').value,c=clrInfoUpd.n[v];
+ if(!confirm(`Delete ${c} pin(s) and their media${v==='proj'?' across the whole project':v==='plan'?' on this plan':' on this page'}?`+(v==='proj'?' Pins on other plans cannot be undone.':'')))return;$('#clrDlg').close();busy(1,'Clearing pins');
+ try{const L=[];const mine=v==='page'?pins.filter(p=>p.page===page):plan?pins.slice():[];for(const p of mine)L.push({store:'pins',id:p.id,before:p,after:null,media:await byIdx('media','pinId',p.id)});
+  sel=null;msel=[];if(L.length)await changeMulti(L);let other=0;
+  if(v==='proj'){const ids=await planIdsOf();for(const p of await all('pins')){if(!ids.includes(p.planId)||p.planId===plan?.id)continue;for(const m of await byIdx('media','pinId',p.id))await del('media',m.id);await del('pins',p.id);other++}}
+  draw();renderList();toast(`Cleared ${L.length+other} pin(s)`+(L.length?' — undo available for this plan':''),true)}catch(e){showErr('Clear failed: '+e.message)}finally{busy(0)}};
