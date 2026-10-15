@@ -35,7 +35,9 @@ const PSH={smoke:['hex',15,13],duct:['hex',15,13],module:['hex',15,13],heat:['ci
 const PSC=1.3;const PANEL_S=new Set(['panel','dact','fatc','panelbox']);
 // bpm-v27: panels take the printed box size+orientation (bw/bh from detection), inset by the stroke so the fill sits inside and never overflows; WF/TS diamonds at print size (no 1.3x) so they sit flush on the printed diamond
 const pinInset=(w,h)=>{const pad=pinLW()+1;return[Math.max(3,w-pad),Math.max(3,h-pad)]}; // stroke+1pt so plan outline stays clearly outside pin border
-const pshOf=o=>{const t=typeof o==='string'?o:o&&o.type,v=PSH[t]||PSH.other;if(PANEL_S.has(t)){if(o&&o.bw>4&&o.bh>4)return['rect',...pinInset(o.bw,o.bh)];if(o&&o.vert)return['rect',...pinInset(v[2],v[1])];return['rect',...pinInset(v[1],v[2])]}if(v[0]==='dia')return[v[0],v[1],v[2]];if(o&&o.bw>4&&o.bh>4&&(v[0]==='rect'||v[0]==='hex'||v[0]==='circ')){const[iw,ih]=pinInset(o.bw,o.bh);return[v[0],iw,ih]}return[v[0],...pinInset(v[1],v[2])]};
+// bpm-v36: WF/TS diamonds inset like other pins: edges pulled in perpendicularly by the half the pin stroke so the stroke sits just inside the print line
+const diaInset=(w,h)=>{const A=w/2,B=h/2,d=pinLW()/2,k=Math.max(.3,1-d*Math.hypot(A,B)/(A*B));return[w*k,h*k]};
+const pshOf=o=>{const t=typeof o==='string'?o:o&&o.type,v=PSH[t]||PSH.other;if(PANEL_S.has(t)){if(o&&o.bw>4&&o.bh>4)return['rect',...pinInset(o.bw,o.bh)];if(o&&o.vert)return['rect',...pinInset(v[2],v[1])];return['rect',...pinInset(v[1],v[2])]}if(v[0]==='dia'){const W=(o&&o.bw>4&&o.bh>4)?o.bw:v[1],H=(o&&o.bw>4&&o.bh>4)?o.bh:v[2];return['dia',...diaInset(W,H)]}if(o&&o.bw>4&&o.bh>4&&(v[0]==='rect'||v[0]==='hex'||v[0]==='circ')){const[iw,ih]=pinInset(o.bw,o.bh);return[v[0],iw,ih]}return[v[0],...pinInset(v[1],v[2])]};
 // bpm-v35: zoom % readout; pin progress summary = pass/fail/total/left/%
 // bpm-v34: default fit/page-switch zoom 60% closer (scale ×1.6)
 // bpm-v33: code chips (no checkboxes) + Confirm clears leftover suggestions; hide Loop from pin/bulk UI
@@ -710,7 +712,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v35',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v36',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
