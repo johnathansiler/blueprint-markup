@@ -198,7 +198,7 @@ function resizeTo(m,o,h,w){if(isLine(m)){if(h===0){m.x1=w.x;m.y1=w.y}else{m.x2=w
  const x0=Math.min(o.x1,o.x2),y0=Math.min(o.y1,o.y2),X0=Math.max(o.x1,o.x2),Y0=Math.max(o.y1,o.y2),L=h===0||h===3,T=h===0||h===1;
  if(m.type==='text'){const nh=Math.max(6/view.s,T?Y0-w.y:w.y-y0);m.fs=o.fs*nh/((Y0-y0)||1);const tw=textBox({...m,x1:0,y1:0}).x2;Object.assign(m,{x1:L?X0-tw:x0,y1:T?Y0-m.fs*1.15:y0});textBox(m);return}
  let x=L?w.x:x0,X=L?X0:w.x,y=T?w.y:y0,Y=T?Y0:w.y;m.x1=Math.min(x,X);m.x2=Math.max(x,X);m.y1=Math.min(y,Y);m.y2=Math.max(y,Y)}
-let CR=0;function drawPin(c,p,s,hl,bare,nolab){const T=TYPES[p.type]||TYPES.other,r=pinR();c.save();if(!bare)c.globalAlpha=opOf(p,true);const oo=!bare&&OFFMAP&&OFFMAP.get(p.id);if(oo)drawLeader(c,p.x,p.y,p.x+oo.dx,p.y+oo.dy,T.c);c.translate(p.x+(oo?oo.dx:0),p.y+(oo?oo.dy:0));if(CR)c.rotate(-CR);
+let CR=0;function drawPin(c,p,s,hl,bare,nolab){const T=TYPES[p.type]||TYPES.other,r=pinR();c.save();if(!bare)c.globalAlpha=opOf(p,true);const oo=!bare&&OFFMAP&&OFFMAP.get(p.id);if(oo)drawLeader(c,p.x,p.y,p.x+oo.dx,p.y+oo.dy,T.c);c.translate(p.x+(oo?oo.dx:0),p.y+(oo?oo.dy:0));if(CR)c.rotate(-CR);if(isFinite(p.ang)&&p.ang)c.rotate(p.ang);
  // s is kept for call-site compat; pin geometry is in plan points so it scales with view
  const sc=ST[p.status]||ST['not tested'];if(hl&&!bare){c.beginPath();c.arc(0,0,pinHalf(p)+5,0,7);c.fillStyle='rgba(56,189,248,.35)';c.fill()}
  c.fillStyle=T.c;c.strokeStyle=bare?'#fff':sc;c.lineWidth=bare?2:pinLW(p);pinFS(c,p);// bpm-v37: path=print size → gray outer = print+LW/2; bpm-v24+: shape+color only
@@ -549,16 +549,16 @@ async function runDetect(groups,all){const want=groups.flatMap(g=>DG[g].d),pl=pl
    }catch{}
    const rules=await learnedRules();let nl=0;const items=[];for(const it of r.items){let g=D2G[it.type],lr=null;const m=matchRule(rules,it.fp);if(m){lr=m.g;nl++;if(m.g==='none')continue;g=m.g}if(groups.includes(g)||(lr&&DG[g]?.x))items.push({...it,g,learned:!!lr})}
    // bpm-v29: backfill measured bw/bh onto existing pins of any matching type (DH/jbox/surge/panels/hex/dia) so outset uses print size
-   for(const it of items){if(!(it.bw||it.vert))continue;const want=DG[it.g]&&DG[it.g].t;const p=pins.find(p=>p.page===n&&!p.bw&&Math.hypot(p.x-it.x,p.y-it.y)<36&&(PANEL_S.has(p.type)||(want&&p.type===want)));if(p){if(it.bw){p.bw=it.bw;p.bh=it.bh;p.x=it.x;p.y=it.y}else if(PANEL_S.has(p.type))p.vert=true;put('pins',p)}}
-   const add=items.filter(it=>!near(it.x,it.y)).map(it=>({id:uid(),page:n,x:it.x,y:it.y,bw:it.bw,bh:it.bh,vert:it.vert,det:it.type,g:it.g,fp:it.fp,learned:it.learned}));ghosts.push(...add);found+=add.length;
+   for(const it of items){if(!(it.bw||it.vert))continue;const want=DG[it.g]&&DG[it.g].t;const p=pins.find(p=>p.page===n&&(!p.bw||(p.ang==null&&it.ang))&&Math.hypot(p.x-it.x,p.y-it.y)<36&&(PANEL_S.has(p.type)||(want&&p.type===want)));if(p){if(it.bw){p.bw=it.bw;p.bh=it.bh;p.x=it.x;p.y=it.y;if(it.ang)p.ang=it.ang}else if(PANEL_S.has(p.type))p.vert=true;put('pins',p)}}
+   const add=items.filter(it=>!near(it.x,it.y)).map(it=>({id:uid(),page:n,x:it.x,y:it.y,bw:it.bw,bh:it.bh,ang:it.ang,vert:it.vert,det:it.type,g:it.g,fp:it.fp,learned:it.learned}));ghosts.push(...add);found+=add.length;
    R.stats.push({page:n,ops:ol.fnArray.length,paths:r.paths,found:items.length,kept:add.length,skipped:items.length-add.length,learnedHits:nl,opsMs:Math.round(t1-t0),workerMs:Math.round(r.ms),totalMs:Math.round(performance.now()-t0),k:r.k});
    prog((i+1)/pages.length);if(n===page)draw();renderGhostBar()}
   window.__detStats=R.stats;if(!found)showErr(`No ${groups.length===Object.keys(DG).length?'':'matching '}device symbols found${all?'':' on this page'}. Detection works on CAD-exported vector plans with standard symbols.`)}
  catch(e){if(!R.cancel)showErr('Detect devices failed: '+(e&&e.message||e))}
  finally{if(det===R){det=null;busy(0)}draw();renderGhostBar()}}
 // bpm-v29/v37: ghosts use the same print-matched tight-outset silhouette as accepted pins (dashed stroke + ?), never the old lettered dashed circle
-function gPin(g){const t=g.det==='JBOX_CEIL'?'jceil':(DG[g.g]&&DG[g.g].t||'other');return{type:t,bw:g.bw,bh:g.bh,vert:g.vert}}
-function drawGhosts(c){for(const g of ghosts){if(g.page!==page)continue;const T=gT(g),pin=gPin(g);c.save();const oo=OFFMAP&&OFFMAP.get(g.id||g);if(oo)drawLeader(c,g.x,g.y,g.x+oo.dx,g.y+oo.dy,T.c);c.translate(g.x+(oo?oo.dx:0),g.y+(oo?oo.dy:0));if(CR)c.rotate(-CR);
+function gPin(g){const t=g.det==='JBOX_CEIL'?'jceil':(DG[g.g]&&DG[g.g].t||'other');return{type:t,bw:g.bw,bh:g.bh,ang:g.ang,vert:g.vert}}
+function drawGhosts(c){for(const g of ghosts){if(g.page!==page)continue;const T=gT(g),pin=gPin(g);c.save();const oo=OFFMAP&&OFFMAP.get(g.id||g);if(oo)drawLeader(c,g.x,g.y,g.x+oo.dx,g.y+oo.dy,T.c);c.translate(g.x+(oo?oo.dx:0),g.y+(oo?oo.dy:0));if(CR)c.rotate(-CR);if(isFinite(g.ang)&&g.ang)c.rotate(g.ang);
  c.globalAlpha=.55;c.fillStyle=T.c;c.strokeStyle=T.c;c.lineWidth=pinLW(pin);c.setLineDash([3,2]);pinFS(c,pin,1);c.setLineDash([]);
  c.globalAlpha=1;c.fillStyle='#111';c.strokeStyle='#fff';c.lineWidth=1;c.font='bold 8px sans-serif';c.textAlign='center';c.textBaseline='middle';const[,pw,ph]=pshOf(pin);c.beginPath();c.arc(pw/2+1,-ph/2-1,5,0,7);c.fillStyle='#fff';c.fill();c.strokeStyle=T.c;c.stroke();c.fillStyle='#111';c.fillText('?',pw/2+1,-ph/2-1);c.restore()}}
 function ghostHit(w){if(!lay.ghosts)return null;let best=null,bd=1e9;for(const g of ghosts){if(g.page!==page)continue;const pr=Math.max(pinHalf(gPin(g))*1.3,14/view.s),o=SCRNOFF&&SCRNOFF.get(g.id||g),d=Math.min(Math.hypot(g.x-w.x,g.y-w.y),o?Math.hypot(g.x+o.dx-w.x,g.y+o.dy-w.y):1e9);if(d<pr&&d<bd){bd=d;best=g}}return best}
@@ -569,7 +569,7 @@ $('#ghAcc').onclick=async()=>{const g=curG;$('#ghDlg').close();if(g)await accept
 $('#ghRej').onclick=()=>{const g=curG;$('#ghDlg').close();if(g){if(g.fp)learn(g.fp,'none');ghosts=ghosts.filter(x=>x!==g);draw();renderGhostBar()}};
 $('#ghAllType').onclick=async()=>{const g=curG;$('#ghDlg').close();if(g)await acceptGhosts(ghosts.filter(x=>x.g===g.g))};
 async function acceptGhosts(list){if(!plan||!list.length)return;const out=[],used=[];for(const g of list){if(pins.some(p=>p.page===g.page&&Math.hypot(p.x-g.x,p.y-g.y)<14)||out.some(p=>p.page===g.page&&Math.hypot(p.x-g.x,p.y-g.y)<6)){used.push(g);continue}
-  const G=DG[g.g],boh=/_BOH/.test(g.det);out.push({id:uid(),planId:plan.id,page:g.page,x:g.x,y:g.y,type:G.t,address:'',loop:'',status:'not tested',notes:'',created:Date.now(),...(g.bw?{bw:g.bw,bh:g.bh}:{}),...(g.vert?{vert:true}:{}),detected:g.det,detG:g.g,fp:g.fp,opacity:PIN_OP});used.push(g)}
+  const G=DG[g.g],boh=/_BOH/.test(g.det);out.push({id:uid(),planId:plan.id,page:g.page,x:g.x,y:g.y,type:G.t,address:'',loop:'',status:'not tested',notes:'',created:Date.now(),...(g.bw?{bw:g.bw,bh:g.bh}:{}),...(g.ang?{ang:g.ang}:{}),...(g.vert?{vert:true}:{}),detected:g.det,detG:g.g,fp:g.fp,opacity:PIN_OP});used.push(g)}
  const ids=new Set(used.map(g=>g.id));ghosts=ghosts.filter(g=>!ids.has(g.id));if(out.length)await changeBatch('pins',out,used);else{draw();renderGhostBar()}}
 function renderGhostBar(){const b=$('#ghBar');if(!ghosts.length||walk||!lay.ghosts){b.hidden=true;b.innerHTML='';return}const here=ghosts.filter(g=>g.page===page).length,cnt={};for(const g of ghosts)cnt[g.g]=(cnt[g.g]||0)+1;
  b.innerHTML=`<b>🔍 ${ghosts.length} suggestion${ghosts.length>1?'s':''}</b><small>${here} on this page</small>`+Object.entries(cnt).map(([k,n])=>`<button type="button" class="chip" data-g="${k}" style="border-color:${TYPES[DG[k].t].c}" title="Accept all ${esc(DG[k].n)}">${esc(DG[k].n)} ${n}</button>`).join('')+`<span class="sp"></span><button type="button" class="btn pri" id="ghAccAll">✔ Accept all</button><button type="button" class="btn danger" id="ghRejAll">✕ Reject all</button>`;
@@ -593,7 +593,7 @@ $('#layReset').onclick=()=>{lay={...LAY0,exp:lay.exp};layToForm();laySave()};
 const isPinO=o=>pins.includes(o);
 function selItems(){return msel.length?msel:sel?[sel.o]:[]}
 function toggleMsel(o){if(sel&&sel.o!==o&&!msel.includes(sel.o))msel.push(sel.o);const i=msel.indexOf(o);if(i>=0)msel.splice(i,1);else msel.push(o);sel=null;renderSelBar();requestDraw(false)}
-function bb(o){if(isPinO(o)){const[,w,h]=pshOf(o),pad=pinLW(o)/2+OUT(o),f=(OFFMAP||SCRNOFF)&&(OFFMAP||SCRNOFF).get(o.id),x=o.x+(f?f.dx:0),y=o.y+(f?f.dy:0);return{x:x-w/2-pad,y:y-h/2-pad,X:x+w/2+pad,Y:y+h/2+pad}}return isPinO(o)?0:{x:Math.min(o.x1,o.x2),y:Math.min(o.y1,o.y2),X:Math.max(o.x1,o.x2),Y:Math.max(o.y1,o.y2)}}
+function bb(o){if(isPinO(o)){let[,w,h]=pshOf(o);if(o.ang){const C=Math.abs(Math.cos(o.ang)),S=Math.abs(Math.sin(o.ang));[w,h]=[w*C+h*S,w*S+h*C]}const pad=pinLW(o)/2+OUT(o),f=(OFFMAP||SCRNOFF)&&(OFFMAP||SCRNOFF).get(o.id),x=o.x+(f?f.dx:0),y=o.y+(f?f.dy:0);return{x:x-w/2-pad,y:y-h/2-pad,X:x+w/2+pad,Y:y+h/2+pad}}return isPinO(o)?0:{x:Math.min(o.x1,o.x2),y:Math.min(o.y1,o.y2),X:Math.max(o.x1,o.x2),Y:Math.max(o.y1,o.y2)}}
 function drawMsel(c){if(!msel.length)return;c.save();c.setLineDash([5,4]);c.strokeStyle='#38bdf8';c.lineWidth=1.5;const p=pinR()*.6;for(const o of msel){if(o.page!==page)continue;const b=bb(o);c.strokeRect(b.x-p,b.y-p,b.X-b.x+2*p,b.Y-b.y+2*p)}c.restore()}
 function showBox(){let d=$('#selBox');if(!d){d=document.createElement('div');d.id='selBox';stage.append(d)}const g=gesture;if(!g||g.type!=='box'){d.remove();return}
  const a=toS(g.w0.x,g.w0.y),b=toS(g.w1.x,g.w1.y);Object.assign(d.style,{left:Math.min(a.x,b.x)+'px',top:Math.min(a.y,b.y)+'px',width:Math.abs(b.x-a.x)+'px',height:Math.abs(b.y-a.y)+'px'})}
@@ -739,7 +739,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v44',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v45',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -1186,7 +1186,7 @@ var OFFMAP=null,SCRNOFF=null;
 const PANEL_T=new Set(['panel','dact','fatc','panelbox']),PANEL_G=new Set(['facp','dact','fatc','panelbox']);
 function isPanelO(o){return PANEL_T.has(o.type)||PANEL_G.has(o.g)}
 function pinFoot(o){const hw=pinLW(o.g!=null?gPin(o):o)/2;if(o.g!=null)return pinHalf(gPin(o))+hw;return pinHalf(o)+hw}
-function pinExt(o){const p=o.g!=null?gPin(o):o;const[,w,h]=pshOf(p),pad=pinLW(p)/2+OUT(p);return[w/2+pad,h/2+pad]}
+function pinExt(o){const p=o.g!=null?gPin(o):o;let[,w,h]=pshOf(p);if(p.ang){const C=Math.abs(Math.cos(p.ang)),S=Math.abs(Math.sin(p.ang));[w,h]=[w*C+h*S,w*S+h*C]}const pad=pinLW(p)/2+OUT(p);return[w/2+pad,h/2+pad]}
 // bpm-v43: shape-aware AABB de-overlap. Old circular foot used hypot(w,h)/2 so adjacent squares that only
 // touched were pushed off the print. Now only true box overlaps (both axes) are separated, on the min-penetration axis.
 function pinOffsets(list){list=list.filter(o=>!['flow','tamper'].includes(o.type)&&!/FLOW|TAMPER/.test(o.det||''));const M=new Map(),n=list.length;if(n<2)return M;const key=o=>o.id||o;

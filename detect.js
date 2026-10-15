@@ -35,6 +35,14 @@ const area=p=>Math.abs(p.reduce((s,a,i)=>{const b=p[(i+1)%p.length];return s+a[0
 // symbol scale: median side of dark near-square 4-gons (the reference symbols are ~13 pt on the sample plan)
 function scaleOf(G){const s=[];for(const g of G){const p=poly(g,1);if(!p||p.length!==4)continue;const sd=sides(p),mx=Math.max(...sd),mn=Math.min(...sd);if(mn<4||mx>60||mx/mn>1.15)continue;const a=area(p);if(Math.abs(a-mn*mx)/a>.12)continue;s.push((mx+mn)/2)}
  if(s.length<5)return 1;s.sort((a,b)=>a-b);return s[s.length>>1]/13}
+// v45: true size + rotation from polygon (shape local frame matches app shapePath)
+function geom(pp,sk){if(!pp||pp.length<3)return null;const n=pp.length,cx=pp.reduce((s,p)=>s+p[0],0)/n,cy=pp.reduce((s,p)=>s+p[1],0)/n;let a=0;
+ if(sk==='diamond'){let bi=0,bd=0;for(let i=0;i<2;i++){const D=dist(pp[i],pp[i+2]);if(D>bd){bd=D;bi=i}}const p=pp[bi],q=pp[bi+2];a=Math.atan2(q[1]-p[1],q[0]-p[0])}
+ else{let bi=0,bl=0;for(let i=0;i<n;i++){const L=dist(pp[i],pp[(i+1)%n]);if(L>bl){bl=L;bi=i}}const p=pp[bi],q=pp[(bi+1)%n];a=Math.atan2(q[1]-p[1],q[0]-p[0])}
+ const per=sk==='hex'?Math.PI/3:(sk==='square'||sk==='sq_big')?Math.PI/2:Math.PI;const w=x=>{x=((x%per)+per)%per;return x>per/2?x-per:x};a=w(a);
+ const c=Math.cos(-a),s=Math.sin(-a);let X0=1e9,X1=-1e9,Y0=1e9,Y1=-1e9;for(const p of pp){const dx=p[0]-cx,dy=p[1]-cy,u=dx*c-dy*s,v=dx*s+dy*c;X0=Math.min(X0,u);X1=Math.max(X1,u);Y0=Math.min(Y0,v);Y1=Math.max(Y1,v)}
+ let bw=X1-X0,bh=Y1-Y0;if(sk==='square'||sk==='sq_big'){const m=sides(pp).reduce((x,y)=>x+y,0)/4;bw=bh=m}
+ if(Math.abs(a)<.02)a=0;return{bw,bh,ang:a}}
 function shape(g,k){if(g.k==='cccc')return Math.abs(g.w-g.h)<1*k?'circle':null;const pts=poly(g,.6*k);if(!pts)return null;
  const s=sides(pts),n=pts.length,A=area(pts),mx=Math.max(...s),mn=Math.min(...s),K2=k*k;
  if(n===4){if(mn>=11.5*k&&mx<=14.5*k&&A>155*K2)return'square';if(mn>12*k&&mx<17*k&&A<160*K2)return'diamond';if(mn>5.5*k&&mn<8.5*k&&mx>12*k&&mx<16*k)return'rect_small';
@@ -90,7 +98,7 @@ function detect(P,W,H,want){const TB=W>H?W*.825:W;let G=P.filter(g=>dark(g)&&g.x
    //  FACP → a 10-seg glyph (P bowl), DACT → a 12-seg glyph (D), FATC → ≥4 single-seg strokes (T,T,F bars) and no 10/12
    const ones=glyph.filter(x=>x===1).length;
    if(gl<3)t='PANEL_BOX';else if(glyph.includes(12))t='DACT';else if(glyph.includes(10))t='FACP';else if(ones>=4)t='FATC';else t='PANEL_BOX'}
-  if(t){const pp=poly(g,.6*k),sz=pp?Math.sqrt(area(pp))/k:Math.max(g.w,g.h)/k;out.push({type:t,c,...(sk==='panel_rect'||sk==='rect_small'||sk==='square'||sk==='sq_big'||sk==='diamond'||sk==='hex'?{bw:g.w,bh:g.h}:{}),fp:{s:sk,gl:glyph.join(','),v:[sz,hasC?1:0,tnear.length,tnear.some(x=>x[1])?1:0,stem?1:0,filled?1:0,ins.length/10]}})}}
+  if(t){const pp=poly(g,.6*k),sz=pp?Math.sqrt(area(pp))/k:Math.max(g.w,g.h)/k;out.push({type:t,c,...(sk==='panel_rect'||sk==='rect_small'||sk==='square'||sk==='sq_big'||sk==='diamond'||sk==='hex'?((G2=>G2?{bw:G2.bw,bh:G2.bh,ang:G2.ang}:{bw:g.w,bh:g.h})(geom(pp,sk))):{}),fp:{s:sk,gl:glyph.join(','),v:[sz,hasC?1:0,tnear.length,tnear.some(x=>x[1])?1:0,stem?1:0,filled?1:0,ins.length/10]}})}}
  for(const g of circles)if(g.w>11.5*k&&g.w<14.5*k){const c=ctr(g);if(near(c,5*k).some(h=>h!==g&&Math.max(h.w,h.h)<9*k))out.push({type:'JBOX_CEIL',c,fp:{s:'circle',gl:String(near(c,5*k).filter(h=>h!==g&&Math.max(h.w,h.h)<9*k).length),v:[g.w/k,0,0,0,0,g.fill!=null?1:0,0]}})}
  const sq=out.filter(o=>o.type.startsWith('SPK'));
  for(const g of circles){const w=g.w;if(!(w>5*k&&w<11*k))continue;const c=ctr(g);if(sq.some(o=>dist(c,o.c)<8*k))continue;
@@ -103,5 +111,5 @@ function detect(P,W,H,want){const TB=W>H?W*.825:W;let G=P.filter(g=>dark(g)&&g.x
   if(rad.length>=3){const f=g.fill!=null||near(c,2*k).some(h=>h!==g&&h.fill!=null);out.push({type:f?'STROBE_BOH':'STROBE_FOH',c,fp:{s:'strobe',gl:'',v:[w/k,0,Math.min(rad.length,8)/4,0,0,f?1:0,0]}})}}
  const res=[];for(const o of out){const thr=(o.type==='FLOW'||o.type==='TAMPER'||o.type==='FACP'||o.type==='DACT'||o.type==='FATC'||o.type==='PANEL_BOX'?12:4)*k;
  if(res.some(r=>r.type===o.type&&dist(o.c,r.c)<thr))continue;res.push(o)}
- return{k,items:res.filter(o=>!want||want.includes(o.type)).map(o=>({type:o.type,x:o.c[0],y:o.c[1],fp:o.fp,bw:o.bw,bh:o.bh}))}}
+ return{k,items:res.filter(o=>!want||want.includes(o.type)).map(o=>({type:o.type,x:o.c[0],y:o.c[1],fp:o.fp,bw:o.bw,bh:o.bh,ang:o.ang||undefined}))}}
 self.onmessage=e=>{const{id,fn,args,O,vt,W,H,want}=e.data;const t0=performance.now();try{const P=walk(fn,args,O,vt);const r=detect(P,W,H,want);self.postMessage({id,ok:1,...r,paths:P.length,ms:performance.now()-t0})}catch(err){self.postMessage({id,ok:0,err:String(err&&err.message||err)})}};
