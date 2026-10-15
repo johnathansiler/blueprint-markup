@@ -20,7 +20,8 @@ A `.bpm` file is an ordinary **ZIP archive** (entries stored uncompressed, UTF-8
   "media":   [ ...media records without blobs (pinId, kind, name, created, annShapes…) + "file", "type", "size", optional "annotFile", "annotType" ],
   "layers":  { "<planId>": layer/filter settings },
   "meta":    { "last": "<planId last opened>" },
-  "learned": null | [ learned detection rules {id, fp, g} ] }
+  "learned": null | [ learned detection rules {id, fp, g} ],
+  "mycodes": null | [ personal code library entries {id, code, section, title, text, reasons, types} ] }
 ```
 
 Coordinates are PDF points of the page as displayed (after /Rotate). Times are epoch milliseconds.
@@ -29,3 +30,5 @@ Opening rules: `format` must match and `version` must be 1…(the app's supporte
 Every entry's CRC-32 is checked before anything is written. All project, plan, markup, pin and media IDs get fresh IDs, so a file can be opened any number of times next to existing projects.
 "Replace" writes the new data first and deletes the old plans only afterwards. Learned rules are merged (existing rules are kept).
 Limits: under 4 GB in total (no ZIP64) and under 65,000 entries.
+
+Personal `mycodes` are merged on open (existing ids kept). Built-in `codes.json` is app-static and not stored in the .bpm.

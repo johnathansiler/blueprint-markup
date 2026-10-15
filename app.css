@@ -92,3 +92,18 @@ dialog input,dialog select,dialog textarea{font-size:16px;min-height:42px}
 #selBar .btn.on{background:#0369a1;border-color:#38bdf8}#selBar select{min-height:34px;font-size:13px;max-width:96px}
 #saveDlg input[type=checkbox],#saveDlg input[type=radio],#openDlg input[type=radio],#bulkDlg input[type=checkbox]{width:22px;height:22px;min-height:22px;flex:none;margin:0 6px 0 0;vertical-align:middle}
 #saveDlg>form>label,#bulkDlg label:has(#bkCOn){display:flex;align-items:center;gap:6px}
+
+/* v11 */
+#codeList{display:flex;flex-direction:column;gap:4px;margin:4px 0}#codeList .chip{display:flex;align-items:flex-start;gap:6px;text-align:left;white-space:normal;height:auto;min-height:34px;padding:6px 8px}
+#codeHits button,#codeSug button{display:block;width:100%;text-align:left;white-space:normal;margin:3px 0;padding:8px}
+#codeFav .chip{font-size:12px}#codeHint{display:block;margin:2px 0 4px}
+
+#myCodeBox{border-top:1px solid #334155;padding-top:6px}#myCodeBox summary{cursor:pointer;min-height:36px}
+#myCodeReasons,#myCodeTypes{min-height:72px}
+#codeHits .btn,#codeSug .btn,#codeSugDlg .btn{white-space:normal;text-align:left;height:auto;line-height:1.25}
+
+/* opacity slider — compact for 344px */
+label.opac{display:inline-flex;align-items:center;gap:3px;padding:2px 4px;min-height:36px;background:#334155;border:1px solid #475569;border-radius:6px;margin:0}
+label.opac input[type=range]{width:56px;min-height:0;padding:0;accent-color:#38bdf8}
+label.opac span{font-size:11px;color:#94a3b8;min-width:28px;text-align:right}
+@media(min-width:600px){label.opac input[type=range]{width:72px}}

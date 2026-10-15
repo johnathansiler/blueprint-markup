@@ -1,0 +1,3933 @@
+[
+{
+"id": "72-14.2.1",
+"code": "NFPA 72",
+"section": "14.2.1",
+"title": "Inspection frequency",
+"sum": "Visual inspections must be done at the intervals required for the system type and components.",
+"tags": [
+"inspection",
+"frequency"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-14.2.2",
+"code": "NFPA 72",
+"section": "14.2.2",
+"title": "Testing frequency",
+"sum": "Periodic functional testing of devices and circuits at the required intervals.",
+"tags": [
+"testing",
+"frequency"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-14.3.1",
+"code": "NFPA 72",
+"section": "14.3.1",
+"title": "Notification before testing",
+"sum": "Notify the monitoring company and AHJ before testing that may send signals.",
+"tags": [
+"testing",
+"notification"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-14.4.3",
+"code": "NFPA 72",
+"section": "14.4.3",
+"title": "Visual inspection of devices",
+"sum": "Devices must be visually inspected for condition, mounting, and obvious damage or obstruction.",
+"tags": [
+"inspection",
+"condition"
+],
+"reasons": [
+"Damaged",
+"Missing",
+"Obstructed"
+],
+"types": []
+},
+{
+"id": "72-14.4.5",
+"code": "NFPA 72",
+"section": "14.4.5",
+"title": "Sensitivity testing of smoke detectors",
+"sum": "Smoke detector sensitivity must be tested within the listed range; dirty detectors often fail.",
+"tags": [
+"smoke",
+"sensitivity",
+"cleaning"
+],
+"reasons": [
+"Dirty/needs cleaning",
+"No alarm"
+],
+"types": [
+"smoke",
+"duct"
+]
+},
+{
+"id": "72-14.4.5.3",
+"code": "NFPA 72",
+"section": "14.4.5.3",
+"title": "Smoke detector cleaning",
+"sum": "Detectors outside sensitivity limits must be cleaned or replaced and retested.",
+"tags": [
+"smoke",
+"cleaning"
+],
+"reasons": [
+"Dirty/needs cleaning"
+],
+"types": [
+"smoke",
+"duct"
+]
+},
+{
+"id": "72-14.4.6",
+"code": "NFPA 72",
+"section": "14.4.6",
+"title": "Heat detector testing",
+"sum": "Restorable heat detectors require functional heat testing; nonrestorable types follow the listed method.",
+"tags": [
+"heat",
+"testing"
+],
+"reasons": [
+"No alarm",
+"Damaged"
+],
+"types": [
+"heat"
+]
+},
+{
+"id": "72-14.4.7",
+"code": "NFPA 72",
+"section": "14.4.7",
+"title": "Manual fire alarm box testing",
+"sum": "Pull stations must operate, send the correct signal, and be accessible and in good condition.",
+"tags": [
+"pull",
+"testing"
+],
+"reasons": [
+"No alarm",
+"Obstructed",
+"Damaged",
+"Missing"
+],
+"types": [
+"pull"
+]
+},
+{
+"id": "72-14.4.8",
+"code": "NFPA 72",
+"section": "14.4.8",
+"title": "Waterflow device testing",
+"sum": "Waterflow switches must initiate an alarm within the required time when flow is simulated.",
+"tags": [
+"flow",
+"sprinkler"
+],
+"reasons": [
+"No alarm",
+"Trouble"
+],
+"types": [
+"flow"
+]
+},
+{
+"id": "72-14.4.9",
+"code": "NFPA 72",
+"section": "14.4.9",
+"title": "Valve supervisory device testing",
+"sum": "Tamper switches must report supervisory when the valve is moved from normal.",
+"tags": [
+"tamper",
+"supervisory"
+],
+"reasons": [
+"Trouble",
+"No alarm"
+],
+"types": [
+"tamper"
+]
+},
+{
+"id": "72-14.4.10",
+"code": "NFPA 72",
+"section": "14.4.10",
+"title": "Notification appliance testing",
+"sum": "Horns, strobes, and speakers must produce the required audible/visible output and sync where required.",
+"tags": [
+"notification",
+"horn",
+"strobe"
+],
+"reasons": [
+"No alarm",
+"Damaged",
+"Wrong location"
+],
+"types": [
+"horn",
+"strobe",
+"spkstrobe",
+"linearray"
+]
+},
+{
+"id": "72-14.4.11",
+"code": "NFPA 72",
+"section": "14.4.11",
+"title": "Interface / control module testing",
+"sum": "Monitor and control modules must correctly report or control the connected circuit or equipment.",
+"tags": [
+"module",
+"interface"
+],
+"reasons": [
+"No alarm",
+"Trouble"
+],
+"types": [
+"module",
+"relay"
+]
+},
+{
+"id": "72-14.4.12",
+"code": "NFPA 72",
+"section": "14.4.12",
+"title": "Control unit testing",
+"sum": "FACP functions, power supplies, and trouble/supervisory handling must be verified.",
+"tags": [
+"panel",
+"FACP"
+],
+"reasons": [
+"Trouble",
+"Damaged"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-14.4.13",
+"code": "NFPA 72",
+"section": "14.4.13",
+"title": "Battery testing",
+"sum": "Secondary power batteries must be load-tested and replaced when capacity is insufficient.",
+"tags": [
+"battery",
+"power"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-14.4.14",
+"code": "NFPA 72",
+"section": "14.4.14",
+"title": "Communicator / off-premises signaling",
+"sum": "Alarm, supervisory, and trouble signals must be received at the supervising station.",
+"tags": [
+"monitoring",
+"communicator"
+],
+"reasons": [
+"No alarm",
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-14.5",
+"code": "NFPA 72",
+"section": "14.5",
+"title": "Maintenance",
+"sum": "Systems must be maintained so they operate as intended; deficiencies must be corrected.",
+"tags": [
+"maintenance"
+],
+"reasons": [
+"Damaged",
+"Dirty/needs cleaning",
+"Trouble"
+],
+"types": []
+},
+{
+"id": "72-14.6",
+"code": "NFPA 72",
+"section": "14.6",
+"title": "Records",
+"sum": "Inspection, testing, and maintenance records must be kept and available to the AHJ.",
+"tags": [
+"records",
+"documentation"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-10.4",
+"code": "NFPA 72",
+"section": "10.4",
+"title": "Impairments",
+"sum": "System impairments must be managed with notifications, tags, and restoration procedures.",
+"tags": [
+"impairment"
+],
+"reasons": [
+"Missing",
+"Damaged",
+"Trouble"
+],
+"types": []
+},
+{
+"id": "72-10.5",
+"code": "NFPA 72",
+"section": "10.5",
+"title": "System response to alarm",
+"sum": "Alarm signals must be processed and notification appliances actuated as required.",
+"tags": [
+"alarm",
+"response"
+],
+"reasons": [
+"No alarm"
+],
+"types": []
+},
+{
+"id": "72-10.6",
+"code": "NFPA 72",
+"section": "10.6",
+"title": "Power supplies",
+"sum": "Primary and secondary power must meet capacity and transfer requirements.",
+"tags": [
+"power"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.10",
+"code": "NFPA 72",
+"section": "10.10",
+"title": "Signal priority / distinct signals",
+"sum": "Alarm, supervisory, and trouble signals must be distinct and prioritized correctly.",
+"tags": [
+"signals"
+],
+"reasons": [
+"Trouble",
+"No alarm"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.18",
+"code": "NFPA 72",
+"section": "10.18",
+"title": "Monitoring integrity of circuits",
+"sum": "Initiating and notification circuits must be supervised for integrity (opens/grounds).",
+"tags": [
+"supervision",
+"wiring"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"module",
+"panel"
+]
+},
+{
+"id": "72-12.4",
+"code": "NFPA 72",
+"section": "12.4",
+"title": "Audible characteristics",
+"sum": "Audible notification must meet required sound level and intelligibility for the space.",
+"tags": [
+"audible",
+"notification"
+],
+"reasons": [
+"No alarm",
+"Wrong location"
+],
+"types": [
+"horn",
+"spkstrobe",
+"linearray"
+]
+},
+{
+"id": "72-12.5",
+"code": "NFPA 72",
+"section": "12.5",
+"title": "Visible characteristics",
+"sum": "Strobe candela rating, spacing, and synchronization must match the protected area.",
+"tags": [
+"visible",
+"strobe"
+],
+"reasons": [
+"Wrong location",
+"Damaged",
+"Missing"
+],
+"types": [
+"strobe",
+"horn",
+"spkstrobe"
+]
+},
+{
+"id": "72-12.6",
+"code": "NFPA 72",
+"section": "12.6",
+"title": "Textual / voice appliances",
+"sum": "Voice messages must be intelligible in the coverage area.",
+"tags": [
+"voice",
+"intelligibility"
+],
+"reasons": [
+"No alarm",
+"Wrong location"
+],
+"types": [
+"spkstrobe",
+"linearray"
+]
+},
+{
+"id": "72-17.4",
+"code": "NFPA 72",
+"section": "17.4",
+"title": "Initiating device general requirements",
+"sum": "Detectors and other initiating devices must be installed and located per listing and chapter rules.",
+"tags": [
+"initiating",
+"installation"
+],
+"reasons": [
+"Wrong location",
+"Missing",
+"Damaged"
+],
+"types": []
+},
+{
+"id": "72-17.5",
+"code": "NFPA 72",
+"section": "17.5",
+"title": "Smoke detector location / spacing",
+"sum": "Smoke detector spacing and placement must provide coverage for the protected area.",
+"tags": [
+"smoke",
+"spacing"
+],
+"reasons": [
+"Wrong location",
+"Missing",
+"Obstructed"
+],
+"types": [
+"smoke"
+]
+},
+{
+"id": "72-17.6",
+"code": "NFPA 72",
+"section": "17.6",
+"title": "Heat detector location / spacing",
+"sum": "Heat detector spacing and temperature rating must suit the ceiling and hazard.",
+"tags": [
+"heat",
+"spacing"
+],
+"reasons": [
+"Wrong location",
+"Missing"
+],
+"types": [
+"heat"
+]
+},
+{
+"id": "72-17.7",
+"code": "NFPA 72",
+"section": "17.7",
+"title": "Manual fire alarm boxes location",
+"sum": "Pull stations must be located at required exits and mounted at the correct height, unobstructed.",
+"tags": [
+"pull",
+"location",
+"accessibility"
+],
+"reasons": [
+"Obstructed",
+"Missing",
+"Wrong location"
+],
+"types": [
+"pull"
+]
+},
+{
+"id": "72-17.7.4",
+"code": "NFPA 72",
+"section": "17.7.4",
+"title": "Manual box accessibility",
+"sum": "Manual stations must remain conspicuous and accessible; storage or d\u00e9cor must not block them.",
+"tags": [
+"pull",
+"accessibility"
+],
+"reasons": [
+"Obstructed"
+],
+"types": [
+"pull"
+]
+},
+{
+"id": "72-17.10",
+"code": "NFPA 72",
+"section": "17.10",
+"title": "Sprinkler waterflow devices",
+"sum": "Waterflow initiating devices must be installed so they detect flow from the sprinkler system.",
+"tags": [
+"flow"
+],
+"reasons": [
+"No alarm",
+"Missing"
+],
+"types": [
+"flow"
+]
+},
+{
+"id": "72-17.11",
+"code": "NFPA 72",
+"section": "17.11",
+"title": "Valve supervisory devices",
+"sum": "Control valves must be supervised so an off-normal position is reported.",
+"tags": [
+"tamper"
+],
+"reasons": [
+"Trouble",
+"Missing"
+],
+"types": [
+"tamper"
+]
+},
+{
+"id": "72-17.12",
+"code": "NFPA 72",
+"section": "17.12",
+"title": "Duct smoke detectors",
+"sum": "Duct detectors must be installed where required for air-handler shutdown and sampled correctly.",
+"tags": [
+"duct"
+],
+"reasons": [
+"No alarm",
+"Dirty/needs cleaning",
+"Wrong location"
+],
+"types": [
+"duct"
+]
+},
+{
+"id": "72-18.4",
+"code": "NFPA 72",
+"section": "18.4",
+"title": "Audible notification appliance location",
+"sum": "Audible appliances must be placed to achieve required sound levels throughout the area.",
+"tags": [
+"horn",
+"location"
+],
+"reasons": [
+"Wrong location",
+"Missing"
+],
+"types": [
+"horn",
+"spkstrobe",
+"linearray"
+]
+},
+{
+"id": "72-18.5",
+"code": "NFPA 72",
+"section": "18.5",
+"title": "Visible notification appliance location",
+"sum": "Visible appliances must cover the area per spacing tables and candela ratings.",
+"tags": [
+"strobe",
+"location"
+],
+"reasons": [
+"Wrong location",
+"Missing"
+],
+"types": [
+"strobe",
+"horn",
+"spkstrobe"
+]
+},
+{
+"id": "72-21.2",
+"code": "NFPA 72",
+"section": "21.2",
+"title": "Elevator recall / shutdown interfaces",
+"sum": "Fire alarm interfaces to elevator recall and power shutdown must function as required.",
+"tags": [
+"elevator",
+"interface"
+],
+"reasons": [
+"No alarm",
+"Trouble"
+],
+"types": [
+"module",
+"relay"
+]
+},
+{
+"id": "72-21.3",
+"code": "NFPA 72",
+"section": "21.3",
+"title": "HVAC shutdown interfaces",
+"sum": "Duct detection or other interfaces must shut down HVAC as required by the design.",
+"tags": [
+"HVAC",
+"duct"
+],
+"reasons": [
+"No alarm"
+],
+"types": [
+"duct",
+"relay",
+"module"
+]
+},
+{
+"id": "72-21.7",
+"code": "NFPA 72",
+"section": "21.7",
+"title": "Door holder release",
+"sum": "Smoke doors on holders must release on alarm and close/latch fully.",
+"tags": [
+"doorholder"
+],
+"reasons": [
+"No alarm",
+"Damaged"
+],
+"types": [
+"doorholder"
+]
+},
+{
+"id": "72-7.4",
+"code": "NFPA 72",
+"section": "7.4",
+"title": "Record of Completion",
+"sum": "A record of completion is required for new systems and modifications before final acceptance.",
+"tags": [
+"completion",
+"acceptance"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-7.5",
+"code": "NFPA 72",
+"section": "7.5",
+"title": "Record of Inspection & Testing",
+"sum": "Document inspection and testing results, including deficiencies and who performed the work.",
+"tags": [
+"records",
+"ITM"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-7.6",
+"code": "NFPA 72",
+"section": "7.6",
+"title": "Records retention",
+"sum": "Keep ITM records for the required retention period for AHJ review.",
+"tags": [
+"records"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-7.7",
+"code": "NFPA 72",
+"section": "7.7",
+"title": "Inspections and tests documentation content",
+"sum": "Records should identify the system, date, results, deficiencies, and responsible parties.",
+"tags": [
+"records"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-10.3",
+"code": "NFPA 72",
+"section": "10.3",
+"title": "Equipment listing / condition",
+"sum": "Fire alarm equipment must remain listed and in a condition that supports proper operation.",
+"tags": [
+"listing",
+"condition"
+],
+"reasons": [
+"Damaged",
+"Missing"
+],
+"types": []
+},
+{
+"id": "72-10.4.1",
+"code": "NFPA 72",
+"section": "10.4.1",
+"title": "Impairment identification",
+"sum": "Impaired systems or circuits must be identified and the AHJ/monitoring service informed as required.",
+"tags": [
+"impairment"
+],
+"reasons": [
+"Missing",
+"Damaged",
+"Trouble"
+],
+"types": []
+},
+{
+"id": "72-12.2",
+"code": "NFPA 72",
+"section": "12.2",
+"title": "Notification appliance circuits",
+"sum": "NAC wiring and loading must support the appliances without overload or supervision faults.",
+"tags": [
+"NAC",
+"wiring"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"horn",
+"strobe",
+"spkstrobe"
+]
+},
+{
+"id": "72-23.4",
+"code": "NFPA 72",
+"section": "23.4",
+"title": "Protected premises system performance",
+"sum": "The protected premises system must detect, notify, and process signals per the design.",
+"tags": [
+"system",
+"performance"
+],
+"reasons": [
+"No alarm",
+"Trouble"
+],
+"types": []
+},
+{
+"id": "72-23.8",
+"code": "NFPA 72",
+"section": "23.8",
+"title": "SLC / addressable device performance",
+"sum": "Addressable devices must report the correct address and respond on the signaling line circuit.",
+"tags": [
+"addressable",
+"SLC"
+],
+"reasons": [
+"Wrong location",
+"Trouble",
+"No alarm"
+],
+"types": [
+"smoke",
+"heat",
+"pull",
+"module"
+]
+},
+{
+"id": "72-24.3",
+"code": "NFPA 72",
+"section": "24.3",
+"title": "Emergency communications systems",
+"sum": "ECS/MNS voice systems must deliver intelligible messages to required areas.",
+"tags": [
+"ECS",
+"voice"
+],
+"reasons": [
+"No alarm",
+"Wrong location"
+],
+"types": [
+"spkstrobe",
+"linearray",
+"panel"
+]
+},
+{
+"id": "IFC-907.2",
+"code": "IFC",
+"section": "907.2",
+"title": "Where fire alarm systems are required",
+"sum": "International Fire Code requirements for when a fire alarm system must be provided.",
+"tags": [
+"code",
+"required"
+],
+"reasons": [
+"Missing"
+],
+"types": []
+},
+{
+"id": "IFC-907.5",
+"code": "IFC",
+"section": "907.5",
+"title": "Occupant notification systems",
+"sum": "Occupant notification must meet IFC audible/visible requirements for the occupancy.",
+"tags": [
+"notification",
+"IFC"
+],
+"reasons": [
+"No alarm",
+"Missing",
+"Wrong location"
+],
+"types": [
+"horn",
+"strobe",
+"spkstrobe"
+]
+},
+{
+"id": "IFC-907.8",
+"code": "IFC",
+"section": "907.8",
+"title": "Inspection, testing and maintenance (IFC)",
+"sum": "IFC requires fire alarm systems to be inspected, tested, and maintained under NFPA 72.",
+"tags": [
+"ITM",
+"IFC"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "IFC-901.7",
+"code": "IFC",
+"section": "901.7",
+"title": "Systems out of service",
+"sum": "When a fire protection system is out of service, the IFC impairment procedures apply.",
+"tags": [
+"impairment",
+"IFC"
+],
+"reasons": [
+"Missing",
+"Damaged",
+"Trouble"
+],
+"types": []
+},
+{
+"id": "IFC-901.6",
+"code": "IFC",
+"section": "901.6",
+"title": "Inspection, testing and maintenance required",
+"sum": "Fire protection and life-safety systems must be maintained in an operative condition.",
+"tags": [
+"maintenance",
+"IFC"
+],
+"reasons": [
+"Damaged",
+"Trouble"
+],
+"types": []
+},
+{
+"id": "IBC-907",
+"code": "IBC",
+"section": "907",
+"title": "Fire alarm and detection systems (building code)",
+"sum": "Building-code provisions for fire alarm design and installation in new construction.",
+"tags": [
+"IBC",
+"design"
+],
+"reasons": [
+"Missing",
+"Wrong location"
+],
+"types": []
+},
+{
+"id": "IBC-903.4",
+"code": "IBC",
+"section": "903.4",
+"title": "Sprinkler system supervision",
+"sum": "Automatic sprinkler systems require electronic supervision of valves and waterflow where required.",
+"tags": [
+"sprinkler",
+"supervision"
+],
+"reasons": [
+"Trouble",
+"Missing"
+],
+"types": [
+"flow",
+"tamper"
+]
+},
+{
+"id": "72-14.2.10",
+"code": "NFPA 72",
+"section": "14.2.10",
+"title": "Deficiencies and corrections",
+"sum": "Deficiencies found during ITM must be corrected or reported per the owner's and AHJ's process.",
+"tags": [
+"deficiency"
+],
+"reasons": [
+"Damaged",
+"Missing",
+"Obstructed",
+"Dirty/needs cleaning",
+"No alarm",
+"Trouble",
+"Wrong location",
+"Other"
+],
+"types": []
+},
+{
+"id": "72-14.3.4",
+"code": "NFPA 72",
+"section": "14.3.4",
+"title": "System restored after testing",
+"sum": "After testing, the system must be restored to normal and supervising station notified.",
+"tags": [
+"testing",
+"restore"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-17.5.3",
+"code": "NFPA 72",
+"section": "17.5.3",
+"title": "Smoke detector accessibility for maintenance",
+"sum": "Detectors must remain accessible for inspection, testing, and cleaning.",
+"tags": [
+"smoke",
+"accessibility"
+],
+"reasons": [
+"Obstructed",
+"Dirty/needs cleaning"
+],
+"types": [
+"smoke",
+"duct"
+]
+},
+{
+"id": "72-18.3",
+"code": "NFPA 72",
+"section": "18.3",
+"title": "Notification appliance mounting / condition",
+"sum": "Appliances must be securely mounted and free of damage that impairs output.",
+"tags": [
+"notification",
+"condition"
+],
+"reasons": [
+"Damaged",
+"Missing"
+],
+"types": [
+"horn",
+"strobe",
+"spkstrobe",
+"linearray"
+]
+},
+{
+"id": "72-10.5.5",
+"code": "NFPA 72",
+"section": "10.5.5",
+"title": "Alarm signal deactivation",
+"sum": "Silencing or disabling notification must follow required safeguards so the system is not left impaired unnoticed.",
+"tags": [
+"silence",
+"impairment"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-14.4.4",
+"code": "NFPA 72",
+"section": "14.4.4",
+"title": "Initiating device testing (general)",
+"sum": "Each initiating device must be tested by a method that confirms it initiates the correct signal.",
+"tags": [
+"initiating",
+"testing"
+],
+"reasons": [
+"No alarm",
+"Trouble"
+],
+"types": [
+"smoke",
+"heat",
+"pull",
+"flow",
+"tamper",
+"module",
+"duct"
+]
+},
+{
+"id": "72-23.6",
+"code": "NFPA 72",
+"section": "23.6",
+"title": "SLC wiring methods / survivability",
+"sum": "Signaling line circuits must use required wiring methods and survivability where applicable.",
+"tags": [
+"wiring",
+"SLC"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel",
+"module"
+]
+},
+{
+"id": "72-12.8",
+"code": "NFPA 72",
+"section": "12.8",
+"title": "Sleeping area low-frequency signal",
+"sum": "Where required, sleeping areas need low-frequency audible signals for awakening effectiveness.",
+"tags": [
+"audible",
+"sleeping"
+],
+"reasons": [
+"No alarm",
+"Wrong location"
+],
+"types": [
+"horn",
+"spkstrobe"
+]
+},
+{
+"id": "72-18.5.5",
+"code": "NFPA 72",
+"section": "18.5.5",
+"title": "Strobe synchronization",
+"sum": "Multiple visible appliances in a field of view must be synchronized.",
+"tags": [
+"strobe",
+"sync"
+],
+"reasons": [
+"Damaged",
+"Wrong location"
+],
+"types": [
+"strobe",
+"horn",
+"spkstrobe"
+]
+},
+{
+"id": "72-17.5.2",
+"code": "NFPA 72",
+"section": "17.5.2",
+"title": "Spot-type detector mounting",
+"sum": "Spot detectors must be mounted on ceilings (or walls where allowed) at listed clearances.",
+"tags": [
+"smoke",
+"mounting"
+],
+"reasons": [
+"Wrong location",
+"Damaged"
+],
+"types": [
+"smoke",
+"heat"
+]
+},
+{
+"id": "72-14.6.3",
+"code": "NFPA 72",
+"section": "14.6.3",
+"title": "System documentation on site",
+"sum": "As-built drawings, manuals, and calculations should be available for ITM personnel.",
+"tags": [
+"documentation"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "IFC-907.7",
+"code": "IFC",
+"section": "907.7",
+"title": "Acceptance testing (IFC)",
+"sum": "Fire alarm systems must be acceptance-tested before occupancy or when required by the AHJ.",
+"tags": [
+"acceptance",
+"IFC"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "IBC-901.6",
+"code": "IBC",
+"section": "901.6",
+"title": "Fire protection systems operative",
+"sum": "Required fire protection systems must be maintained operative as a condition of occupancy.",
+"tags": [
+"maintenance",
+"IBC"
+],
+"reasons": [
+"Damaged",
+"Missing",
+"Trouble"
+],
+"types": []
+},
+{
+"id": "72-17.5.1",
+"code": "NFPA 72",
+"section": "17.5.1",
+"title": "Smoke detection general",
+"sum": "General rules for where and how smoke detection is applied.",
+"tags": [
+"smoke"
+],
+"reasons": [
+"Wrong location",
+"Missing"
+],
+"types": [
+"smoke"
+]
+},
+{
+"id": "72-17.5.3.1",
+"code": "NFPA 72",
+"section": "17.5.3.1",
+"title": "Spot smoke detector ceilings",
+"sum": "Spot-type smoke detectors on smooth ceilings follow listed spacing.",
+"tags": [
+"smoke spacing"
+],
+"reasons": [
+"Wrong location",
+"Missing"
+],
+"types": [
+"smoke"
+]
+},
+{
+"id": "72-17.5.3.2",
+"code": "NFPA 72",
+"section": "17.5.3.2",
+"title": "Level ceilings smoke spacing",
+"sum": "Spacing reductions apply for joists, beams, and high ceilings.",
+"tags": [
+"smoke spacing"
+],
+"reasons": [
+"Wrong location"
+],
+"types": [
+"smoke"
+]
+},
+{
+"id": "72-17.5.3.5",
+"code": "NFPA 72",
+"section": "17.5.3.5",
+"title": "Wall-mounted smoke detectors",
+"sum": "Wall mounting is limited; keep required clearances from ceilings.",
+"tags": [
+"smoke mounting"
+],
+"reasons": [
+"Wrong location",
+"Damaged"
+],
+"types": [
+"smoke"
+]
+},
+{
+"id": "72-17.6.1",
+"code": "NFPA 72",
+"section": "17.6.1",
+"title": "Heat detection general",
+"sum": "Heat detectors must match the temperature rating and ceiling environment.",
+"tags": [
+"heat"
+],
+"reasons": [
+"Wrong location",
+"No alarm"
+],
+"types": [
+"heat"
+]
+},
+{
+"id": "72-17.6.3",
+"code": "NFPA 72",
+"section": "17.6.3",
+"title": "Spot heat detector spacing",
+"sum": "Spot heat detector spacing depends on ceiling height and construction.",
+"tags": [
+"heat spacing"
+],
+"reasons": [
+"Wrong location",
+"Missing"
+],
+"types": [
+"heat"
+]
+},
+{
+"id": "72-17.6.3.5",
+"code": "NFPA 72",
+"section": "17.6.3.5",
+"title": "Heat detector temperature classification",
+"sum": "Select ordinary, intermediate, or higher ratings for the ambient conditions.",
+"tags": [
+"heat rating"
+],
+"reasons": [
+"Wrong location"
+],
+"types": [
+"heat"
+]
+},
+{
+"id": "72-17.7.1",
+"code": "NFPA 72",
+"section": "17.7.1",
+"title": "Manual box general",
+"sum": "Manual fire alarm boxes initiate an alarm signal when activated.",
+"tags": [
+"pull"
+],
+"reasons": [
+"No alarm"
+],
+"types": [
+"pull"
+]
+},
+{
+"id": "72-17.7.2",
+"code": "NFPA 72",
+"section": "17.7.2",
+"title": "Manual box location at exits",
+"sum": "Place boxes at required exits and travel paths so occupants can reach them.",
+"tags": [
+"pull location"
+],
+"reasons": [
+"Missing",
+"Wrong location",
+"Obstructed"
+],
+"types": [
+"pull"
+]
+},
+{
+"id": "72-17.7.3",
+"code": "NFPA 72",
+"section": "17.7.3",
+"title": "Manual box mounting height",
+"sum": "Mount operable parts within the allowed height range above the floor.",
+"tags": [
+"pull height"
+],
+"reasons": [
+"Wrong location",
+"Damaged"
+],
+"types": [
+"pull"
+]
+},
+{
+"id": "72-17.7.5",
+"code": "NFPA 72",
+"section": "17.7.5",
+"title": "Manual box operation force",
+"sum": "Boxes must operate with the listed force and return or latch as designed.",
+"tags": [
+"pull"
+],
+"reasons": [
+"Damaged",
+"No alarm"
+],
+"types": [
+"pull"
+]
+},
+{
+"id": "72-17.10.2",
+"code": "NFPA 72",
+"section": "17.10.2",
+"title": "Waterflow switch retard",
+"sum": "Retard/delay settings must meet timing limits when flow is simulated.",
+"tags": [
+"flow"
+],
+"reasons": [
+"No alarm",
+"Trouble"
+],
+"types": [
+"flow"
+]
+},
+{
+"id": "72-17.11.1",
+"code": "NFPA 72",
+"section": "17.11.1",
+"title": "Control valve supervision",
+"sum": "Supervisory devices report when a control valve leaves the normal position.",
+"tags": [
+"tamper"
+],
+"reasons": [
+"Trouble",
+"Missing"
+],
+"types": [
+"tamper"
+]
+},
+{
+"id": "72-17.12.1",
+"code": "NFPA 72",
+"section": "17.12.1",
+"title": "Duct detector application",
+"sum": "Duct smoke detection is used where required for air-moving equipment control.",
+"tags": [
+"duct"
+],
+"reasons": [
+"Missing",
+"Wrong location"
+],
+"types": [
+"duct"
+]
+},
+{
+"id": "72-17.12.2",
+"code": "NFPA 72",
+"section": "17.12.2",
+"title": "Duct detector sampling",
+"sum": "Sampling tubes and placement must sample the airstream correctly.",
+"tags": [
+"duct"
+],
+"reasons": [
+"No alarm",
+"Dirty/needs cleaning",
+"Wrong location"
+],
+"types": [
+"duct"
+]
+},
+{
+"id": "72-17.12.5",
+"code": "NFPA 72",
+"section": "17.12.5",
+"title": "Duct detector listing",
+"sum": "Use detectors listed for in-duct or air-duct housing applications.",
+"tags": [
+"duct listing"
+],
+"reasons": [
+"Damaged",
+"Wrong location"
+],
+"types": [
+"duct"
+]
+},
+{
+"id": "72-17.13",
+"code": "NFPA 72",
+"section": "17.13",
+"title": "Gas detection initiating devices",
+"sum": "Gas detectors used for fire alarm initiating must be listed and installed per instructions.",
+"tags": [
+"gas"
+],
+"reasons": [
+"No alarm",
+"Wrong location"
+],
+"types": [
+"other"
+]
+},
+{
+"id": "72-17.14",
+"code": "NFPA 72",
+"section": "17.14",
+"title": "Other fire detectors",
+"sum": "Specialty detectors follow their listing and design documents.",
+"tags": [
+"special"
+],
+"reasons": [
+"No alarm",
+"Missing"
+],
+"types": [
+"other"
+]
+},
+{
+"id": "72-17.15",
+"code": "NFPA 72",
+"section": "17.15",
+"title": "Smoke detector guard protection",
+"sum": "Guards must not impair detection performance when used.",
+"tags": [
+"guard"
+],
+"reasons": [
+"Obstructed",
+"Damaged"
+],
+"types": [
+"smoke"
+]
+},
+{
+"id": "72-18.4.1",
+"code": "NFPA 72",
+"section": "18.4.1",
+"title": "Public mode audible levels",
+"sum": "Public-mode audible signals must meet required sound pressure levels.",
+"tags": [
+"audible"
+],
+"reasons": [
+"No alarm",
+"Wrong location"
+],
+"types": [
+"horn",
+"spkstrobe",
+"linearray"
+]
+},
+{
+"id": "72-18.4.2",
+"code": "NFPA 72",
+"section": "18.4.2",
+"title": "Private mode audible levels",
+"sum": "Private-mode signaling uses different level criteria than public mode.",
+"tags": [
+"audible"
+],
+"reasons": [
+"No alarm"
+],
+"types": [
+"horn",
+"spkstrobe"
+]
+},
+{
+"id": "72-18.4.3",
+"code": "NFPA 72",
+"section": "18.4.3",
+"title": "Sleeping area audible",
+"sum": "Sleeping areas may require low-frequency or higher-level awakening signals.",
+"tags": [
+"sleeping audible"
+],
+"reasons": [
+"No alarm",
+"Wrong location"
+],
+"types": [
+"horn",
+"spkstrobe"
+]
+},
+{
+"id": "72-18.4.4",
+"code": "NFPA 72",
+"section": "18.4.4",
+"title": "Average / maximum ambient",
+"sum": "Design audible levels relative to average and maximum ambient sound.",
+"tags": [
+"audible ambient"
+],
+"reasons": [
+"Wrong location",
+"No alarm"
+],
+"types": [
+"horn",
+"spkstrobe",
+"linearray"
+]
+},
+{
+"id": "72-18.5.1",
+"code": "NFPA 72",
+"section": "18.5.1",
+"title": "Visible appliance general",
+"sum": "Visible notification appliances must be listed and of the correct candela.",
+"tags": [
+"strobe"
+],
+"reasons": [
+"Damaged",
+"Missing"
+],
+"types": [
+"strobe",
+"horn",
+"spkstrobe"
+]
+},
+{
+"id": "72-18.5.3",
+"code": "NFPA 72",
+"section": "18.5.3",
+"title": "Wall strobe location",
+"sum": "Wall-mounted strobes follow height and spacing rules for the room.",
+"tags": [
+"strobe wall"
+],
+"reasons": [
+"Wrong location",
+"Missing"
+],
+"types": [
+"strobe",
+"horn",
+"spkstrobe"
+]
+},
+{
+"id": "72-18.5.4",
+"code": "NFPA 72",
+"section": "18.5.4",
+"title": "Ceiling strobe location",
+"sum": "Ceiling strobes use spacing based on candela and ceiling height.",
+"tags": [
+"strobe ceiling"
+],
+"reasons": [
+"Wrong location",
+"Missing"
+],
+"types": [
+"strobe",
+"spkstrobe"
+]
+},
+{
+"id": "72-18.5.5.4",
+"code": "NFPA 72",
+"section": "18.5.5.4",
+"title": "Strobe flash rate",
+"sum": "Flash rate must stay within the listed synchronization requirements.",
+"tags": [
+"strobe sync"
+],
+"reasons": [
+"Damaged"
+],
+"types": [
+"strobe",
+"horn",
+"spkstrobe"
+]
+},
+{
+"id": "72-18.6",
+"code": "NFPA 72",
+"section": "18.6",
+"title": "Textual visible appliances",
+"sum": "Text displays used for notification must be readable for the application.",
+"tags": [
+"textual"
+],
+"reasons": [
+"Wrong location",
+"Damaged"
+],
+"types": [
+"other"
+]
+},
+{
+"id": "72-18.7",
+"code": "NFPA 72",
+"section": "18.7",
+"title": "Tactile notification",
+"sum": "Tactile appliances supplement audible/visible where required.",
+"tags": [
+"tactile"
+],
+"reasons": [
+"Missing",
+"Damaged"
+],
+"types": [
+"other"
+]
+},
+{
+"id": "72-18.8",
+"code": "NFPA 72",
+"section": "18.8",
+"title": "Exit marking audible navigation",
+"sum": "Directional sounders used for exit marking follow their chapter rules.",
+"tags": [
+"exit marking"
+],
+"reasons": [
+"Wrong location",
+"No alarm"
+],
+"types": [
+"horn"
+]
+},
+{
+"id": "72-18.9",
+"code": "NFPA 72",
+"section": "18.9",
+"title": "Voice notification appliances",
+"sum": "Loudspeakers used for emergency voice must support intelligibility goals.",
+"tags": [
+"voice"
+],
+"reasons": [
+"No alarm",
+"Wrong location"
+],
+"types": [
+"spkstrobe",
+"linearray"
+]
+},
+{
+"id": "72-18.11",
+"code": "NFPA 72",
+"section": "18.11",
+"title": "Notification appliance circuits supervision",
+"sum": "NAC wiring must be supervised for integrity.",
+"tags": [
+"NAC"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"horn",
+"strobe",
+"spkstrobe",
+"panel"
+]
+},
+{
+"id": "72-10.3.1",
+"code": "NFPA 72",
+"section": "10.3.1",
+"title": "Equipment conditions",
+"sum": "Equipment must remain free of conditions that impair intended operation.",
+"tags": [
+"condition"
+],
+"reasons": [
+"Damaged",
+"Dirty/needs cleaning"
+],
+"types": []
+},
+{
+"id": "72-10.3.3",
+"code": "NFPA 72",
+"section": "10.3.3",
+"title": "Listing of equipment",
+"sum": "Use fire alarm equipment listed for the purpose.",
+"tags": [
+"listing"
+],
+"reasons": [
+"Damaged",
+"Missing"
+],
+"types": []
+},
+{
+"id": "72-10.4.2",
+"code": "NFPA 72",
+"section": "10.4.2",
+"title": "Impairment coordinator",
+"sum": "Assign responsibility for managing impairments when systems are out of service.",
+"tags": [
+"impairment"
+],
+"reasons": [
+"Missing",
+"Trouble",
+"Damaged"
+],
+"types": []
+},
+{
+"id": "72-10.4.3",
+"code": "NFPA 72",
+"section": "10.4.3",
+"title": "Tagging impairments",
+"sum": "Impaired systems or circuits are tagged and tracked until restored.",
+"tags": [
+"impairment tag"
+],
+"reasons": [
+"Missing",
+"Damaged",
+"Trouble"
+],
+"types": []
+},
+{
+"id": "72-10.5.1",
+"code": "NFPA 72",
+"section": "10.5.1",
+"title": "Alarm signal initiation",
+"sum": "Alarm signals must be initiated by required devices and processed by the control unit.",
+"tags": [
+"alarm"
+],
+"reasons": [
+"No alarm"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.5.2",
+"code": "NFPA 72",
+"section": "10.5.2",
+"title": "Alarm notification actuation",
+"sum": "Notification circuits actuate as required for the system type.",
+"tags": [
+"notification"
+],
+"reasons": [
+"No alarm"
+],
+"types": [
+"panel",
+"horn",
+"strobe"
+]
+},
+{
+"id": "72-10.5.3",
+"code": "NFPA 72",
+"section": "10.5.3",
+"title": "Alarm signal display",
+"sum": "Control units display alarm status distinctly for operators.",
+"tags": [
+"display"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.5.4",
+"code": "NFPA 72",
+"section": "10.5.4",
+"title": "Alarm signal deactivation controls",
+"sum": "Access to silence/reset controls must be restricted appropriately.",
+"tags": [
+"silence"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.5.6",
+"code": "NFPA 72",
+"section": "10.5.6",
+"title": "Presignal / positive alarm sequence",
+"sum": "Special alarm sequences require AHJ approval and listed features.",
+"tags": [
+"PAS"
+],
+"reasons": [
+"No alarm"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.6.1",
+"code": "NFPA 72",
+"section": "10.6.1",
+"title": "Power supply general",
+"sum": "Primary and secondary supplies must support the system load.",
+"tags": [
+"power"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.6.2",
+"code": "NFPA 72",
+"section": "10.6.2",
+"title": "Primary power source",
+"sum": "Dedicated branch circuits feed the fire alarm primary power where required.",
+"tags": [
+"primary power"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.6.3",
+"code": "NFPA 72",
+"section": "10.6.3",
+"title": "Secondary power capacity",
+"sum": "Batteries or generators must carry the required standby and alarm load times.",
+"tags": [
+"battery capacity"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.6.4",
+"code": "NFPA 72",
+"section": "10.6.4",
+"title": "Battery storage / marking",
+"sum": "Batteries must be marked, ventilated as needed, and protected.",
+"tags": [
+"battery"
+],
+"reasons": [
+"Damaged",
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.6.5",
+"code": "NFPA 72",
+"section": "10.6.5",
+"title": "Engine-driven generators",
+"sum": "Where used as secondary power, generators meet capacity and transfer rules.",
+"tags": [
+"generator"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.6.6",
+"code": "NFPA 72",
+"section": "10.6.6",
+"title": "Continuity of power",
+"sum": "Transfer to secondary power must not lose required functions.",
+"tags": [
+"power transfer"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.6.7",
+"code": "NFPA 72",
+"section": "10.6.7",
+"title": "Power supply monitoring",
+"sum": "Loss of primary power must create a trouble signal.",
+"tags": [
+"power trouble"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.6.8",
+"code": "NFPA 72",
+"section": "10.6.8",
+"title": "Overcurrent protection",
+"sum": "Protect fire alarm power circuits with appropriate overcurrent devices.",
+"tags": [
+"overcurrent"
+],
+"reasons": [
+"Trouble",
+"Damaged"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.6.9",
+"code": "NFPA 72",
+"section": "10.6.9",
+"title": "Power supply location",
+"sum": "Locate power supplies where accessible for ITM.",
+"tags": [
+"power access"
+],
+"reasons": [
+"Obstructed"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.6.10",
+"code": "NFPA 72",
+"section": "10.6.10",
+"title": "Battery calculations",
+"sum": "Keep battery calculations current with the installed load.",
+"tags": [
+"battery calc"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.10.1",
+"code": "NFPA 72",
+"section": "10.10.1",
+"title": "Distinct signals",
+"sum": "Alarm, supervisory, and trouble signals must be distinguishable.",
+"tags": [
+"signals"
+],
+"reasons": [
+"Trouble",
+"No alarm"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.11",
+"code": "NFPA 72",
+"section": "10.11",
+"title": "Protected premises response",
+"sum": "Required responses (notify, shut down, unlock, etc.) must occur on alarm.",
+"tags": [
+"response"
+],
+"reasons": [
+"No alarm"
+],
+"types": [
+"relay",
+"module",
+"panel"
+]
+},
+{
+"id": "72-10.12",
+"code": "NFPA 72",
+"section": "10.12",
+"title": "Notification appliance circuit performance",
+"sum": "NACs must deliver required power without overload.",
+"tags": [
+"NAC load"
+],
+"reasons": [
+"Trouble",
+"No alarm"
+],
+"types": [
+"panel",
+"horn",
+"strobe"
+]
+},
+{
+"id": "72-10.14",
+"code": "NFPA 72",
+"section": "10.14",
+"title": "Trouble signals",
+"sum": "Trouble conditions must be indicated and logged as required.",
+"tags": [
+"trouble"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.15",
+"code": "NFPA 72",
+"section": "10.15",
+"title": "Supervisory signals",
+"sum": "Supervisory off-normal conditions must be distinct from alarms.",
+"tags": [
+"supervisory"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"tamper",
+"panel"
+]
+},
+{
+"id": "72-10.18.1",
+"code": "NFPA 72",
+"section": "10.18.1",
+"title": "Initiating device circuit integrity",
+"sum": "IDCs are supervised for open and ground faults.",
+"tags": [
+"IDC"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel",
+"module"
+]
+},
+{
+"id": "72-10.18.2",
+"code": "NFPA 72",
+"section": "10.18.2",
+"title": "Signaling line circuit integrity",
+"sum": "SLCs are supervised and support required styles/classes.",
+"tags": [
+"SLC"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.18.3",
+"code": "NFPA 72",
+"section": "10.18.3",
+"title": "Notification appliance circuit integrity",
+"sum": "NACs are supervised for integrity.",
+"tags": [
+"NAC integrity"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.19",
+"code": "NFPA 72",
+"section": "10.19",
+"title": "Combination systems",
+"sum": "Fire alarm functions in combination systems remain prioritized.",
+"tags": [
+"combination"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-24.3.1",
+"code": "NFPA 72",
+"section": "24.3.1",
+"title": "ECS general requirements",
+"sum": "Emergency communications systems provide voice and other messaging to occupants.",
+"tags": [
+"ECS"
+],
+"reasons": [
+"No alarm"
+],
+"types": [
+"panel",
+"spkstrobe",
+"linearray"
+]
+},
+{
+"id": "72-24.4",
+"code": "NFPA 72",
+"section": "24.4",
+"title": "One-way ECS",
+"sum": "One-way voice systems deliver emergency messages to coverage zones.",
+"tags": [
+"EVAC"
+],
+"reasons": [
+"No alarm",
+"Wrong location"
+],
+"types": [
+"spkstrobe",
+"linearray"
+]
+},
+{
+"id": "72-24.4.2",
+"code": "NFPA 72",
+"section": "24.4.2",
+"title": "Speaker circuit performance",
+"sum": "Speaker circuits support required intelligibility and supervision.",
+"tags": [
+"speaker circuit"
+],
+"reasons": [
+"Trouble",
+"No alarm"
+],
+"types": [
+"spkstrobe",
+"linearray",
+"panel"
+]
+},
+{
+"id": "72-24.5",
+"code": "NFPA 72",
+"section": "24.5",
+"title": "Two-way in-building communications",
+"sum": "Firefighter phones / two-way systems meet survivability and operation rules.",
+"tags": [
+"firefighter phone"
+],
+"reasons": [
+"Trouble",
+"Damaged"
+],
+"types": [
+"other",
+"panel"
+]
+},
+{
+"id": "72-24.6",
+"code": "NFPA 72",
+"section": "24.6",
+"title": "Mass notification systems",
+"sum": "MNS interfaces and prioritization follow ECS chapter requirements.",
+"tags": [
+"MNS"
+],
+"reasons": [
+"No alarm"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-24.8",
+"code": "NFPA 72",
+"section": "24.8",
+"title": "Wide-area MNS",
+"sum": "Wide-area notification has additional performance criteria.",
+"tags": [
+"MNS wide"
+],
+"reasons": [
+"No alarm"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-24.3.5",
+"code": "NFPA 72",
+"section": "24.3.5",
+"title": "Intelligibility",
+"sum": "Voice messages must be intelligible in required acoustically distinguishable spaces.",
+"tags": [
+"intelligibility"
+],
+"reasons": [
+"No alarm",
+"Wrong location"
+],
+"types": [
+"spkstrobe",
+"linearray"
+]
+},
+{
+"id": "72-24.3.6",
+"code": "NFPA 72",
+"section": "24.3.6",
+"title": "Message content / prioritization",
+"sum": "Emergency messages override non-emergency audio as required.",
+"tags": [
+"message priority"
+],
+"reasons": [
+"No alarm"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-21.2.1",
+"code": "NFPA 72",
+"section": "21.2.1",
+"title": "Elevator recall general",
+"sum": "Smoke detection initiates Phase I recall where required.",
+"tags": [
+"elevator"
+],
+"reasons": [
+"No alarm",
+"Missing"
+],
+"types": [
+"smoke",
+"module",
+"relay"
+]
+},
+{
+"id": "72-21.2.2",
+"code": "NFPA 72",
+"section": "21.2.2",
+"title": "Elevator lobby / machine room detectors",
+"sum": "Lobby and machine-room/hoistway detection feeds recall logic.",
+"tags": [
+"elevator smoke"
+],
+"reasons": [
+"Wrong location",
+"No alarm"
+],
+"types": [
+"smoke"
+]
+},
+{
+"id": "72-21.3.1",
+"code": "NFPA 72",
+"section": "21.3.1",
+"title": "Elevator shutdown",
+"sum": "Shunt-trip / power shutdown interfaces follow the design and listing.",
+"tags": [
+"elevator shunt"
+],
+"reasons": [
+"No alarm",
+"Trouble"
+],
+"types": [
+"heat",
+"relay",
+"module"
+]
+},
+{
+"id": "72-21.4",
+"code": "NFPA 72",
+"section": "21.4",
+"title": "Elevator warning signs / operation",
+"sum": "Related elevator fire-service features coordinate with the fire alarm.",
+"tags": [
+"elevator"
+],
+"reasons": [
+"Damaged"
+],
+"types": [
+"other"
+]
+},
+{
+"id": "72-21.7.1",
+"code": "NFPA 72",
+"section": "21.7.1",
+"title": "Door release on alarm",
+"sum": "Hold-open doors release on alarm or smoke detection as designed.",
+"tags": [
+"door release"
+],
+"reasons": [
+"No alarm",
+"Damaged"
+],
+"types": [
+"doorholder",
+"smoke"
+]
+},
+{
+"id": "72-21.7.2",
+"code": "NFPA 72",
+"section": "21.7.2",
+"title": "Door closing / latching",
+"sum": "Released doors must close and latch to protect the opening.",
+"tags": [
+"door close"
+],
+"reasons": [
+"Damaged",
+"Obstructed"
+],
+"types": [
+"doorholder"
+]
+},
+{
+"id": "72-21.8",
+"code": "NFPA 72",
+"section": "21.8",
+"title": "Exit unlocking / access control",
+"sum": "Access-controlled egress doors unlock on fire alarm where required.",
+"tags": [
+"access control"
+],
+"reasons": [
+"No alarm",
+"Trouble"
+],
+"types": [
+"relay",
+"module"
+]
+},
+{
+"id": "72-21.9",
+"code": "NFPA 72",
+"section": "21.9",
+"title": "HVAC systems control",
+"sum": "Fan shutdown and damper control follow the sequence of operation.",
+"tags": [
+"HVAC"
+],
+"reasons": [
+"No alarm"
+],
+"types": [
+"duct",
+"relay",
+"module"
+]
+},
+{
+"id": "72-21.10",
+"code": "NFPA 72",
+"section": "21.10",
+"title": "Smoke control system interfaces",
+"sum": "Fire alarm interfaces to smoke control must be verified.",
+"tags": [
+"smoke control"
+],
+"reasons": [
+"No alarm",
+"Trouble"
+],
+"types": [
+"relay",
+"module",
+"panel"
+]
+},
+{
+"id": "72-21.11",
+"code": "NFPA 72",
+"section": "21.11",
+"title": "Damper control",
+"sum": "Fire/smoke dampers actuated by the fire alarm operate as required.",
+"tags": [
+"damper"
+],
+"reasons": [
+"No alarm",
+"Damaged"
+],
+"types": [
+"relay",
+"module",
+"duct"
+]
+},
+{
+"id": "72-17.10.3",
+"code": "NFPA 72",
+"section": "17.10.3",
+"title": "Pressure supervisory",
+"sum": "Pressure supervisory devices report off-normal sprinkler pressures.",
+"tags": [
+"pressure"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"tamper",
+"other"
+]
+},
+{
+"id": "72-23.8.1",
+"code": "NFPA 72",
+"section": "23.8.1",
+"title": "Addressable device response",
+"sum": "Addressable devices must answer roll-call and report the correct address.",
+"tags": [
+"addressable"
+],
+"reasons": [
+"Trouble",
+"Wrong location",
+"No alarm"
+],
+"types": [
+"smoke",
+"heat",
+"pull",
+"module"
+]
+},
+{
+"id": "72-23.8.2",
+"code": "NFPA 72",
+"section": "23.8.2",
+"title": "Device mapping / labels",
+"sum": "Device labels at the panel match field addresses and locations.",
+"tags": [
+"label"
+],
+"reasons": [
+"Wrong location"
+],
+"types": [
+"smoke",
+"heat",
+"pull",
+"module",
+"panel"
+]
+},
+{
+"id": "72-23.8.3",
+"code": "NFPA 72",
+"section": "23.8.3",
+"title": "Control module operation",
+"sum": "Control modules energize/de-energize supervised outputs as programmed.",
+"tags": [
+"control module"
+],
+"reasons": [
+"No alarm",
+"Trouble"
+],
+"types": [
+"module",
+"relay"
+]
+},
+{
+"id": "72-23.8.4",
+"code": "NFPA 72",
+"section": "23.8.4",
+"title": "Monitor module operation",
+"sum": "Monitor modules report contact state changes correctly.",
+"tags": [
+"monitor module"
+],
+"reasons": [
+"No alarm",
+"Trouble"
+],
+"types": [
+"module"
+]
+},
+{
+"id": "72-23.8.5",
+"code": "NFPA 72",
+"section": "23.8.5",
+"title": "Isolator modules",
+"sum": "Fault isolators limit SLC outage scope when installed.",
+"tags": [
+"isolator"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"module"
+]
+},
+{
+"id": "72-12.3",
+"code": "NFPA 72",
+"section": "12.3",
+"title": "Pathway survivability",
+"sum": "Circuits needing survivability use the required level of protection.",
+"tags": [
+"survivability"
+],
+"reasons": [
+"Trouble",
+"Damaged"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-12.3.3",
+"code": "NFPA 72",
+"section": "12.3.3",
+"title": "Pathway classification",
+"sum": "Class A/B/N/X pathways meet their style performance.",
+"tags": [
+"pathway class"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-26.2",
+"code": "NFPA 72",
+"section": "26.2",
+"title": "Digital alarm communicator transmitters",
+"sum": "DACTs send alarm/supervisory/trouble to the supervising station.",
+"tags": [
+"DACT"
+],
+"reasons": [
+"No alarm",
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-26.3",
+"code": "NFPA 72",
+"section": "26.3",
+"title": "Other transmission technologies",
+"sum": "Alternate communicators meet performance and supervision rules.",
+"tags": [
+"communicator"
+],
+"reasons": [
+"No alarm",
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-26.4",
+"code": "NFPA 72",
+"section": "26.4",
+"title": "Supervising station receipt",
+"sum": "Signals must be received, displayed, and acted on at the station.",
+"tags": [
+"supervising station"
+],
+"reasons": [
+"No alarm",
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-26.6",
+"code": "NFPA 72",
+"section": "26.6",
+"title": "Communication path monitoring",
+"sum": "Single and multiple communication paths are monitored for integrity.",
+"tags": [
+"comm path"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-26.6.3",
+"code": "NFPA 72",
+"section": "26.6.3",
+"title": "Secondary communication path",
+"sum": "Where required, a second path takes over when the primary fails.",
+"tags": [
+"comm backup"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-10.5.7",
+"code": "NFPA 72",
+"section": "10.5.7",
+"title": "Off-premises signaling",
+"sum": "Alarm signals retransmitted off-premises must be verified during testing.",
+"tags": [
+"off premises"
+],
+"reasons": [
+"No alarm",
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-7.2",
+"code": "NFPA 72",
+"section": "7.2",
+"title": "Documentation general",
+"sum": "System documentation supports design, acceptance, and ITM.",
+"tags": [
+"docs"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-7.2.1",
+"code": "NFPA 72",
+"section": "7.2.1",
+"title": "Design documents",
+"sum": "Shop drawings and calculations reflect the installed system.",
+"tags": [
+"design docs"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-7.3",
+"code": "NFPA 72",
+"section": "7.3",
+"title": "Shop drawings",
+"sum": "Shop drawings identify devices, circuits, and sequences.",
+"tags": [
+"shop drawings"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-7.4.1",
+"code": "NFPA 72",
+"section": "7.4.1",
+"title": "Completion documentation",
+"sum": "Completion documents accompany new and modified systems.",
+"tags": [
+"completion"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-7.5.1",
+"code": "NFPA 72",
+"section": "7.5.1",
+"title": "ITM record content",
+"sum": "ITM records identify what was inspected/tested and the results.",
+"tags": [
+"ITM records"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-7.5.2",
+"code": "NFPA 72",
+"section": "7.5.2",
+"title": "ITM record retention",
+"sum": "Retain records for the AHJ and the required retention period.",
+"tags": [
+"retention"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-7.5.6",
+"code": "NFPA 72",
+"section": "7.5.6",
+"title": "Impairment documentation",
+"sum": "Document impairments, notifications, and restorations.",
+"tags": [
+"impairment docs"
+],
+"reasons": [
+"Missing",
+"Damaged",
+"Trouble"
+],
+"types": []
+},
+{
+"id": "72-7.7.1",
+"code": "NFPA 72",
+"section": "7.7.1",
+"title": "Acceptance test documentation",
+"sum": "Acceptance tests are documented before occupancy when required.",
+"tags": [
+"acceptance docs"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-14.2.1.1",
+"code": "NFPA 72",
+"section": "14.2.1.1",
+"title": "Visual inspection purpose",
+"sum": "Visual inspections look for damage, obstruction, and obvious problems.",
+"tags": [
+"visual"
+],
+"reasons": [
+"Damaged",
+"Obstructed",
+"Missing"
+],
+"types": []
+},
+{
+"id": "72-14.2.1.2",
+"code": "NFPA 72",
+"section": "14.2.1.2",
+"title": "Inspection frequencies table",
+"sum": "Component inspection intervals follow Chapter 14 tables.",
+"tags": [
+"frequency"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-14.2.2.1",
+"code": "NFPA 72",
+"section": "14.2.2.1",
+"title": "Testing purpose",
+"sum": "Tests confirm devices and systems still function as intended.",
+"tags": [
+"testing"
+],
+"reasons": [
+"No alarm"
+],
+"types": []
+},
+{
+"id": "72-14.2.2.2",
+"code": "NFPA 72",
+"section": "14.2.2.2",
+"title": "Testing frequencies table",
+"sum": "Component test intervals follow Chapter 14 tables.",
+"tags": [
+"test frequency"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-14.2.3",
+"code": "NFPA 72",
+"section": "14.2.3",
+"title": "Maintenance purpose",
+"sum": "Maintenance keeps equipment operable between tests.",
+"tags": [
+"maintenance"
+],
+"reasons": [
+"Damaged",
+"Dirty/needs cleaning"
+],
+"types": []
+},
+{
+"id": "72-14.3.2",
+"code": "NFPA 72",
+"section": "14.3.2",
+"title": "Notify occupants before test",
+"sum": "Notify building occupants when testing will sound alarms.",
+"tags": [
+"notify occupants"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-14.3.3",
+"code": "NFPA 72",
+"section": "14.3.3",
+"title": "Notify supervising station",
+"sum": "Notify the supervising station before and after signal-producing tests.",
+"tags": [
+"notify station"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-14.3.5",
+"code": "NFPA 72",
+"section": "14.3.5",
+"title": "System left out of service",
+"sum": "Do not leave the system impaired after testing without impairment procedures.",
+"tags": [
+"impairment after test"
+],
+"reasons": [
+"Trouble"
+],
+"types": []
+},
+{
+"id": "72-14.4.1",
+"code": "NFPA 72",
+"section": "14.4.1",
+"title": "Extent of testing",
+"sum": "Test the devices and functions required for the inspection type.",
+"tags": [
+"extent"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-14.4.2",
+"code": "NFPA 72",
+"section": "14.4.2",
+"title": "Initial / reacceptance testing",
+"sum": "New work and modifications get reacceptance testing of affected portions.",
+"tags": [
+"reacceptance"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-14.4.3.1",
+"code": "NFPA 72",
+"section": "14.4.3.1",
+"title": "Inspect for damage / obstruction",
+"sum": "Look for physical damage, paint, dust, and blocked devices.",
+"tags": [
+"visual condition"
+],
+"reasons": [
+"Damaged",
+"Obstructed",
+"Dirty/needs cleaning"
+],
+"types": []
+},
+{
+"id": "72-14.4.3.2",
+"code": "NFPA 72",
+"section": "14.4.3.2",
+"title": "Inspect mounting / location",
+"sum": "Confirm devices remain securely mounted in the correct location.",
+"tags": [
+"mounting"
+],
+"reasons": [
+"Damaged",
+"Wrong location",
+"Missing"
+],
+"types": []
+},
+{
+"id": "72-14.4.5.1",
+"code": "NFPA 72",
+"section": "14.4.5.1",
+"title": "Smoke functional test",
+"sum": "Functionally test smoke detectors by a listed method.",
+"tags": [
+"smoke test"
+],
+"reasons": [
+"No alarm",
+"Dirty/needs cleaning"
+],
+"types": [
+"smoke",
+"duct"
+]
+},
+{
+"id": "72-14.4.5.2",
+"code": "NFPA 72",
+"section": "14.4.5.2",
+"title": "Smoke sensitivity method",
+"sum": "Measure or verify sensitivity within the listed range.",
+"tags": [
+"sensitivity"
+],
+"reasons": [
+"Dirty/needs cleaning",
+"No alarm"
+],
+"types": [
+"smoke"
+]
+},
+{
+"id": "72-14.4.10.1",
+"code": "NFPA 72",
+"section": "14.4.10.1",
+"title": "Audible appliance test",
+"sum": "Confirm audible output during testing of notification appliances.",
+"tags": [
+"audible test"
+],
+"reasons": [
+"No alarm",
+"Damaged"
+],
+"types": [
+"horn",
+"spkstrobe",
+"linearray"
+]
+},
+{
+"id": "72-14.4.10.2",
+"code": "NFPA 72",
+"section": "14.4.10.2",
+"title": "Visible appliance test",
+"sum": "Confirm strobe operation and candela setting during testing.",
+"tags": [
+"visible test"
+],
+"reasons": [
+"No alarm",
+"Damaged",
+"Wrong location"
+],
+"types": [
+"strobe",
+"horn",
+"spkstrobe"
+]
+},
+{
+"id": "72-14.4.10.3",
+"code": "NFPA 72",
+"section": "14.4.10.3",
+"title": "Sync verification",
+"sum": "Verify synchronization across visible appliances in a field of view.",
+"tags": [
+"sync test"
+],
+"reasons": [
+"Damaged"
+],
+"types": [
+"strobe",
+"horn",
+"spkstrobe"
+]
+},
+{
+"id": "72-14.4.11.1",
+"code": "NFPA 72",
+"section": "14.4.11.1",
+"title": "Interface equipment test",
+"sum": "Test fire-safety control interfaces (doors, fans, dampers, elevators).",
+"tags": [
+"interface test"
+],
+"reasons": [
+"No alarm",
+"Trouble"
+],
+"types": [
+"module",
+"relay",
+"doorholder",
+"duct"
+]
+},
+{
+"id": "72-14.4.12.1",
+"code": "NFPA 72",
+"section": "14.4.12.1",
+"title": "Control unit functions test",
+"sum": "Exercise alarm, trouble, supervisory, and reset functions at the FACP.",
+"tags": [
+"FACP test"
+],
+"reasons": [
+"Trouble",
+"No alarm"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-14.4.12.2",
+"code": "NFPA 72",
+"section": "14.4.12.2",
+"title": "Control unit software / firmware",
+"sum": "Record software revisions during ITM when applicable.",
+"tags": [
+"firmware"
+],
+"reasons": [],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-14.4.13.1",
+"code": "NFPA 72",
+"section": "14.4.13.1",
+"title": "Battery inspection",
+"sum": "Inspect batteries for corrosion, leaks, and date codes.",
+"tags": [
+"battery inspect"
+],
+"reasons": [
+"Damaged",
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-14.4.13.2",
+"code": "NFPA 72",
+"section": "14.4.13.2",
+"title": "Battery load test",
+"sum": "Load-test secondary batteries per Chapter 14 methods.",
+"tags": [
+"battery test"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-14.4.14.1",
+"code": "NFPA 72",
+"section": "14.4.14.1",
+"title": "Off-premises transmission test",
+"sum": "Confirm receipt of alarm/supervisory/trouble at the supervising station.",
+"tags": [
+"comm test"
+],
+"reasons": [
+"No alarm",
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-14.5.1",
+"code": "NFPA 72",
+"section": "14.5.1",
+"title": "Maintenance procedures",
+"sum": "Follow manufacturer maintenance for cleaning and replacement.",
+"tags": [
+"maint procedure"
+],
+"reasons": [
+"Dirty/needs cleaning",
+"Damaged"
+],
+"types": []
+},
+{
+"id": "72-14.5.2",
+"code": "NFPA 72",
+"section": "14.5.2",
+"title": "Replacement parts",
+"sum": "Replace failed devices with compatible listed parts.",
+"tags": [
+"replacement"
+],
+"reasons": [
+"Damaged",
+"Missing"
+],
+"types": []
+},
+{
+"id": "72-14.6.1",
+"code": "NFPA 72",
+"section": "14.6.1",
+"title": "ITM personnel qualification",
+"sum": "ITM is performed by qualified persons.",
+"tags": [
+"qualification"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-14.6.2",
+"code": "NFPA 72",
+"section": "14.6.2",
+"title": "System information availability",
+"sum": "Provide drawings and documents to ITM personnel.",
+"tags": [
+"docs available"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "IFC-907.1",
+"code": "IFC",
+"section": "907.1",
+"title": "General fire alarm (IFC)",
+"sum": "IFC general requirements for fire alarm and detection systems.",
+"tags": [
+"IFC"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "IFC-907.3",
+"code": "IFC",
+"section": "907.3",
+"title": "Fire safety functions",
+"sum": "Fire alarm systems perform fire-safety functions required by the code.",
+"tags": [
+"IFC functions"
+],
+"reasons": [
+"No alarm"
+],
+"types": [
+"relay",
+"module"
+]
+},
+{
+"id": "IFC-907.4",
+"code": "IFC",
+"section": "907.4",
+"title": "Initiating devices (IFC)",
+"sum": "Initiating devices are provided where IFC requires detection or manual alarm.",
+"tags": [
+"IFC initiating"
+],
+"reasons": [
+"Missing"
+],
+"types": [
+"smoke",
+"pull",
+"heat"
+]
+},
+{
+"id": "IFC-907.5.2",
+"code": "IFC",
+"section": "907.5.2",
+"title": "Alarm notification appliances (IFC)",
+"sum": "Occupant notification appliances meet IFC audible/visible criteria.",
+"tags": [
+"IFC notification"
+],
+"reasons": [
+"Missing",
+"No alarm",
+"Wrong location"
+],
+"types": [
+"horn",
+"strobe",
+"spkstrobe"
+]
+},
+{
+"id": "IFC-907.6",
+"code": "IFC",
+"section": "907.6",
+"title": "Installation (IFC)",
+"sum": "Fire alarm installation must follow NFPA 72 as referenced by IFC.",
+"tags": [
+"IFC install"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "IFC-907.6.3",
+"code": "IFC",
+"section": "907.6.3",
+"title": "Zones / annunciation",
+"sum": "Zoning and annunciation meet IFC where required.",
+"tags": [
+"zoning"
+],
+"reasons": [
+"Wrong location"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "IFC-907.6.4",
+"code": "IFC",
+"section": "907.6.4",
+"title": "Access",
+"sum": "Fire alarm equipment remains accessible for inspection and maintenance.",
+"tags": [
+"access"
+],
+"reasons": [
+"Obstructed"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "IFC-907.6.5",
+"code": "IFC",
+"section": "907.6.5",
+"title": "Monitoring (IFC)",
+"sum": "Where required, fire alarm systems are monitored.",
+"tags": [
+"IFC monitoring"
+],
+"reasons": [
+"Trouble",
+"No alarm"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "IFC-901.4",
+"code": "IFC",
+"section": "901.4",
+"title": "Installation of fire protection systems",
+"sum": "Fire protection systems are installed per the applicable standards.",
+"tags": [
+"IFC install"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "IFC-901.5",
+"code": "IFC",
+"section": "901.5",
+"title": "Acceptance / commissioning",
+"sum": "Acceptance tests are required before use of fire protection systems.",
+"tags": [
+"IFC acceptance"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "IFC-901.8",
+"code": "IFC",
+"section": "901.8",
+"title": "Removal of or tampering with equipment",
+"sum": "Do not remove or tamper with required fire protection equipment.",
+"tags": [
+"tampering"
+],
+"reasons": [
+"Missing",
+"Damaged"
+],
+"types": []
+},
+{
+"id": "IBC-907.2",
+"code": "IBC",
+"section": "907.2",
+"title": "Where required (IBC)",
+"sum": "IBC occupancy rules determine when a fire alarm system is required.",
+"tags": [
+"IBC required"
+],
+"reasons": [
+"Missing"
+],
+"types": []
+},
+{
+"id": "IBC-907.5",
+"code": "IBC",
+"section": "907.5",
+"title": "Occupant notification (IBC)",
+"sum": "IBC occupant notification requirements for new buildings.",
+"tags": [
+"IBC notification"
+],
+"reasons": [
+"Missing",
+"Wrong location"
+],
+"types": [
+"horn",
+"strobe"
+]
+},
+{
+"id": "IBC-907.6",
+"code": "IBC",
+"section": "907.6",
+"title": "Installation (IBC)",
+"sum": "IBC references NFPA 72 for installation requirements.",
+"tags": [
+"IBC install"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "IBC-903.4.1",
+"code": "IBC",
+"section": "903.4.1",
+"title": "Monitoring of sprinkler systems",
+"sum": "Sprinkler supervisory and waterflow signals go to an approved location.",
+"tags": [
+"sprinkler monitor"
+],
+"reasons": [
+"Trouble",
+"No alarm"
+],
+"types": [
+"flow",
+"tamper"
+]
+},
+{
+"id": "IBC-903.4.2",
+"code": "IBC",
+"section": "903.4.2",
+"title": "Alarms for sprinklers",
+"sum": "Outside or occupant alarms for sprinkler waterflow where required.",
+"tags": [
+"sprinkler alarm"
+],
+"reasons": [
+"No alarm",
+"Missing"
+],
+"types": [
+"flow",
+"horn"
+]
+},
+{
+"id": "72-17.4.2",
+"code": "NFPA 72",
+"section": "17.4.2",
+"title": "Initiating device accessibility",
+"sum": "Devices must remain accessible for inspection and testing.",
+"tags": [
+"accessibility"
+],
+"reasons": [
+"Obstructed"
+],
+"types": []
+},
+{
+"id": "72-17.4.3",
+"code": "NFPA 72",
+"section": "17.4.3",
+"title": "Initiating device protection from damage",
+"sum": "Protect devices from mechanical damage without blocking performance.",
+"tags": [
+"protection"
+],
+"reasons": [
+"Damaged",
+"Obstructed"
+],
+"types": []
+},
+{
+"id": "72-17.5.2.1",
+"code": "NFPA 72",
+"section": "17.5.2.1",
+"title": "Total coverage smoke",
+"sum": "Total coverage designs follow the chapter's total-coverage rules.",
+"tags": [
+"total coverage"
+],
+"reasons": [
+"Missing",
+"Wrong location"
+],
+"types": [
+"smoke"
+]
+},
+{
+"id": "72-17.5.2.2",
+"code": "NFPA 72",
+"section": "17.5.2.2",
+"title": "Partial coverage smoke",
+"sum": "Partial coverage is limited to the areas defined by the design.",
+"tags": [
+"partial coverage"
+],
+"reasons": [
+"Missing",
+"Wrong location"
+],
+"types": [
+"smoke"
+]
+},
+{
+"id": "72-17.5.2.3",
+"code": "NFPA 72",
+"section": "17.5.2.3",
+"title": "Selective coverage smoke",
+"sum": "Selective coverage protects defined hazards or rooms only.",
+"tags": [
+"selective coverage"
+],
+"reasons": [
+"Missing"
+],
+"types": [
+"smoke"
+]
+},
+{
+"id": "72-18.4.5",
+"code": "NFPA 72",
+"section": "18.4.5",
+"title": "Telephone / paging system use",
+"sum": "Telephone or paging systems used for notification meet fire alarm rules when so used.",
+"tags": [
+"paging"
+],
+"reasons": [
+"No alarm"
+],
+"types": [
+"spkstrobe",
+"panel"
+]
+},
+{
+"id": "72-10.4.4",
+"code": "NFPA 72",
+"section": "10.4.4",
+"title": "Preplanned impairment programs",
+"sum": "Preplanned impairments follow a written program with notifications.",
+"tags": [
+"impairment plan"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-10.4.5",
+"code": "NFPA 72",
+"section": "10.4.5",
+"title": "Emergency impairments",
+"sum": "Emergency impairments require immediate notifications and compensatory measures.",
+"tags": [
+"emergency impairment"
+],
+"reasons": [
+"Damaged",
+"Missing",
+"Trouble"
+],
+"types": []
+},
+{
+"id": "72-10.4.6",
+"code": "NFPA 72",
+"section": "10.4.6",
+"title": "Restoring impaired systems",
+"sum": "Verify operation when restoring a system after impairment.",
+"tags": [
+"restore"
+],
+"reasons": [],
+"types": []
+},
+{
+"id": "72-14.2.4",
+"code": "NFPA 72",
+"section": "14.2.4",
+"title": "Refurbishing / rebuilding",
+"sum": "Refurbished equipment follows manufacturer and listing constraints.",
+"tags": [
+"refurbish"
+],
+"reasons": [
+"Damaged"
+],
+"types": []
+},
+{
+"id": "72-14.4.15",
+"code": "NFPA 72",
+"section": "14.4.15",
+"title": "Emergency communications testing",
+"sum": "Test ECS/MNS functions on the Chapter 14 schedule.",
+"tags": [
+"ECS test"
+],
+"reasons": [
+"No alarm"
+],
+"types": [
+"panel",
+"spkstrobe",
+"linearray"
+]
+},
+{
+"id": "72-14.4.16",
+"code": "NFPA 72",
+"section": "14.4.16",
+"title": "Two-way communication testing",
+"sum": "Test firefighter telephones and area-of-refuge communications.",
+"tags": [
+"two-way test"
+],
+"reasons": [
+"No alarm",
+"Damaged"
+],
+"types": [
+"other"
+]
+},
+{
+"id": "72-23.4.2",
+"code": "NFPA 72",
+"section": "23.4.2",
+"title": "Actuation of fire safety functions",
+"sum": "Protected premises systems actuate required fire-safety functions.",
+"tags": [
+"fire safety function"
+],
+"reasons": [
+"No alarm"
+],
+"types": [
+"relay",
+"module",
+"panel"
+]
+},
+{
+"id": "72-23.5",
+"code": "NFPA 72",
+"section": "23.5",
+"title": "Circuit styles for protected premises",
+"sum": "Use permitted circuit styles for initiating, signaling, and notification.",
+"tags": [
+"circuit styles"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-23.6.1",
+"code": "NFPA 72",
+"section": "23.6.1",
+"title": "SLC wiring",
+"sum": "Install SLC wiring by the methods required for the pathway class.",
+"tags": [
+"SLC wiring"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-12.2.1",
+"code": "NFPA 72",
+"section": "12.2.1",
+"title": "Pathway reliability",
+"sum": "Pathways support the reliability needed for the system type.",
+"tags": [
+"pathway"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-12.2.3",
+"code": "NFPA 72",
+"section": "12.2.3",
+"title": "Shared pathway limitations",
+"sum": "Sharing pathways with non-fire systems is limited.",
+"tags": [
+"shared pathway"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"panel"
+]
+},
+{
+"id": "72-17.4.1",
+"code": "NFPA 72",
+"section": "17.4.1",
+"title": "Initiating device performance",
+"sum": "Initiating devices must perform within their listed operating range.",
+"tags": [
+"performance"
+],
+"reasons": [
+"No alarm",
+"Damaged"
+],
+"types": []
+},
+{
+"id": "72-18.1",
+"code": "NFPA 72",
+"section": "18.1",
+"title": "Notification appliance scope",
+"sum": "Chapter 18 covers appliances that alert occupants or staff.",
+"tags": [
+"notification scope"
+],
+"reasons": [],
+"types": [
+"horn",
+"strobe",
+"spkstrobe"
+]
+},
+{
+"id": "72-18.2",
+"code": "NFPA 72",
+"section": "18.2",
+"title": "Notification appliance listing",
+"sum": "Notification appliances must be listed for fire alarm use.",
+"tags": [
+"listing NAC"
+],
+"reasons": [
+"Damaged"
+],
+"types": [
+"horn",
+"strobe",
+"spkstrobe"
+]
+},
+{
+"id": "72-10.3.2",
+"code": "NFPA 72",
+"section": "10.3.2",
+"title": "Impairment of systems by other work",
+"sum": "Other construction or system work must not impair fire alarm operation unnoticed.",
+"tags": [
+"impairment work"
+],
+"reasons": [
+"Damaged",
+"Obstructed",
+"Trouble"
+],
+"types": []
+},
+{
+"id": "72-10.20",
+"code": "NFPA 72",
+"section": "10.20",
+"title": "In-building emergency radio / amplification",
+"sum": "ERCES impairments and supervision interact with life-safety where provided.",
+"tags": [
+"ERCES"
+],
+"reasons": [
+"Trouble"
+],
+"types": [
+"other"
+]
+},
+{
+"id": "IFC-510",
+"code": "IFC",
+"section": "510",
+"title": "Emergency responder radio coverage",
+"sum": "IFC provisions for in-building radio coverage systems where required.",
+"tags": [
+"IFC radio"
+],
+"reasons": [
+"Trouble",
+"Missing"
+],
+"types": []
+},
+{
+"id": "IFC-907.5.2.1",
+"code": "IFC",
+"section": "907.5.2.1",
+"title": "Audible alarms (IFC detail)",
+"sum": "IFC audible alarm criteria for occupant notification.",
+"tags": [
+"IFC audible"
+],
+"reasons": [
+"No alarm",
+"Wrong location"
+],
+"types": [
+"horn",
+"spkstrobe"
+]
+},
+{
+"id": "IFC-907.5.2.2",
+"code": "IFC",
+"section": "907.5.2.2",
+"title": "Emergency voice/alarm (IFC)",
+"sum": "IFC emergency voice/alarm communication requirements.",
+"tags": [
+"IFC EVAC"
+],
+"reasons": [
+"No alarm"
+],
+"types": [
+"spkstrobe",
+"linearray",
+"panel"
+]
+},
+{
+"id": "IFC-907.5.2.3",
+"code": "IFC",
+"section": "907.5.2.3",
+"title": "Visible alarms (IFC)",
+"sum": "IFC visible alarm criteria including accessible features.",
+"tags": [
+"IFC visible"
+],
+"reasons": [
+"Missing",
+"Wrong location"
+],
+"types": [
+"strobe",
+"spkstrobe"
+]
+}
+]

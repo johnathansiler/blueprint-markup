@@ -25,6 +25,7 @@
  <button data-t="pin" class="tool" title="Pin">📍</button>
  <select id="pinType" title="Pin type"></select>
  <input type="color" id="color" value="#e11d48" title="Color">
+ <label class="opac" title="Opacity"><span id="opacLbl">50%</span><input type="range" id="opac" min="15" max="100" value="50"></label>
  <select id="size" title="Line / text size"><option value="0">S</option><option value="1" selected>M</option><option value="2">L</option><option value="3">XL</option></select>
  <button id="del" class="tool" title="Delete selected">🗑</button>
  <button id="undo" class="tool" title="Undo (Ctrl+Z)" disabled>↶</button>
@@ -65,7 +66,9 @@
  <label>Address <input name="address"></label><label>Loop <input name="loop"></label>
  <div class="row ckbar"><b id="ckHead">Checklist</b><span class="sp"></span><button type="button" class="btn" id="passAll">✔ Pass all</button></div><div id="checks"></div>
  <label>Status <small style="color:#94a3b8">(auto from checklist; can override)</small><select name="status"><option>not tested</option><option>in progress</option><option>passed</option><option>failed</option></select></label><small id="testedInfo" style="color:#94a3b8"></small>
- <div id="failBox" hidden><label>Fail reason <select name="reason"><option value="">— pick —</option><option>No alarm</option><option>Trouble</option><option>Damaged</option><option>Missing</option><option>Obstructed</option><option>Wrong location</option><option>Dirty/needs cleaning</option><option>Other</option></select></label><label>Reason detail <input name="reasonText" placeholder="optional"></label><label>Severity <select name="severity"><option>Non-critical</option><option>Critical</option></select></label></div>
+ <div id="failBox" hidden><label>Fail reason <select name="reason"><option value="">— pick —</option><option>No alarm</option><option>Trouble</option><option>Damaged</option><option>Missing</option><option>Obstructed</option><option>Wrong location</option><option>Dirty/needs cleaning</option><option>Other</option></select></label><label>Reason detail <input name="reasonText" placeholder="optional"></label><label>Severity <select name="severity"><option>Non-critical</option><option>Critical</option></select></label>
+ <div class="row" style="margin-top:6px"><b>Code references</b><span class="sp"></span><button type="button" class="btn" id="codeAdd">＋ Code</button></div>
+ <small id="codeHint" style="color:#94a3b8"></small><div id="codeSug"></div><div id="codeList"></div></div>
  <label>Notes <textarea name="notes" rows="3"></textarea></label>
  <div class="row"><label class="btn">📷 Photo<input type="file" id="addPhoto" accept="image/*" capture="environment" hidden></label>
  <label class="btn">🎥 Video<input type="file" id="addVideo" accept="video/*" capture="environment" hidden></label>
@@ -80,6 +83,12 @@
  <hr style="border-color:#334155"><b>Export plans</b><small style="display:block;color:#94a3b8">Marked-up PDFs of every page of every plan (markups, pins, legend). Uses each plan's 👁 settings when "apply to exports" is on there.</small>
  <div class="lay"><label><input type="radio" name="exMode" value="one" checked> One combined PDF</label><label><input type="radio" name="exMode" value="zip"> ZIP: one PDF per plan</label><label><input type="checkbox" id="exOrig"> Include the original clean PDFs (gives a ZIP)</label></div>
  <div class="row"><small id="exInfo" style="color:#94a3b8"></small><span class="sp"></span><button type="button" class="btn pri" id="exGo">📑 Export plans</button></div>
+ <hr style="border-color:#334155"><b>NFPA 72 documents</b>
+ <small style="display:block;color:#94a3b8">Blueprint Markup reports that map to NFPA 72 Ch. 14 ITM and Ch. 7 documentation requirements. <b>Not official NFPA forms.</b></small>
+ <div class="row" style="flex-wrap:wrap;gap:6px;margin-top:6px"><button type="button" class="btn" id="jobBtn">🏛 Job info</button>
+ <button type="button" class="btn pri" id="nfpaItm">Inspection &amp; Testing Record</button>
+ <button type="button" class="btn pri" id="nfpaComp">Record of Completion</button>
+ <button type="button" class="btn pri" id="nfpaDef">Deficiency / Impairments</button></div>
  <div class="row"><span class="sp"></span><button class="btn" value="cancel">Close</button></div></form></dialog>
 <dialog id="openDlg"><form method="dialog"><h3 style="margin:4px 0">📥 Open project file</h3><div id="opInfo"></div>
  <div class="lay"><label><input type="radio" name="opMode" value="new" checked> Open as a new project</label><label><input type="radio" name="opMode" value="replace"> Replace the current project <b id="opCur"></b></label></div>
@@ -87,7 +96,38 @@
 <dialog id="bulkDlg"><form method="dialog"><h3 style="margin:4px 0">✎ Edit <span id="bkN"></span></h3>
  <div id="bkM"><b>Markups</b><label><input type="checkbox" id="bkCOn" style="width:auto"> Color <input type="color" id="bkColor" value="#e11d48" style="width:60px;display:inline-block;vertical-align:middle"></label>
  <label>Line / text size <select id="bkSize"><option value="">unchanged</option><option value="0">S</option><option value="1">M</option><option value="2">L</option><option value="3">XL</option></select></label></div>
+ <label><input type="checkbox" id="bkOOn" style="width:auto"> Opacity <input type="range" id="bkOpac" min="15" max="100" value="50" style="width:100px;vertical-align:middle"> <span id="bkOpacLbl">50%</span></label>
  <div id="bkP"><b>Pins</b><label>Status <select id="bkStatus"><option value="">unchanged</option><option>passed</option><option>failed</option><option>in progress</option><option>not tested</option></select></label>
  <label>Type <select id="bkType"><option value="">unchanged</option></select></label><label>Loop <input id="bkLoop" placeholder="unchanged"></label></div>
  <div class="row"><span class="sp"></span><button class="btn" value="cancel">Cancel</button><button type="button" class="btn pri" id="bkGo">Apply</button></div></form></dialog>
-<script src="vendor/pdf.min.js"></script><script src="vendor/jspdf.umd.min.js"></script><script src="app.js"></script></body></html>
+<dialog id="jobDlg"><form method="dialog" id="jobForm"><h3 style="margin:4px 0">🏛 Job / system info</h3>
+ <small style="color:#94a3b8">Stored with this project. Used on NFPA 72-mapped reports.</small>
+ <label>Building name <input name="building"></label>
+ <label>Address <input name="address"></label>
+ <label>AHJ / AHJ contact <input name="ahj"></label>
+ <label>System type <select name="systemType"><option>Protected premises (local)</option><option>Central station</option><option>Remote supervising station</option><option>Proprietary supervising station</option><option>Emergency communications (ECS)</option><option>Other</option></select></label>
+ <label>Monitoring company <input name="monitoring"></label>
+ <label>Control panel make / model <input name="panel"></label>
+ <label>Inspection type <select name="inspType"><option>Annual</option><option>Semi-annual</option><option>Quarterly</option><option>Monthly</option><option>Acceptance / new</option><option>Reacceptance</option><option>Other</option></select></label>
+ <label>Inspection date <input name="inspDate" type="date"></label>
+ <label>Inspector license # <input name="license"></label>
+ <label>Owner / contact <input name="owner"></label>
+ <div class="row"><span class="sp"></span><button class="btn" value="cancel">Cancel</button><button class="btn pri" id="jobSave" value="ok">Save</button></div></form></dialog>
+<dialog id="codeDlg"><form method="dialog"><h3 style="margin:4px 0">Code reference</h3>
+ <small style="color:#94a3b8">Built-in catalog + your personal library. Multi-select by tapping several entries. Critical deficiencies need at least one code.</small>
+ <input id="codeQ" placeholder="Search NFPA 72 / IFC / IBC / personal…" autocomplete="off">
+ <div id="codeFav" class="row" style="flex-wrap:wrap;gap:4px;margin:6px 0"></div>
+ <div id="codeSugDlg"></div><div id="codeHits" style="max-height:28vh;overflow:auto"></div>
+ <details id="myCodeBox" style="margin-top:8px"><summary><b>📌 Personal code library</b> <small style="color:#94a3b8">(from your NFPA 72 book)</small></summary>
+  <div id="myCodeList" style="max-height:20vh;overflow:auto;margin:6px 0"></div>
+  <b>Add entry</b>
+  <div class="row"><label style="flex:1">Standard<select id="myCodeStd"><option>NFPA 72</option><option>IFC</option><option>IBC</option><option>NFPA 70</option><option>Other</option></select></label>
+  <label style="flex:1">Section #<input id="myCodeSec" placeholder="e.g. 14.4.5.3"></label></div>
+  <label>Short title <input id="myCodeTitle" placeholder="your plain-language title"></label>
+  <label>Full wording (you type from your book) <textarea id="myCodeText" rows="3" placeholder="Paste or type the requirement text you need on reports"></textarea></label>
+  <label>Linked fail reasons <select id="myCodeReasons" multiple size="4"><option>No alarm</option><option>Trouble</option><option>Damaged</option><option>Missing</option><option>Obstructed</option><option>Wrong location</option><option>Dirty/needs cleaning</option><option>Other</option></select></label>
+  <label>Linked device types <select id="myCodeTypes" multiple size="5"></select></label>
+  <div class="row"><span class="sp"></span><button type="button" class="btn pri" id="myCodeSave">Save to my library</button></div>
+ </details>
+ <div class="row"><span class="sp"></span><button class="btn" value="cancel">Done</button></div></form></dialog>
+<script src="vendor/pdf.min.js"></script><script src="vendor/jspdf.umd.min.js"></script><script src="vendor/pdf-lib.min.js"></script><script src="app.js"></script></body></html>
