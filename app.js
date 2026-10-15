@@ -45,6 +45,7 @@ const cv=$('#cv'),ctx=cv.getContext('2d'),stage=$('#stage');
 let plan=null,pdf=null,page=1,pageW=0,pageH=0,curPH=()=>pageH,bmp=null,bmpScale=0,renderTask=null,renderTimer=0,baseBm=null,tile=null,project=null;
 const ov=$('#ov'),octx=ov.getContext('2d');
 let markups=[],pins=[],view={s:1,x:0,y:0},tool='pan',sel=null,draft=null,ghosts=[],det=null,detW=null,msel=[],clip=null,pasteArm=false,lpT=0,walk=null;
+let MK_SNAP=true; // markup geometry snap (lines/arrows/shapes/clouds)
 const LAY0={shapes:true,clouds:true,text:true,pins:true,labels:true,ghosts:true,only:'',dim:false,exp:false};let lay={...LAY0};
 const dpr=()=>window.devicePixelRatio||1;
 let lastW=0,lastH=0;function resize(){const w=stage.clientWidth,h=stage.clientHeight;if(lastW&&pageW){const cx=(lastW/2-view.x)/view.s,cy=(lastH/2-view.y)/view.s;view.x=w/2-cx*view.s;view.y=h/2-cy*view.s}const wide=innerWidth>=800;if(wide!==resize.wide){resize.wide=wide;$('#panel').hidden=!wide;renderList()}lastW=w;lastH=h;cv.width=ov.width=w*dpr();cv.height=ov.height=h*dpr();draw();scheduleRender()}
@@ -193,16 +194,16 @@ stage.addEventListener('pointerdown',e=>{if(!plan||e.target!==cv)return;stage.se
  if(tool==='pin'){gesture={type:'pin',...start,w};return}
  if(tool==='text'){gesture={type:'text',...start,w};return}
  if(tool==='measure'){if(MS.mode==='path'&&!MS.cal){gesture={type:'mpath',...start,w,v:{...view}};return}const p0=mSnap(w);draft={id:uid(),planId:plan.id,page,type:MS.cal?'cal':MS.mode==='area'?'darea':'dim',x1:p0.x,y1:p0.y,x2:p0.x,y2:p0.y,color:MS.cal?'#0ea5e9':$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false)};gesture={type:'draw',...start};mRead();return}
- draft={id:uid(),planId:plan.id,page,type:tool,x1:w.x,y1:w.y,x2:w.x,y2:w.y,color:$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false)};gesture={type:'draw',...start}});
+ {let p=w;if(['rect','ellipse','cloud','arrow','line','check'].includes(tool))p=mkSnap(w);draft={id:uid(),planId:plan.id,page,type:tool,x1:p.x,y1:p.y,x2:p.x,y2:p.y,color:$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false)};gesture={type:'draw',...start}}});
 stage.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,{x:e.offsetX,y:e.offsetY});if(!gesture)return;
  if(gesture.type==='pinch'&&ptrs.size>=2){const[a,b]=[...ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y),c={x:(a.x+b.x)/2,y:(a.y+b.y)/2},g=gesture,s=clampS(g.v.s*d/g.d),wx=(g.c.x-g.v.x)/g.v.s,wy=(g.c.y-g.v.y)/g.v.s;view={s,x:c.x-wx*s,y:c.y-wy*s};fastView();return}
  const dx=e.offsetX-gesture.sx,dy=e.offsetY-gesture.sy;if(Math.hypot(dx,dy)>4)gesture.moved=true;
  if(gesture.type==='pan'){view.x=gesture.v.x+dx;view.y=gesture.v.y+dy;fastView()}
  else if(gesture.type==='mmove'){const ddx=dx/view.s,ddy=dy/view.s;gesture.items.forEach((o,i)=>{const g=gesture.orig[i];if('x1'in g){o.x1=g.x1+ddx;o.x2=g.x2+ddx;o.y1=g.y1+ddy;o.y2=g.y2+ddy}else{o.x=g.x+ddx;o.y=g.y+ddy}});requestDraw(false)}
  else if(gesture.type==='mtap'){if(gesture.moved){view.x=gesture.v.x+dx;view.y=gesture.v.y+dy;fastView()}}
- else if(gesture.type==='move'){const o=sel.o,g=gesture.orig,ddx=dx/view.s,ddy=dy/view.s;if(sel.kind==='p'){o.x=g.x+ddx;o.y=g.y+ddy}else{o.x1=g.x1+ddx;o.x2=g.x2+ddx;o.y1=g.y1+ddy;o.y2=g.y2+ddy}requestDraw(false)}
- else if(gesture.type==='resize'){resizeTo(sel.o,gesture.orig,gesture.h,toW(e.offsetX,e.offsetY));requestDraw(false)}
- else if(gesture.type==='draw'){let w=toW(e.offsetX,e.offsetY);if(draft.type==='dim'||draft.type==='cal')w=mSnap(w,draft);draft.x2=w.x;draft.y2=w.y;mRead();requestDraw(false)}
+ else if(gesture.type==='move'){const o=sel.o,g=gesture.orig;let ddx=dx/view.s,ddy=dy/view.s;if(sel.kind==='p'){o.x=g.x+ddx;o.y=g.y+ddy}else{const s=mkSnapMove(g,ddx,ddy,o);ddx=s.ddx;ddy=s.ddy;o.x1=g.x1+ddx;o.x2=g.x2+ddx;o.y1=g.y1+ddy;o.y2=g.y2+ddy}requestDraw(false)}
+ else if(gesture.type==='resize'){resizeTo(sel.o,gesture.orig,gesture.h,mkSnap(toW(e.offsetX,e.offsetY),sel.o));requestDraw(false)}
+ else if(gesture.type==='draw'){let w=toW(e.offsetX,e.offsetY);if(draft.type==='dim'||draft.type==='cal')w=mSnap(w,draft);else if(['rect','ellipse','cloud','arrow','line','check'].includes(draft.type))w=mkSnap(w,draft);draft.x2=w.x;draft.y2=w.y;mRead();requestDraw(false)}
  else if(gesture.type==='mpath'){if(gesture.moved){view.x=gesture.v.x+dx;view.y=gesture.v.y+dy;fastView()}else{MS.hover=toW(e.offsetX,e.offsetY)}}
  else if(gesture.type==='box'){gesture.w1=toW(e.offsetX,e.offsetY);showBox()}});
 async function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);clearTimeout(lpT);const g=gesture;if(g?.type==='pinch'){if(ptrs.size===0){gesture=null;requestDraw()}return}gesture=null;if(!g)return;if(g.type==='pan')requestDraw();
@@ -225,6 +226,7 @@ stage.addEventListener('pointerup',up);stage.addEventListener('pointercancel',up
 const clampS=s=>Math.max(.02,Math.min(s,40));
 stage.addEventListener('wheel',e=>{if(!plan)return;e.preventDefault();const k=Math.exp(-e.deltaY*(e.ctrlKey?.01:.0015)),s=clampS(view.s*k),wx=(e.offsetX-view.x)/view.s,wy=(e.offsetY-view.y)/view.s;view={s,x:e.offsetX-wx*s,y:e.offsetY-wy*s};fastView()},{passive:false});
 document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{tool=b.dataset.t;document.querySelectorAll('[data-t]').forEach(x=>x.classList.toggle('on',x===b));if(tool!=='select'){sel=null;draw()}if(tool==='pin'){$('#opac').value=50;opacLbl()}else if(tool!=='select'&&tool!=='pan'){$('#opac').value=80;opacLbl()}});
+(function(){const b=$('#mkSnap');if(!b)return;const sync=()=>{b.classList.toggle('on',MK_SNAP);b.title=MK_SNAP?'Snap markups on — click to free-place':'Snap off — click to snap together';b.setAttribute('aria-pressed',MK_SNAP?'true':'false')};sync();b.onclick=()=>{MK_SNAP=!MK_SNAP;sync();put('meta',MK_SNAP,'mksnap')};get('meta','mksnap').then(v=>{if(v===true||v===false){MK_SNAP=v;sync()}}).catch(()=>{})})();
 async function deleteSel(){if(msel.length)return bulkDelete();if(!sel)return;const o=sel.o,k=sel.kind;sel=null;if(o.planId!==plan?.id)return;if(k==='p')await deletePin(o);else await change('markups',o,null);draw()}
 $('#del').onclick=deleteSel;document.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)||dlg.open)return;if(e.key==='Delete'||e.key==='Backspace')deleteSel();else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo()}else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo()}});
 const SZ=[2,3,5,8],SZT=[12,18,28,40];
@@ -677,7 +679,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v19',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v20',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -971,6 +973,27 @@ function drawMeasure(c,m,s){const P=mPts(m),lw=c.lineWidth;
  c.setLineDash([]);let lab=m.label||mLabel(m);if(m===draft&&MS.refs){const n=refNote(mRealLen(m));if(n)lab+=' · '+n}
  let lx,ly;if(m.type==='darea'){lx=(m.x1+m.x2)/2;ly=(m.y1+m.y2)/2}else if(m.type==='dpath'){[lx,ly]=P[P.length-1]}else{lx=(m.x1+m.x2)/2;ly=(m.y1+m.y2)/2}
  const fs=13/s;c.font=`bold ${fs}px sans-serif`;c.textAlign='center';c.textBaseline='bottom';c.lineJoin='round';c.lineWidth=fs/3.5;c.strokeStyle='#fff';c.globalAlpha=Math.max(c.globalAlpha,.9);c.strokeText(lab,lx,ly-4/s);c.fillStyle=m.type==='cal'?'#0369a1':m.color;c.fillText(lab,lx,ly-4/s)}
+function mkGeom(self){const pts=[],segs=[];
+ const box=(x1,y1,x2,y2)=>{const x=Math.min(x1,x2),y=Math.min(y1,y2),X=Math.max(x1,x2),Y=Math.max(y1,y2);
+  pts.push([x,y],[X,y],[X,Y],[x,Y],[(x+X)/2,y],[(x+X)/2,Y],[x,(y+Y)/2],[X,(y+Y)/2]);
+  segs.push([x,y,X,y],[X,y,X,Y],[X,Y,x,Y],[x,Y,x,y])};
+ for(const m of markups){if(m===self||(self&&self.id&&m.id===self.id)||m.page!==page||!mVis(m))continue;
+  if(m.type==='arrow'||m.type==='line'||m.type==='dim'||m.type==='cal'){pts.push([m.x1,m.y1],[m.x2,m.y2]);segs.push([m.x1,m.y1,m.x2,m.y2]);continue}
+  if(m.type==='rect'||m.type==='cloud'||m.type==='ellipse'||m.type==='check'||m.type==='darea'){box(m.x1,m.y1,m.x2,m.y2);continue}
+  if(m.type==='dpath'){const P=mPts(m);for(const p of P)pts.push(p);for(let i=1;i<P.length;i++)segs.push([P[i-1][0],P[i-1][1],P[i][0],P[i][1]])}}
+ if(self&&self.x1!=null)pts.push([self.x1,self.y1]);return{pts,segs}}
+function mkSnap(w,self){if(!MK_SNAP)return w;const r=14/view.s,{pts,segs}=mkGeom(self);let best=null,bd=r;
+ // Prefer corners/endpoints over bare edge projections so shapes meet at corners when close
+ for(const[x,y]of pts){const d=Math.hypot(x-w.x,y-w.y);if(d<bd){bd=d;best={x,y}}}
+ if(best)return best;
+ for(const[x1,y1,x2,y2]of segs){const dx=x2-x1,dy=y2-y1,t=Math.max(0,Math.min(1,((w.x-x1)*dx+(w.y-y1)*dy)/((dx*dx+dy*dy)||1)));const x=x1+t*dx,y=y1+t*dy,d=Math.hypot(x-w.x,y-w.y);if(d<bd){bd=d;best={x,y}}}
+ if(best)return best;let sx=null,sy=null,bdx=r,bdy=r;
+ for(const[x,y]of pts){if(Math.abs(x-w.x)<bdx){bdx=Math.abs(x-w.x);sx=x}if(Math.abs(y-w.y)<bdy){bdy=Math.abs(y-w.y);sy=y}}
+ return(sx!=null||sy!=null)?{x:sx??w.x,y:sy??w.y}:w}
+function mkSnapMove(g,ddx,ddy,self){if(!MK_SNAP)return{ddx,ddy};const r=14/view.s;let best=null,bd=r;
+ const trial={type:g.type,x1:g.x1+ddx,y1:g.y1+ddy,x2:g.x2+ddx,y2:g.y2+ddy};
+ for(const[hx,hy]of handles(trial)){const s=mkSnap({x:hx,y:hy},self||trial);const d=Math.hypot(s.x-hx,s.y-hy);if(d<bd&&d>1e-6){bd=d;best={dx:s.x-hx,dy:s.y-hy}}}
+ return best?{ddx:ddx+best.dx,ddy:ddy+best.dy}:{ddx,ddy}}
 function mSnap(w,self){if(!MS.snap)return w;const r=14/view.s;let best=null,bd=r;for(const m of markups){if(m===self||m.page!==page||!['dim','dpath','darea','line','arrow'].includes(m.type))continue;
  const P=m.type==='darea'?[[m.x1,m.y1],[m.x2,m.y1],[m.x2,m.y2],[m.x1,m.y2]]:mPts(m);for(const[x,y]of P){const d=Math.hypot(x-w.x,y-w.y);if(d<bd){bd=d;best={x,y}}}}
  for(const[x,y]of MS.pts){const d=Math.hypot(x-w.x,y-w.y);if(d<bd&&MS.pts.length>2){bd=d;best={x,y}}}return best||w}
@@ -1088,19 +1111,21 @@ stage.addEventListener('pointerdown',e=>{if(ted&&e.target!==ted.el)tedEnd(true)}
 var OFFMAP=null,SCRNOFF=null;
 const PANEL_T=new Set(['panel','dact','fatc','panelbox']),PANEL_G=new Set(['facp','dact','fatc','panelbox']);
 function isPanelO(o){return PANEL_T.has(o.type)||PANEL_G.has(o.g)}
-function pinOffsets(list){const M=new Map(),r=pinR(),n=list.length;if(n<2)return M;const key=o=>o.id||o;
- // v19: minimal nudge. Markers start on their device; only pairs whose badges would overlap are pushed apart,
- // just far enough to clear (D), with a spring back home. Isolated pins get no offset and no leader.
- const D=r*2.06,X=list.map(o=>o.x),Y=list.map(o=>o.y),C=D*3,G=new Map();
+function pinFoot(o){const r=pinR(),hw=pinLW()/2;if(o.g!=null)return pinR()*1.15+1.25;if(o.type==='heat'||o.type==='pull')return r*1.2+hw;return r+hw}
+function pinOffsets(list){const M=new Map(),n=list.length;if(n<2)return M;const key=o=>o.id||o;
+ // v20: min center distance = sum of outer radii (fill r + half stroke). Canvas strokes are centered on the
+ // path, so D≈r*2 left borders overlapping. Status dots ignored (may touch neighbors). Tiny gap for AA.
+ const R=list.map(pinFoot),gap=.4,Dmax=Math.max(...R)*2+gap,X=list.map(o=>o.x),Y=list.map(o=>o.y),C=Math.max(Dmax,1)*3,G=new Map();
  list.forEach((o,i)=>{const k=Math.floor(o.x/C)+','+Math.floor(o.y/C);(G.get(k)||G.set(k,[]).get(k)).push(i)});
  const nb=list.map((o,i)=>{const a=[],gx=Math.floor(o.x/C),gy=Math.floor(o.y/C);for(let u=-1;u<=1;u++)for(let v=-1;v<=1;v++)for(const j of G.get((gx+u)+','+(gy+v))||[])if(j>i)a.push(j);return a});
  let moved=false;for(let it=0;it<90;it++){let any=false;
-  for(let i=0;i<n;i++)for(const j of nb[i]){let dx=X[j]-X[i],dy=Y[j]-Y[i],d=Math.hypot(dx,dy);if(d>=D)continue;any=true;
-   if(d<1e-3){const t=(i*2.399+j*.7);dx=Math.cos(t);dy=Math.sin(t);d=1e-3}const p=(D-d)/2*1.02/d;X[i]-=dx*p;Y[i]-=dy*p;X[j]+=dx*p;Y[j]+=dy*p}
+  for(let i=0;i<n;i++)for(const j of nb[i]){let dx=X[j]-X[i],dy=Y[j]-Y[i],d=Math.hypot(dx,dy),need=R[i]+R[j]+gap;if(d>=need)continue;any=true;
+   if(d<1e-3){const t=(i*2.399+j*.7);dx=Math.cos(t);dy=Math.sin(t);d=1}const ux=dx/d,uy=dy/d,push=(need-d)/2*1.02;X[i]-=ux*push;Y[i]-=uy*push;X[j]+=ux*push;Y[j]+=uy*push}
   if(!any)break;moved=true;
   if(it<50)for(let i=0;i<n;i++){X[i]+=(list[i].x-X[i])*.04;Y[i]+=(list[i].y-Y[i])*.04}}
  if(!moved)return M;
- list.forEach((o,i)=>{const dx=X[i]-o.x,dy=Y[i]-o.y;if(Math.hypot(dx,dy)>r*.25)M.set(key(o),{dx,dy,cl:1})});
+ // Record any real nudge — old r*.25 threshold dropped sub-stroke moves and left borders overlapped
+ list.forEach((o,i)=>{const dx=X[i]-o.x,dy=Y[i]-o.y;if(Math.hypot(dx,dy)>.35)M.set(key(o),{dx,dy,cl:1})});
  return M}
 function drawLeader(c,x,y,X,Y,col){c.save();c.globalAlpha=Math.max(.7,c.globalAlpha);c.strokeStyle=col;c.lineWidth=1.2;c.beginPath();c.moveTo(x,y);c.lineTo(X,Y);c.stroke();c.fillStyle=col;c.strokeStyle='#fff';c.lineWidth=.8;c.beginPath();c.arc(x,y,2.4,0,7);c.fill();c.stroke();c.restore()}
 
