@@ -704,7 +704,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v31',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v32',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -821,11 +821,16 @@ function scoreCode(c,reason,type,ck){let s=0;const pers=!!c.personal;
 async function suggestCodes(){const all=await allCodeEntries();if(!cur)return;const reason=form.elements.reason?.value||cur.reason||'',type=form.elements.type?.value||cur.type||'',ck=failedCkText();
  const scored=all.map(c=>({c,s:scoreCode(c,reason,type,ck)})).filter(x=>x.s>0).sort((a,b)=>b.s-a.s||a.c.section.localeCompare(b.c.section,undefined,{numeric:true})).slice(0,8);
  const html=scored.length?'<small style="color:#94a3b8">Suggested (personal first)</small>'+scored.map(({c})=>`<button type="button" class="btn" data-id="${esc(c.id)}">${c.personal?'📌 ':''}<b>${esc(fmtCodeLine(c))}</b></button>`).join(''):'';
- for(const sel of['#codeSug','#codeSugDlg']){const box=$(sel);if(!box)continue;box.innerHTML=html;box.querySelectorAll('[data-id]').forEach(b=>b.onclick=e=>{e.preventDefault();addCodeById(b.dataset.id)})}}
+ SUG=scored.map(x=>x.c);renderCodes();for(const sel of['#codeSugDlg']){const box=$(sel);if(!box)continue;box.innerHTML=html;box.querySelectorAll('[data-id]').forEach(b=>b.onclick=e=>{e.preventDefault();addCodeById(b.dataset.id)})}}
 function codeHintUpd(){const el=$('#codeHint');if(!el)return;const crit=form.elements.severity.value==='Critical',n=cur?.codes?.length||0;
  el.textContent=crit?(n?'Critical — code reference attached.':'Critical — attach at least one code reference.'):(n?`${n} code reference(s).`:'Optional: attach NFPA 72 / IFC / IBC section references.')}
-function renderCodes(){const box=$('#codeList');if(!box||!cur)return;box.innerHTML=(cur.codes||[]).map((c,i)=>`<button type="button" class="chip" data-i="${i}" title="${esc(c.sum||c.text||'')}"><span><b>${esc(fmtCodeLine(c))}</b></span><span class="sp"></span>✕</button>`).join('')||'<small style="color:#64748b">No codes yet</small>';
- box.querySelectorAll('[data-i]').forEach(b=>b.onclick=e=>{e.preventDefault();cur.codes.splice(+b.dataset.i,1);renderCodes();codeHintUpd()});codeHintUpd()}
+let SUG=[];const ckey=c=>c.code+'|'+c.section;
+function renderCodes(){const box=$('#codeList');if(!box||!cur)return;const have=new Set((cur.codes||[]).map(ckey));const sug=SUG.filter(c=>!have.has(ckey(c)));
+ const row=(c,k,on,tag)=>`<label class="chip"><input type="checkbox" data-k="${k}" ${on?'checked':''} style="width:20px;height:20px;flex:none;margin:2px 4px 0 0"><span>${tag}<b>${esc(fmtCodeLine(c))}</b></span></label>`;
+ const items=(cur.codes||[]).map((c,i)=>row(c,'a'+i,true,''))+sug.map((c,i)=>row(c,'s'+i,false,'<small style="color:#94a3b8">Suggested · </small>'+(c.personal?'📌 ':'')));
+ box.innerHTML=items?items+`<div class="row" style="gap:6px"><button type="button" class="btn pri" id="codeConfirm">✓ Confirm selected</button><small style="color:#94a3b8">Unchecked codes are removed</small></div>`:'<small style="color:#64748b">No codes yet</small>';
+ const cf=$('#codeConfirm');if(cf)cf.onclick=e=>{e.preventDefault();const keep=[];box.querySelectorAll('input[data-k]').forEach(x=>{if(!x.checked)return;const k=x.dataset.k;if(k[0]==='a')keep.push(cur.codes[+k.slice(1)]);else{const c=sug[+k.slice(1)];keep.push({id:c.id,code:c.code,section:c.section,title:c.title,sum:c.sum||c.text||'',note:'',personal:!!c.personal})}});const rm=(cur.codes||[]).length+0;cur.codes=keep;SUG=[];renderCodes();toast(`${keep.length} code(s) confirmed`)};
+ codeHintUpd()}
 async function openCodePicker(){await loadCodes();$('#codeQ').value='';$('#codeDlg').showModal();renderCodeFav();suggestCodes();filterCodes('');renderMyCodesList();$('#codeQ').focus()}
 function renderCodeFav(){const box=$('#codeFav');const all=[...MY_CODES,...CODE_CAT];const favs=CODE_FAV.map(id=>all.find(c=>c.id===id)).filter(Boolean).slice(0,10);
  box.innerHTML=favs.length?'<small style="width:100%;color:#94a3b8">Recent</small>'+favs.map(c=>`<button type="button" class="chip" data-id="${esc(c.id)}">${c.personal?'📌 ':''}${esc(c.code)} ${esc(c.section)}</button>`).join(''):'';
