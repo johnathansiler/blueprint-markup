@@ -26,8 +26,17 @@ const CHECKS={smoke:['Alarm received at panel','Correct address/label at panel',
  jbox:['Cover in place and identified (red/FA)','Wiring secured, no damage','Accessible'],
  other:['Operates as intended','Correct address/label at panel','Physical condition OK']};
 let CKT={};const ckTpl=t=>CKT[t]||CHECKS[t]||CHECKS.other;const checkItems=t=>ckTpl(t).map(t=>({t,v:''}));
-const PIN_OP=.5,MK_OP=.8;const pinR=()=>9.6; // plan points — scales with zoom (constant on the blueprint); bpm-v25: 80% of prior 12
-const pinLW=()=>3.5; // plan-point stroke for pin ring
+const PIN_OP=.5,MK_OP=.8;const pinR=()=>9.6;
+// bpm-v26: pin silhouettes match the printed plan symbols (shape + size in plan points, measured from the fa.pdf legend:
+// hex smoke/duct/module ~15pt, flat flow/tamper diamond ~24x9, 13pt square for pull/notification/J/relay, wide boxes for panels/DH)
+const PSH={smoke:['hex',15,13],duct:['hex',15,13],module:['hex',15,13],heat:['circ',13,13],pull:['rect',13,13],horn:['rect',13,13],spkstrobe:['rect',13,13],strobe:['rect',13,13],linearray:['rect',13,13],
+ panel:['rect',26,13],dact:['rect',26,13],fatc:['rect',26,13],panelbox:['rect',26,13],doorholder:['rect',24,10],relay:['hex',15,13],jbox:['rect',13,13],surge:['rect',20,20],
+ flow:['dia',24,9],tamper:['dia',24,9],rai:['circ',6,6],other:['circ',12,12]};
+const PSC=1.3;const pshOf=t=>{const v=PSH[t]||PSH.other;return[v[0],v[1]*PSC,v[2]*PSC]};
+function pinPath(c,t){const[k,w,h]=pshOf(t),a=w/2,b=h/2;if(k==='rect')c.rect(-a,-b,w,h);else if(k==='dia'){c.moveTo(-a,0);c.lineTo(0,-b);c.lineTo(a,0);c.lineTo(0,b);c.closePath()}
+ else if(k==='hex'){c.moveTo(-a,0);c.lineTo(-a/2,-b);c.lineTo(a/2,-b);c.lineTo(a,0);c.lineTo(a/2,b);c.lineTo(-a/2,b);c.closePath()}else c.arc(0,0,a,0,7)}
+const pinHalf=t=>{const[k,w,h]=pshOf(t);return k==='circ'?w/2:k==='rect'?Math.hypot(w,h)/2:Math.max(w,h)/2}; // plan points — scales with zoom (constant on the blueprint); bpm-v25: 80% of prior 12
+const pinLW=()=>2; // plan-point stroke for pin ring
 const clampOp=v=>Math.max(.15,Math.min(1,+(v??1)));
 const opOf=(o,isPin)=>clampOp(o&&o.opacity!=null?o.opacity:(isPin?PIN_OP:MK_OP));
 
@@ -156,13 +165,12 @@ function resizeTo(m,o,h,w){if(isLine(m)){if(h===0){m.x1=w.x;m.y1=w.y}else{m.x2=w
  let x=L?w.x:x0,X=L?X0:w.x,y=T?w.y:y0,Y=T?Y0:w.y;m.x1=Math.min(x,X);m.x2=Math.max(x,X);m.y1=Math.min(y,Y);m.y2=Math.max(y,Y)}
 let CR=0;function drawPin(c,p,s,hl,bare,nolab){const T=TYPES[p.type]||TYPES.other,r=pinR();c.save();if(!bare)c.globalAlpha=opOf(p,true);const oo=!bare&&OFFMAP&&OFFMAP.get(p.id);if(oo)drawLeader(c,p.x,p.y,p.x+oo.dx,p.y+oo.dy,T.c);c.translate(p.x+(oo?oo.dx:0),p.y+(oo?oo.dy:0));if(CR)c.rotate(-CR);
  // s is kept for call-site compat; pin geometry is in plan points so it scales with view
- const sc=ST[p.status]||ST['not tested'];if(hl&&!bare){c.beginPath();c.arc(0,0,r*1.75,0,7);c.fillStyle='rgba(56,189,248,.35)';c.fill()}
- c.fillStyle=T.c;c.strokeStyle=bare?'#fff':sc;c.lineWidth=bare?2:pinLW();c.beginPath();
- if(T.sq)c.rect(-r,-r,2*r,2*r);else if(p.type==='heat'){c.moveTo(0,-r*1.2);c.lineTo(r*1.1,r*.8);c.lineTo(-r*1.1,r*.8);c.closePath()}else if(p.type==='pull'){c.moveTo(0,-r*1.2);c.lineTo(r*1.2,0);c.lineTo(0,r*1.2);c.lineTo(-r*1.2,0);c.closePath()}else c.arc(0,0,r,0,7);
+ const sc=ST[p.status]||ST['not tested'];if(hl&&!bare){c.beginPath();c.arc(0,0,pinHalf(p.type)+5,0,7);c.fillStyle='rgba(56,189,248,.35)';c.fill()}
+ c.fillStyle=T.c;c.strokeStyle=bare?'#fff':sc;c.lineWidth=bare?2:pinLW();c.beginPath();pinPath(c,p.type);
  c.fill();c.stroke();// bpm-v24+: badge is shape+color only, no type letters
 
- if(bare){c.restore();return}c.fillStyle=sc;c.strokeStyle='#fff';c.lineWidth=1.2;c.beginPath();c.arc(r*.95,-r*.95,4.5,0,7);c.fill();c.stroke();
- if(p.address&&!nolab&&(!oo||!oo.cl||hl||view.s>=2.5)){c.globalAlpha=1;c.font=`10px sans-serif`;c.textAlign='left';c.lineWidth=2.5;c.lineJoin='round';c.strokeStyle='#fff';c.strokeText(p.address,r*1.3,r*.3);c.fillStyle='#111';c.fillText(p.address,r*1.3,r*.3)}c.restore()}
+ if(bare){c.restore();return}c.fillStyle=sc;c.strokeStyle='#fff';c.lineWidth=1.2;c.beginPath();{const[,pw,ph]=pshOf(p.type);c.arc(pw/2,-ph/2,2.5,0,7)}c.fill();c.stroke();
+ if(p.address&&!nolab&&(!oo||!oo.cl||hl||view.s>=2.5)){c.globalAlpha=1;c.font=`10px sans-serif`;c.textAlign='left';c.lineWidth=2.5;c.lineJoin='round';c.strokeStyle='#fff';{const ax=pshOf(p.type)[1]/2+3;c.strokeText(p.address,ax,3);c.fillStyle='#111';c.fillText(p.address,ax,3)}}c.restore()}
 function setT(c){const d=dpr(),s=view.s*d,e=view.x*d,f=view.y*d;
  if(VR===90)c.setTransform(0,s,-s,0,s*pageH+e,f);else if(VR===180)c.setTransform(-s,0,0,-s,s*pageW+e,s*pageH+f);else if(VR===270)c.setTransform(0,-s,s,0,e,s*pageW+f);else c.setTransform(s,0,0,s,e,f)}
 function drawBase(){drawn={...view};cv.style.transform=ov.style.transform='';ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);if(!plan||!pageW)return;setT(ctx);
@@ -516,7 +524,7 @@ $('#ghAcc').onclick=async()=>{const g=curG;$('#ghDlg').close();if(g)await accept
 $('#ghRej').onclick=()=>{const g=curG;$('#ghDlg').close();if(g){if(g.fp)learn(g.fp,'none');ghosts=ghosts.filter(x=>x!==g);draw();renderGhostBar()}};
 $('#ghAllType').onclick=async()=>{const g=curG;$('#ghDlg').close();if(g)await acceptGhosts(ghosts.filter(x=>x.g===g.g))};
 async function acceptGhosts(list){if(!plan||!list.length)return;const out=[],used=[];for(const g of list){if(pins.some(p=>p.page===g.page&&Math.hypot(p.x-g.x,p.y-g.y)<14)||out.some(p=>p.page===g.page&&Math.hypot(p.x-g.x,p.y-g.y)<6)){used.push(g);continue}
-  const G=DG[g.g],boh=/_BOH/.test(g.det);out.push({id:uid(),planId:plan.id,page:g.page,x:g.x,y:g.y,type:G.t,address:'',loop:'',status:'not tested',notes:'Auto-detected'+(G.note?': '+G.note:'')+(boh?', back-of-house symbol':''),created:Date.now(),detected:g.det,detG:g.g,fp:g.fp,opacity:PIN_OP});used.push(g)}
+  const G=DG[g.g],boh=/_BOH/.test(g.det);out.push({id:uid(),planId:plan.id,page:g.page,x:g.x,y:g.y,type:G.t,address:'',loop:'',status:'not tested',notes:'',created:Date.now(),detected:g.det,detG:g.g,fp:g.fp,opacity:PIN_OP});used.push(g)}
  const ids=new Set(used.map(g=>g.id));ghosts=ghosts.filter(g=>!ids.has(g.id));if(out.length)await changeBatch('pins',out,used);else{draw();renderGhostBar()}}
 function renderGhostBar(){const b=$('#ghBar');if(!ghosts.length||walk||!lay.ghosts){b.hidden=true;b.innerHTML='';return}const here=ghosts.filter(g=>g.page===page).length,cnt={};for(const g of ghosts)cnt[g.g]=(cnt[g.g]||0)+1;
  b.innerHTML=`<b>🔍 ${ghosts.length} suggestion${ghosts.length>1?'s':''}</b><small>${here} on this page</small>`+Object.entries(cnt).map(([k,n])=>`<button type="button" class="chip" data-g="${k}" style="border-color:${TYPES[DG[k].t].c}" title="Accept all ${esc(DG[k].n)}">${esc(DG[k].n)} ${n}</button>`).join('')+`<span class="sp"></span><button type="button" class="btn pri" id="ghAccAll">✔ Accept all</button><button type="button" class="btn danger" id="ghRejAll">✕ Reject all</button>`;
@@ -540,7 +548,7 @@ $('#layReset').onclick=()=>{lay={...LAY0,exp:lay.exp};layToForm();laySave()};
 const isPinO=o=>pins.includes(o);
 function selItems(){return msel.length?msel:sel?[sel.o]:[]}
 function toggleMsel(o){if(sel&&sel.o!==o&&!msel.includes(sel.o))msel.push(sel.o);const i=msel.indexOf(o);if(i>=0)msel.splice(i,1);else msel.push(o);sel=null;renderSelBar();requestDraw(false)}
-function bb(o){return isPinO(o)?{x:o.x-pinR(),y:o.y-pinR(),X:o.x+pinR(),Y:o.y+pinR()}:{x:Math.min(o.x1,o.x2),y:Math.min(o.y1,o.y2),X:Math.max(o.x1,o.x2),Y:Math.max(o.y1,o.y2)}}
+function bb(o){if(isPinO(o)){const[,w,h]=pshOf(o.type);return{x:o.x-w/2,y:o.y-h/2,X:o.x+w/2,Y:o.y+h/2}}return isPinO(o)?0:{x:Math.min(o.x1,o.x2),y:Math.min(o.y1,o.y2),X:Math.max(o.x1,o.x2),Y:Math.max(o.y1,o.y2)}}
 function drawMsel(c){if(!msel.length)return;c.save();c.setLineDash([5,4]);c.strokeStyle='#38bdf8';c.lineWidth=1.5;const p=pinR()*.6;for(const o of msel){if(o.page!==page)continue;const b=bb(o);c.strokeRect(b.x-p,b.y-p,b.X-b.x+2*p,b.Y-b.y+2*p)}c.restore()}
 function showBox(){let d=$('#selBox');if(!d){d=document.createElement('div');d.id='selBox';stage.append(d)}const g=gesture;if(!g||g.type!=='box'){d.remove();return}
  const a=toS(g.w0.x,g.w0.y),b=toS(g.w1.x,g.w1.y);Object.assign(d.style,{left:Math.min(a.x,b.x)+'px',top:Math.min(a.y,b.y)+'px',width:Math.abs(b.x-a.x)+'px',height:Math.abs(b.y-a.y)+'px'})}
@@ -686,7 +694,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v25',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v26',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -1118,7 +1126,7 @@ stage.addEventListener('pointerdown',e=>{if(ted&&e.target!==ted.el)tedEnd(true)}
 var OFFMAP=null,SCRNOFF=null;
 const PANEL_T=new Set(['panel','dact','fatc','panelbox']),PANEL_G=new Set(['facp','dact','fatc','panelbox']);
 function isPanelO(o){return PANEL_T.has(o.type)||PANEL_G.has(o.g)}
-function pinFoot(o){const r=pinR(),hw=pinLW()/2;if(o.g!=null)return pinR()*1.15+1.25;if(o.type==='heat'||o.type==='pull')return r*1.2+hw;return r+hw}
+function pinFoot(o){const r=pinR(),hw=pinLW()/2;if(o.g!=null)return pinR()*1.15+1.25;return pinHalf(o.type)+hw}
 function pinOffsets(list){const M=new Map(),n=list.length;if(n<2)return M;const key=o=>o.id||o;
  // v20: min center distance = sum of outer radii (fill r + half stroke). Canvas strokes are centered on the
  // path, so D≈r*2 left borders overlapping. Status dots ignored (may touch neighbors). Tiny gap for AA.
