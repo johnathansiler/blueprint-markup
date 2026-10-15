@@ -39,17 +39,19 @@ function shape(g,k){if(g.k==='cccc')return Math.abs(g.w-g.h)<1*k?'circle':null;c
  const s=sides(pts),n=pts.length,A=area(pts),mx=Math.max(...s),mn=Math.min(...s),K2=k*k;
  if(n===4){if(mn>=11.5*k&&mx<=14.5*k&&A>155*K2)return'square';if(mn>12*k&&mx<17*k&&A<160*K2)return'diamond';if(mn>5.5*k&&mn<8.5*k&&mx>12*k&&mx<16*k)return'rect_small';
   // FACP/DACT/annunciator-style labeled boxes on the legend (wide shallow rectangles)
-  if(mx>=22*k&&mx<=90*k&&mn>=8*k&&mn<=30*k&&mx>=mn*1.55&&A>180*K2)return'panel_rect'}
+  if(mx>=22*k&&mx<=90*k&&mn>=8*k&&mn<=30*k&&mx>=mn*1.55&&A>180*K2)return'panel_rect';
+  // large square with lettering (e.g. "SS" transient voltage surge suppressor)
+  if(mn>=16*k&&mx<=26*k&&mx/mn<1.15&&A>250*K2)return'sq_big'}
  if(n===6&&Math.max(g.w,g.h)>=11*k&&Math.max(g.w,g.h)<=17*k&&A>100*K2)return'hex';
  if(n===3&&mx>=8.5*k&&mx<=12.5*k&&mn>7*k)return'tri';return null}
 function detect(P,W,H,want){const TB=W>H?W*.825:W;let G=P.filter(g=>dark(g)&&g.x0<TB);const k=scaleOf(G);
- const ctr=g=>[g.cx,g.cy],prim=[];for(const g of G){const s=shape(g,k);if(s)prim.push([s,g])}
+  const ctr=g=>[g.cx,g.cy],prim=[];for(const g of G){const s=shape(g,k);if(s)prim.push([s,g])}
  const tris=prim.filter(p=>p[0]==='tri').map(p=>[p[1],p[1].fill!=null]),circles=prim.filter(p=>p[0]==='circle').map(p=>p[1]),lines=G.filter(g=>g.k==='l');
  // grid index for neighbourhood queries
  const CS=40*k,grid=new Map(),key=(x,y)=>Math.floor(x/CS)+','+Math.floor(y/CS);for(const g of G){const q=key(g.cx,g.cy);let a=grid.get(q);if(!a)grid.set(q,a=[]);a.push(g)}
  const near=(c,r)=>{const o=[];const x0=Math.floor((c[0]-r)/CS),x1=Math.floor((c[0]+r)/CS),y0=Math.floor((c[1]-r)/CS),y1=Math.floor((c[1]+r)/CS);for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++){const a=grid.get(x+','+y);if(a)for(const g of a)if(dist([g.cx,g.cy],c)<r)o.push(g)}return o};
  const out=[];
- for(const[sk,g]of prim){if(!['square','hex','diamond','rect_small','panel_rect'].includes(sk))continue;const c=ctr(g),R=(sk!=='rect_small'?7:7.5)*k;
+ for(const[sk,g]of prim){if(!['square','hex','diamond','rect_small','panel_rect','sq_big'].includes(sk))continue;const c=ctr(g),R=sk==='sq_big'?Math.max(g.w,g.h)/2:(sk!=='rect_small'?7:7.5)*k;
   const ins=near(c,R*.8).filter(h=>h!==g&&Math.max(h.w,h.h)<R*1.6);
   const glyph=ins.filter(h=>h.k!=='cccc'&&h.fill==null).map(h=>h.segs.length).sort((a,b)=>a-b);
   const filled=g.fill!=null||ins.some(h=>h.fill!=null&&Math.max(h.w,h.h)>4*k);
@@ -65,7 +67,7 @@ function detect(P,W,H,want){const TB=W>H?W*.825:W;let G=P.filter(g=>dark(g)&&g.x
      for(const h of near(c,20*k)){if(h.k!=='l')continue;const[a,b]=h.segs[0].p,L=dist(a,b);if(!(L>2.5*k&&L<11*k))continue;
       for(const[e,o]of[[a,b],[b,a]])if(dist(e,c)>6*k&&dist(e,c)<10.5*k&&dist(o,c)>dist(e,c)+2*k&&(!tc||dist(o,tc)>dist(o,c)))stem=true}
      t+=stem?'_WALL':'_CEIL'}}
-   }else{const gs=glyph.join(',');if(['1,2','1,1,1','1,3','2,2'].includes(gs)||(glyph.length===2&&glyph.includes(1)&&Math.max(...glyph)<=3))t='PULL';else if(glyph.length===1&&glyph[0]>=4)t='JBOX';else if(glyph.length===2)t='SURGE';else t=null}}
+   }else{const gs=glyph.join(',');if(glyph.length===2&&glyph[0]>=4)t='SURGE';else if(['1,2','1,1,1','1,3','2,2'].includes(gs)||(glyph.length===2&&glyph.includes(1)&&Math.max(...glyph)<=3))t='PULL';else if(glyph.length===1&&glyph[0]>=4)t='JBOX';else if(glyph.length===2)t='SURGE';else t=null}}
   else if(sk==='hex'){if(filled||!glyph.length||(glyph.length>=6&&Math.max(...glyph)===1))t='RELAY';else if(glyph.length===1)t='SMOKE';else t='MODULE'}
   else if(sk==='diamond'){
    // Legend: FS (waterflow) vs TS (tamper). Glyph bags from this plan family often look like 1,2,19 (FS) vs 1,1,19 (TS).
@@ -74,6 +76,7 @@ function detect(P,W,H,want){const TB=W>H?W*.825:W;let G=P.filter(g=>dark(g)&&g.x
    else if(gs==='1,2,19'||gs==='1,2'||gs.startsWith('1,2,'))t='FLOW';
    else if(glyph.includes(2))t='FLOW';else t='TAMPER';
   }else if(sk==='rect_small')t=ins.length>=2?'DOOR_HOLDER':null;
+  else if(sk==='sq_big'){const gl=ins.filter(h=>h.fill==null&&h.k!=='cccc'&&Math.max(h.w,h.h)<R*1.2);t=gl.length===2&&gl.every(h=>h.segs.length>=4)?'SURGE':null}
   else if(sk==='panel_rect'){const gl=glyph.length,ar=Math.max(g.w,g.h)/Math.max(1e-3,Math.min(g.w,g.h));
    // FATC often shorter label; FACP/DACT longer — text refine in app overrides when labels exist as paths only
    if(gl>=10)t='FACP';else if(gl>=6)t='DACT';else if(gl>=3&&ar<2.4)t='FATC';else if(gl>=3)t='DACT';else t='PANEL_BOX'}

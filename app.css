@@ -114,3 +114,15 @@ label.opac span{font-size:11px;color:#94a3b8;min-width:28px;text-align:right}
 #mBar .row{gap:4px}#mBar .btn,#mBar select{padding:3px 7px;min-height:34px;font-size:13px}#mBar label{display:flex;align-items:center;gap:3px}#mBar input[type=checkbox]{width:auto;min-height:0}
 #mBar .chip{font-size:12px;padding:2px 7px;min-height:28px}#mBar .chip.on{background:#2563eb;border-color:#60a5fa}#mBar .mnote{color:#fbbf24;font-size:11px}#mBar #mRead{color:#fde68a}#mBar .btn.mini{min-height:26px;padding:1px 6px;font-size:11px}
 #mBar .chip{border-radius:12px;border:1.5px solid #475569;background:#1e293b;color:#e2e8f0;cursor:pointer}
+
+#thumbs{position:absolute;z-index:2;background:#0f172aee;display:flex;gap:6px;overflow:auto;padding:4px}
+#thumbs .thh{display:flex;align-items:center;justify-content:space-between;color:#cbd5e1;font-size:12px;flex:none}#thumbs .thh .btn{min-height:28px;padding:1px 7px}
+#thumbs .th{position:relative;flex:none;padding:2px;border:2px solid #334155;border-radius:6px;background:#1e293b;cursor:pointer;width:78px;height:78px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#thumbs .th.on{border-color:#38bdf8}#thumbs img{max-width:70px;max-height:70px;background:#fff}#thumbs img:not([src]){width:54px;height:70px}
+#thumbs .thn{position:absolute;left:2px;bottom:1px;font-size:11px;background:#000a;color:#fff;padding:0 3px;border-radius:3px}
+#thumbs .thb{position:absolute;right:2px;top:2px;font-size:10px;background:#2563eb;color:#fff;padding:0 4px;border-radius:8px}#thumbs .thb.f{background:#b91c1c}
+@media(max-width:799px){#thumbs{left:0;right:0;bottom:0;flex-direction:row;align-items:center}#thumbs .thh{flex-direction:column}}
+@media(min-width:800px){#thumbs{left:0;top:0;bottom:0;width:92px;flex-direction:column;align-items:center}#thumbs .thh{width:100%}}
+.ckrow{flex-wrap:nowrap;gap:3px;margin:3px 0}.ckrow input{flex:1;min-width:0}.ckrow .btn{padding:3px 7px;min-height:34px;flex:none}
+#wkTypes label{display:flex;align-items:center;gap:6px}#wkTypes input{width:auto;min-height:0}
+#txtIn{width:100%;min-height:70px}

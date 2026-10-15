@@ -1,7 +1,7 @@
 'use strict';
 pdfjsLib.GlobalWorkerOptions.workerSrc='vendor/pdf.worker.min.js';
 const $=s=>document.querySelector(s);
-const TYPES={smoke:{c:'#dc2626',l:'S',n:'Smoke'},heat:{c:'#ea580c',l:'H',n:'Heat'},pull:{c:'#be185d',l:'P',n:'Pull station'},horn:{c:'#7c3aed',l:'HS',n:'Horn/strobe'},panel:{c:'#991b1b',l:'FACP',n:'FACP – Fire Alarm Control Panel',sq:1},dact:{c:'#ca8a04',l:'DACT',n:'DACT – Digital Alarm Communicator Transmitter',sq:1},fatc:{c:'#0e7490',l:'FATC',n:'FATC – Fire Alarm Terminal Cabinet',sq:1},panelbox:{c:'#0f766e',l:'PNL',n:'Other panel / amp / annunciator',sq:1},module:{c:'#2563eb',l:'M',n:'Monitor/control module',sq:1},duct:{c:'#b45309',l:'D',n:'Duct detector'},flow:{c:'#0369a1',l:'WF',n:'Waterflow switch'},tamper:{c:'#4d7c0f',l:'TS',n:'Tamper switch'},spkstrobe:{c:'#9333ea',l:'SS',n:'Speaker/strobe'},strobe:{c:'#c026d3',l:'ST',n:'Strobe'},linearray:{c:'#4f46e5',l:'LA',n:'Line array speaker'},relay:{c:'#78350f',l:'R',n:'Relay',sq:1},doorholder:{c:'#db2777',l:'DH',n:'Door holder'},jbox:{c:'#64748b',l:'J',n:'Junction box',sq:1},other:{c:'#475569',l:'?',n:'Other'}};
+const TYPES={smoke:{c:'#dc2626',l:'S',n:'Smoke'},heat:{c:'#ea580c',l:'H',n:'Heat'},pull:{c:'#be185d',l:'P',n:'Pull station'},horn:{c:'#7c3aed',l:'HS',n:'Horn/strobe'},panel:{c:'#991b1b',l:'FACP',n:'FACP – Fire Alarm Control Panel',sq:1},dact:{c:'#ca8a04',l:'DACT',n:'DACT – Digital Alarm Communicator Transmitter',sq:1},fatc:{c:'#0e7490',l:'FATC',n:'FATC – Fire Alarm Terminal Cabinet',sq:1},panelbox:{c:'#0f766e',l:'PNL',n:'Other panel / amp / annunciator',sq:1},module:{c:'#2563eb',l:'M',n:'Monitor/control module',sq:1},duct:{c:'#b45309',l:'D',n:'Duct detector'},flow:{c:'#0369a1',l:'WF',n:'Waterflow switch'},tamper:{c:'#4d7c0f',l:'TS',n:'Tamper switch'},spkstrobe:{c:'#9333ea',l:'SS',n:'Speaker/strobe'},strobe:{c:'#c026d3',l:'ST',n:'Strobe'},linearray:{c:'#4f46e5',l:'LA',n:'Line array speaker'},relay:{c:'#78350f',l:'R',n:'Relay',sq:1},doorholder:{c:'#db2777',l:'DH',n:'Door holder'},jbox:{c:'#64748b',l:'J',n:'Junction box',sq:1},surge:{c:'#16a34a',l:'SS',n:'Surge protector (TVSS / SPD)',sq:1},other:{c:'#475569',l:'?',n:'Other'}};
 const ST={passed:'#16a34a',failed:'#dc2626','in progress':'#f59e0b','not tested':'#94a3b8'},STATUSES=['passed','failed','in progress','not tested'];
 // NFPA 72-style default inspection/test items per device type (snapshotted onto each pin when first answered)
 const CHECKS={smoke:['Alarm received at panel','Correct address/label at panel','LED/base condition OK','Sensitivity within range','Clean/unobstructed'],
@@ -21,9 +21,10 @@ const CHECKS={smoke:['Alarm received at panel','Correct address/label at panel',
  linearray:['Audible/voice message intelligible','Covers intended area','Mounted/aim OK','Physical condition OK'],
  relay:['Operates on alarm (controlled equipment responds)','Correct address/label at panel','Restores on reset','Wiring/supervision OK','Physical condition OK'],
  doorholder:['Releases door on alarm','Door closes and latches fully','Holds door open in normal condition','Physical condition OK'],
+ surge:['Listed SPD installed per drawings (circuit/location)','Status/protection indicator shows protected','Proper grounding/bonding conductor','Enclosure secure, wiring undamaged','Labeled with circuit served'],
  jbox:['Cover in place and identified (red/FA)','Wiring secured, no damage','Accessible'],
  other:['Operates as intended','Correct address/label at panel','Physical condition OK']};
-const checkItems=t=>(CHECKS[t]||CHECKS.other).map(t=>({t,v:''}));
+let CKT={};const ckTpl=t=>CKT[t]||CHECKS[t]||CHECKS.other;const checkItems=t=>ckTpl(t).map(t=>({t,v:''}));
 const PIN_OP=.5,MK_OP=.8;const pinR=()=>12; // plan points — scales with zoom (constant on the blueprint)
 const pinLW=()=>3.5; // plan-point stroke for pin ring
 const clampOp=v=>Math.max(.15,Math.min(1,+(v??1)));
@@ -49,7 +50,14 @@ const dpr=()=>window.devicePixelRatio||1;
 let lastW=0,lastH=0;function resize(){const w=stage.clientWidth,h=stage.clientHeight;if(lastW&&pageW){const cx=(lastW/2-view.x)/view.s,cy=(lastH/2-view.y)/view.s;view.x=w/2-cx*view.s;view.y=h/2-cy*view.s}const wide=innerWidth>=800;if(wide!==resize.wide){resize.wide=wide;$('#panel').hidden=!wide;renderList()}lastW=w;lastH=h;cv.width=ov.width=w*dpr();cv.height=ov.height=h*dpr();draw();scheduleRender()}
 new ResizeObserver(()=>resize()).observe(stage);
 window.addEventListener('resize',resize);
-const toW=(sx,sy)=>({x:(sx-view.x)/view.s,y:(sy-view.y)/view.s});
+let VR=0,ROTS={};
+// view rotation (display only): plan point -> display point for VR in {0,90,180,270}
+const rotP=(x,y)=>VR===90?{x:pageH-y,y:x}:VR===180?{x:pageW-x,y:pageH-y}:VR===270?{x:y,y:pageW-x}:{x,y};
+const unrotP=(X,Y)=>VR===90?{x:Y,y:pageH-X}:VR===180?{x:pageW-X,y:pageH-Y}:VR===270?{x:pageW-Y,y:X}:{x:X,y:Y};
+const dispWH=()=>VR%180?{w:pageH,h:pageW}:{w:pageW,h:pageH};
+const toW=(sx,sy)=>unrotP((sx-view.x)/view.s,(sy-view.y)/view.s);
+const toS=(x,y)=>{const d=rotP(x,y);return{x:d.x*view.s+view.x,y:d.y*view.s+view.y}};
+function centerOn(x,y,s,cx,cy){const d=rotP(x,y);view={s,x:cx-d.x*s,y:cy-d.y*s}}
 // ---------- plans ----------
 async function refreshPlans(){const ps=(await all('plans')).filter(p=>p.projectId===project?.id).sort((a,b)=>b.added-a.added);$('#planSel').innerHTML=ps.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')||'<option>(no plans)</option>';if(plan)$('#planSel').value=plan.id}
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -68,7 +76,7 @@ async function openPlan(id,pg=1){const p=await get('plans',id);if(!p)return;if(d
    const data=new Uint8Array(await withTimeout(p.blob.arrayBuffer(),30000,'reading the stored file timed out'));if(seq!==opSeq)return;prog(.1);
    const t=pdfjsLib.getDocument({data,disableFontFace:false});loadTask=t;t.onProgress=e=>{if(e.total)prog(.1+.2*Math.min(1,e.loaded/e.total))};
    const d=await withTimeout(t.promise,60000,'the PDF engine did not respond within 60 s');if(seq!==opSeq||loadTask!==t){d.destroy();return}loadTask=null;pdf=d;p.pages=d.numPages}else p.pages=1;
-  prog(.3);lay={...LAY0,...((await get('meta','layers:'+id))||{})};layMark();await loadScale(id);MS.pts=[];setTimeout(renderMBar,0);markups=await byIdx('markups','planId',id);pins=await byIdx('pins','planId',id);
+  prog(.3);lay={...LAY0,...((await get('meta','layers:'+id))||{})};layMark();await loadScale(id);ROTS=(await get('meta','rot:'+id))||{};THB={};MS.pts=[];setTimeout(renderMBar,0);markups=await byIdx('markups','planId',id);pins=await byIdx('pins','planId',id);
   await put('meta',id,'last:'+p.projectId);await refreshPlans();$('#empty').hidden=true;await gotoPage(Math.min(pg,p.pages)||1,seq)}
  catch(e){if(seq===opSeq){if(loadTask){try{loadTask.destroy()}catch{}loadTask=null}showErr(`Could not open "${p.name}": ${e&&e.message||e}`)}}
  finally{if(seq===opSeq)busy(0)}}
@@ -79,18 +87,19 @@ async function gotoPage(n,seq){if(!plan)return;const own=seq===undefined;if(own)
  page=n;sel=null;msel=[];updUR();renderGhostBar();renderSelBar();bmp=null;bmpScale=0;baseBm=tile=null;busy(1,'Rendering');prog(.3);
  try{if(pdf){const pg=await withTimeout(pdf.getPage(n),30000,'reading page '+n+' timed out');if(seq!==opSeq)return;const vp=pg.getViewport({scale:1});pageW=vp.width;pageH=vp.height}
   else{const im=await createImageBitmap(plan.blob);pageW=im.width;pageH=im.height;bmp=im;bmpScale=1}
+  VR=+(ROTS[n]||0);updRotBtn();
   put('meta',{plan:plan.id,page:n},'lastPage');fit();prog(.35);await buildPageSel();if(seq!==opSeq)return;prog(.4);
   const ok=await renderPage(true);if(seq!==opSeq)return;if(ok===false)showErr('Could not render this page, even at low resolution. Try ⤢ or reopen the plan.');renderList()}
  catch(e){if(seq===opSeq)showErr('Could not show page '+n+': '+(e&&e.message||e))}
  finally{if(own&&seq===opSeq)busy(0)}}
-function fit(){if(!pageW)return;const w=stage.clientWidth,h=stage.clientHeight,s=Math.min(w/pageW,h/pageH)*.95;view={s,x:(w-pageW*s)/2,y:(h-pageH*s)/2};draw()}
+function fit(){if(!pageW)return;const D=dispWH(),w=stage.clientWidth,h=stage.clientHeight,s=Math.min(w/D.w,h/D.h)*.95;view={s,x:(w-D.w*s)/2,y:(h-D.h*s)/2};draw()}
 $('#fit').onclick=fit;
 // crisp re-render: render the page at current zoom*dpr, capped by pixel budget
 // Perf: a small full-page base bitmap is rendered once per page; zoomed-in views render only the visible
 // region (plus margin) at screen resolution, capped by a pixel budget. Markups live on a separate overlay canvas.
 const MAXPX=matchMedia('(pointer:coarse)').matches?16e6:24e6,BASEPX=4e6;
 function wantScale(){return Math.min(view.s*dpr(),10)}
-function visRect(){return{x:-view.x/view.s,y:-view.y/view.s,w:stage.clientWidth/view.s,h:stage.clientHeight/view.s}}
+function visRect(){const W=stage.clientWidth,H=stage.clientHeight,P=[toW(0,0),toW(W,0),toW(0,H),toW(W,H)],xs=P.map(p=>p.x),ys=P.map(p=>p.y),x=Math.min(...xs),y=Math.min(...ys);return{x,y,w:Math.max(...xs)-x,h:Math.max(...ys)-y}}
 function covered(t){const v=visRect();return Math.max(0,v.x)>=t.x-1&&Math.max(0,v.y)>=t.y-1&&Math.min(pageW,v.x+v.w)<=t.x+t.w+1&&Math.min(pageH,v.y+v.h)<=t.y+t.h+1}
 function baseOK(w){return baseBm&&baseBm.s>=w*.87}
 function scheduleRender(){if(!pdf)return;clearTimeout(renderTimer);const w=wantScale();if(!baseBm){renderTimer=setTimeout(renderPage,0);return}
@@ -134,12 +143,12 @@ function drawMarkup(c,m,s){c.save();c.globalAlpha=opOf(m,false);c.strokeStyle=m.
 const isLine=m=>m.type==='arrow'||m.type==='line'||m.type==='dim'||m.type==='cal';
 function textBox(m){octx.save();octx.font=`bold ${m.fs}px sans-serif`;const w=octx.measureText(m.text).width;octx.restore();m.x2=m.x1+w;m.y2=m.y1+m.fs*1.15;return m}
 function handles(m){if(m.type==='dpath')return[];if(isLine(m))return[[m.x1,m.y1],[m.x2,m.y2]];const x=Math.min(m.x1,m.x2),y=Math.min(m.y1,m.y2),X=Math.max(m.x1,m.x2),Y=Math.max(m.y1,m.y2);return[[x,y],[X,y],[X,Y],[x,Y]]}
-function handleHit(m,sx,sy){const hs=handles(m),rad=Math.max(8*view.s,18);for(let i=hs.length-1;i>=0;i--)if(Math.hypot(hs[i][0]*view.s+view.x-sx,hs[i][1]*view.s+view.y-sy)<rad)return i;return -1}
+function handleHit(m,sx,sy){const hs=handles(m),rad=Math.max(8*view.s,18);for(let i=hs.length-1;i>=0;i--){const q=toS(hs[i][0],hs[i][1]);if(Math.hypot(q.x-sx,q.y-sy)<rad)return i}return -1}
 function resizeTo(m,o,h,w){if(isLine(m)){if(h===0){m.x1=w.x;m.y1=w.y}else{m.x2=w.x;m.y2=w.y}return}
  const x0=Math.min(o.x1,o.x2),y0=Math.min(o.y1,o.y2),X0=Math.max(o.x1,o.x2),Y0=Math.max(o.y1,o.y2),L=h===0||h===3,T=h===0||h===1;
  if(m.type==='text'){const nh=Math.max(6/view.s,T?Y0-w.y:w.y-y0);m.fs=o.fs*nh/((Y0-y0)||1);const tw=textBox({...m,x1:0,y1:0}).x2;Object.assign(m,{x1:L?X0-tw:x0,y1:T?Y0-m.fs*1.15:y0});textBox(m);return}
  let x=L?w.x:x0,X=L?X0:w.x,y=T?w.y:y0,Y=T?Y0:w.y;m.x1=Math.min(x,X);m.x2=Math.max(x,X);m.y1=Math.min(y,Y);m.y2=Math.max(y,Y)}
-function drawPin(c,p,s,hl,bare,nolab){const T=TYPES[p.type]||TYPES.other,r=pinR();c.save();if(!bare)c.globalAlpha=opOf(p,true);c.translate(p.x,p.y);
+let CR=0;function drawPin(c,p,s,hl,bare,nolab){const T=TYPES[p.type]||TYPES.other,r=pinR();c.save();if(!bare)c.globalAlpha=opOf(p,true);c.translate(p.x,p.y);if(CR)c.rotate(-CR);
  // s is kept for call-site compat; pin geometry is in plan points so it scales with view
  const sc=ST[p.status]||ST['not tested'];if(hl&&!bare){c.beginPath();c.arc(0,0,r*1.75,0,7);c.fillStyle='rgba(56,189,248,.35)';c.fill()}
  c.fillStyle=T.c;c.strokeStyle=bare?'#fff':sc;c.lineWidth=bare?2:pinLW();c.beginPath();
@@ -147,10 +156,12 @@ function drawPin(c,p,s,hl,bare,nolab){const T=TYPES[p.type]||TYPES.other,r=pinR(
  c.fill();c.stroke();c.fillStyle='#fff';c.font=`bold ${T.l.length>2?6.5:T.l.length>1?8:11}px sans-serif`;c.textAlign='center';c.textBaseline='middle';c.fillText(T.l,0,p.type==='heat'?r*.15:0);
  if(bare){c.restore();return}c.fillStyle=sc;c.strokeStyle='#fff';c.lineWidth=1.2;c.beginPath();c.arc(r*.95,-r*.95,4.5,0,7);c.fill();c.stroke();
  if(p.address&&!nolab){c.font=`10px sans-serif`;c.textAlign='left';c.lineWidth=2.5;c.lineJoin='round';c.strokeStyle='#fff';c.strokeText(p.address,r*1.3,r*.3);c.fillStyle='#111';c.fillText(p.address,r*1.3,r*.3)}c.restore()}
-function setT(c){const d=dpr();c.setTransform(view.s*d,0,0,view.s*d,view.x*d,view.y*d)}
+function setT(c){const d=dpr(),s=view.s*d,e=view.x*d,f=view.y*d;
+ if(VR===90)c.setTransform(0,s,-s,0,s*pageH+e,f);else if(VR===180)c.setTransform(-s,0,0,-s,s*pageW+e,s*pageH+f);else if(VR===270)c.setTransform(0,-s,s,0,e,s*pageW+f);else c.setTransform(s,0,0,s,e,f)}
 function drawBase(){drawn={...view};cv.style.transform=ov.style.transform='';ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);if(!plan||!pageW)return;setT(ctx);
  ctx.fillStyle='#fff';ctx.fillRect(0,0,pageW,pageH);ctx.imageSmoothingQuality='high';if(bmp)ctx.drawImage(bmp,0,0,pageW,pageH);if(baseBm)ctx.drawImage(baseBm.c,0,0,pageW,pageH);if(tile)ctx.drawImage(tile.c,tile.x,tile.y,tile.c.width/tile.s,tile.c.height/tile.s)}
-function drawOverlay(){const ctx=octx;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,ov.width,ov.height);if(!plan||!pageW)return;setT(ctx);
+function drawOverlay(){CR=VR*Math.PI/180;try{drawOverlay0()}finally{CR=0}}
+function drawOverlay0(){const ctx=octx;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,ov.width,ov.height);if(!plan||!pageW)return;setT(ctx);
  for(const m of markups)if(m.page===page&&mVis(m))drawMarkup(ctx,m,view.s);if(draft)drawMarkup(ctx,draft,view.s);
  if(sel&&sel.kind==='m'){const m=sel.o;ctx.save();ctx.setLineDash([6/view.s,4/view.s]);ctx.strokeStyle='#2563eb';ctx.lineWidth=1.5/view.s;const p=8/view.s;if(!isLine(m))ctx.strokeRect(Math.min(m.x1,m.x2)-p,Math.min(m.y1,m.y2)-p,Math.abs(m.x2-m.x1)+2*p,Math.abs(m.y2-m.y1)+2*p);
   ctx.setLineDash([]);ctx.fillStyle='#fff';ctx.lineWidth=2;for(const[hx,hy]of handles(m)){ctx.beginPath();ctx.arc(hx,hy,6,0,7);ctx.fill();ctx.stroke()}ctx.restore()}
@@ -197,9 +208,9 @@ async function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);c
  if(pasteArm&&!g.moved&&g.type!=='pinch'){pasteArm=false;draft=null;await doPaste(w);return}
  if(tool==='select'&&!g.moved&&g.type==='pan'&&msel.length&&!multiOn){msel=[];renderSelBar();requestDraw(false)}
  if(!g.moved&&(g.type==='pan'||g.type==='move')){const gh=ghostHit(w);if(gh&&!(g.type==='move'&&g.wasSel)){sel=null;openGhost(gh);return}const h=hit(w);if(h&&h.kind==='p'){openPin(h.o);return}}
- if(!g.moved&&(g.type==='resize'||g.type==='move'&&g.wasSel)&&sel?.o.type==='text'){const t=prompt('Edit text:',sel.o.text);if(t!==null&&t.trim()&&t!==sel.o.text){const b=structuredClone(sel.o);await change('markups',b,textBox({...b,text:t.trim()}))}return}
+ if(!g.moved&&(g.type==='resize'||g.type==='move'&&g.wasSel)&&sel?.o.type==='text'){const t=await askText('Edit text',sel.o.text);if(t!==null&&t.trim()&&t!==sel.o.text){const b=structuredClone(sel.o);await change('markups',b,textBox({...b,text:t.trim()}))}return}
  if((g.type==='move'||g.type==='resize')&&g.moved&&sel)await change(sel.kind==='p'?'pins':'markups',g.orig,sel.o);
- if(g.type==='text'&&!g.moved){const t=prompt('Text label:');if(t&&t.trim())await change('markups',null,textBox({id:uid(),planId:plan.id,page,type:'text',text:t.trim(),x1:g.w.x,y1:g.w.y,fs:(SZT[$('#size').value]||18)/view.s,color:$('#color').value,w:3,opacity:toolOp(false)}))}
+ if(g.type==='text'&&!g.moved){const t=await askText('Text label','');if(t&&t.trim())await change('markups',null,textBox({id:uid(),planId:plan.id,page,type:'text',text:t.trim(),x1:g.w.x,y1:g.w.y,fs:(SZT[$('#size').value]||18)/view.s,color:$('#color').value,w:3,opacity:toolOp(false)}))}
  if(g.type==='pin'){const p={id:uid(),planId:plan.id,page,x:g.w.x,y:g.w.y,type:$('#pinType').value,address:'',loop:'',status:'not tested',notes:'',created:Date.now(),opacity:toolOp(true)};await change('pins',null,p);openPin(pins.find(x=>x.id===p.id))}
  if(g.type==='mpath'){if(g.moved){requestDraw();return}await mPathTap(mSnap(w));return}
  if(g.type==='draw'&&draft?.type==='cal'){const d=draft;draft=null;drawOverlay();await mCalibrate(d);return}
@@ -286,7 +297,7 @@ function renderList(){if($('#panel').hidden)return;const q=$('#q').value.toLower
  $('#pinList').innerHTML=L.map(p=>`<li data-id="${p.id}"><span class="dot" style="background:${TYPES[p.type].c}"></span><div><b>${esc(TYPES[p.type].n)}</b> ${esc(p.address)}${p.loop?' · Loop '+esc(p.loop):''}<br><small class="st-${p.status.split(' ')[0]}">${p.status}</small> <small>pg ${p.page}${p.testedAt?' · '+esc(fmtT(p.testedAt))+(p.tester?' · '+esc(p.tester):''):''}</small></div></li>`).join('')||'<li>No pins</li>';
  $('#pinList').querySelectorAll('li[data-id]').forEach(li=>li.onclick=()=>jumpTo(plan.id,li.dataset.id))}
 async function jumpTo(planId,pinId){if(plan?.id!==planId){const p0=await get('pins',pinId);await openPlan(planId,p0?.page||1)}const p=pins.find(x=>x.id===pinId);if(!p)return;if(p.page!==page)await gotoPage(p.page);
- const s=Math.max(view.s,1.5/dpr()*2);view={s,x:stage.clientWidth/2-p.x*s,y:stage.clientHeight/2-p.y*s};sel={kind:'p',o:p};draw();scheduleRender();if(innerWidth<700)$('#panel').hidden=true}
+ const s=Math.max(view.s,1.5/dpr()*2);centerOn(p.x,p.y,s,stage.clientWidth/2,stage.clientHeight/2);sel={kind:'p',o:p};draw();scheduleRender();if(innerWidth<700)$('#panel').hidden=true}
 // ---------- project-wide data: deficiencies + device counts ----------
 async function projData(){const pls=(await all('plans')).filter(p=>p.projectId===project?.id).sort((a,b)=>a.added-b.added),out=[];for(const pl of pls)out.push({pl,pins:pl.id===plan?.id?pins.slice():await byIdx('pins','planId',pl.id)});return out}
 const plName=pl=>pl.name.replace(/\.[^.]+$/,'');
@@ -433,11 +444,11 @@ $('#checkCsv').onclick=async()=>{const rows=[['plan','page','type','address','lo
 const DG={spkw:{n:'Speaker/strobe – wall',t:'spkstrobe',d:['SPK_FOH_WALL','SPK_BOH_WALL'],note:'wall mounted'},spkc:{n:'Speaker/strobe – ceiling',t:'spkstrobe',d:['SPK_FOH_CEIL','SPK_BOH_CEIL'],note:'ceiling mounted'},
  strobe:{n:'Strobe only',t:'strobe',d:['STROBE_FOH','STROBE_BOH']},horn:{n:'Horn/strobe',t:'horn',d:['HORN_FOH','HORN_BOH','HORN_WALL','HORN_CEIL'],note:'horn/strobe'},la:{n:'Line array speaker',t:'linearray',d:['LINE_ARRAY']},smoke:{n:'Smoke detector',t:'smoke',d:['SMOKE']},module:{n:'Module (monitor/control)',t:'module',d:['MODULE']},
  relay:{n:'Relay',t:'relay',d:['RELAY']},pull:{n:'Pull station',t:'pull',d:['PULL']},dh:{n:'Door holder',t:'doorholder',d:['DOOR_HOLDER']},flow:{n:'Waterflow switch',t:'flow',d:['FLOW','FLOW_TAMPER'],note:'waterflow'},tamper:{n:'Tamper switch',t:'tamper',d:['TAMPER'],note:'valve tamper'},
- jbox:{n:'Junction box',t:'jbox',d:['JBOX','JBOX_CEIL']},surge:{n:'Surge suppressor',t:'other',d:['SURGE'],note:'surge suppressor'},
+ jbox:{n:'Junction box',t:'jbox',d:['JBOX','JBOX_CEIL']},surge:{n:'Surge protector (SS / TVSS)',t:'surge',d:['SURGE'],note:'surge suppressor'},
  facp:{n:'FACP (fire alarm control panel)',t:'panel',d:['FACP'],note:'FACP'},dact:{n:'DACT (communicator)',t:'dact',d:['DACT'],note:'DACT'},fatc:{n:'FATC (terminal cabinet)',t:'fatc',d:['FATC'],note:'FATC'},panelbox:{n:'Panel / amp / annunciator box',t:'panelbox',d:['PANEL_BOX'],note:'equipment box'}};
 for(const[k,n,t]of[['heat','Heat detector','heat'],['duct','Duct detector','duct'],['panel','FACP (manual)','panel'],['oth','Other device','other']])DG[k]={n,t,d:[],x:1};
 const D2G={};for(const[k,g]of Object.entries(DG))for(const d of g.d)D2G[d]=k;
-const DEF_SEL=Object.keys(DG).filter(k=>k!=='jbox'&&k!=='surge');
+const DEF_SEL=Object.keys(DG).filter(k=>k!=='jbox');
 const gT=g=>TYPES[DG[g.g].t]||TYPES.other;
 for(const[k,g]of Object.entries(DG))$('#ghType').add(new Option(g.n,k));
 $('#detTypes').innerHTML=Object.entries(DG).filter(([k,g])=>!g.x).map(([k,g])=>`<label><input type="checkbox" value="${k}"><span class="sw" style="background:${TYPES[g.t].c}"></span>${esc(g.n)}</label>`).join('');
@@ -518,7 +529,7 @@ function toggleMsel(o){if(sel&&sel.o!==o&&!msel.includes(sel.o))msel.push(sel.o)
 function bb(o){return isPinO(o)?{x:o.x-pinR(),y:o.y-pinR(),X:o.x+pinR(),Y:o.y+pinR()}:{x:Math.min(o.x1,o.x2),y:Math.min(o.y1,o.y2),X:Math.max(o.x1,o.x2),Y:Math.max(o.y1,o.y2)}}
 function drawMsel(c){if(!msel.length)return;c.save();c.setLineDash([5,4]);c.strokeStyle='#38bdf8';c.lineWidth=1.5;const p=pinR()*.6;for(const o of msel){if(o.page!==page)continue;const b=bb(o);c.strokeRect(b.x-p,b.y-p,b.X-b.x+2*p,b.Y-b.y+2*p)}c.restore()}
 function showBox(){let d=$('#selBox');if(!d){d=document.createElement('div');d.id='selBox';stage.append(d)}const g=gesture;if(!g||g.type!=='box'){d.remove();return}
- const a={x:g.w0.x*view.s+view.x,y:g.w0.y*view.s+view.y},b={x:g.w1.x*view.s+view.x,y:g.w1.y*view.s+view.y};Object.assign(d.style,{left:Math.min(a.x,b.x)+'px',top:Math.min(a.y,b.y)+'px',width:Math.abs(b.x-a.x)+'px',height:Math.abs(b.y-a.y)+'px'})}
+ const a=toS(g.w0.x,g.w0.y),b=toS(g.w1.x,g.w1.y);Object.assign(d.style,{left:Math.min(a.x,b.x)+'px',top:Math.min(a.y,b.y)+'px',width:Math.abs(b.x-a.x)+'px',height:Math.abs(b.y-a.y)+'px'})}
 function boxSelect(a,b){$('#selBox')?.remove();const x=Math.min(a.x,b.x),X=Math.max(a.x,b.x),y=Math.min(a.y,b.y),Y=Math.max(a.y,b.y),inn=o=>{const q=bb(o),cx=(q.x+q.X)/2,cy=(q.y+q.Y)/2;return cx>=x&&cx<=X&&cy>=y&&cy<=Y};
  const L=[...markups.filter(m=>m.page===page&&mVis(m)&&inn(m)),...pins.filter(p=>p.page===page&&pVis(p)&&inn(p))];for(const o of L)if(!msel.includes(o))msel.push(o);sel=null;renderSelBar();requestDraw(false);toast(`${msel.length} selected`)}
 let clipPins=false,multiOn=false,boxOn=false;
@@ -550,17 +561,17 @@ let toastT=0;function toast(msg,canUndo){$('#toastTxt').textContent=msg;$('#toas
 $('#toastUndo').onclick=async()=>{$('#toast').hidden=true;await undo();if(walk)renderWalk()};
 // ---------- v9: walk mode ----------
 const REASONS=['No alarm','Trouble','Damaged','Missing','Obstructed','Dirty/needs cleaning','Other'];
-function walkSet(){return pins.filter(p=>!walk.type||p.type===walk.type)}
+function walkSet(){return pins.filter(p=>(!walk.type||p.type===walk.type)&&(!walk.types||walk.types.includes(p.type)))}
 function walkLeft(){return walkSet().filter(p=>untested(p)&&!walk.skip.has(p.id))}
 function nearestFrom(L,from){if(!L.length)return null;if(!from)return L.slice().sort((a,b)=>a.page-b.page)[0];return L.slice().sort((a,b)=>(a.page===from.page?0:1)-(b.page===from.page?0:1)||Math.abs(a.page-from.page)-Math.abs(b.page-from.page)||Math.hypot(a.x-from.x,a.y-from.y)-Math.hypot(b.x-from.x,b.y-from.y))[0]}
-$('#walkBtn').onclick=()=>walk?exitWalk():startWalk();
+$('#walkBtn').onclick=()=>walk?exitWalk():walkPick();
 function startWalk(type=''){if(!plan)return alert('Open a plan first.');if(!pins.length)return alert('This plan has no pins yet. Place pins or use 🔍 Detect devices first.');
- walk={type,skip:new Set(),p:null,fail:false};msel=[];sel=null;renderSelBar();renderGhostBar();$('#walkBtn').classList.add('pri');
+ walk={type,types:arguments[1]||null,skip:new Set(),p:null,fail:false};msel=[];sel=null;renderSelBar();renderGhostBar();$('#walkBtn').classList.add('pri');
  const c=toW(stage.clientWidth/2,stage.clientHeight/2),L=walkLeft(),here=L.filter(p=>p.page===page);
  const first=sel?.kind==='p'&&untested(sel.o)?sel.o:nearestFrom(here.length?here:L,here.length?{page,...c}:null);walkGo(first)}
 function exitWalk(){walk=null;$('#walk').hidden=true;$('#walkBtn').classList.remove('pri');renderGhostBar();renderSelBar();draw()}
 async function walkGo(p){if(!walk)return;walk.p=p;walk.fail=false;renderWalk();if(!p){draw();return}if(p.page!==page)await gotoPage(p.page);
- const W=stage.clientWidth,Hh=stage.clientHeight-$('#walk').offsetHeight,s=Math.max(view.s,Math.min(W,stage.clientHeight)/320);view={s,x:W/2-p.x*s,y:Math.max(60,Hh/2)-p.y*s};sel={kind:'p',o:p};draw();scheduleRender()}
+ const W=stage.clientWidth,Hh=stage.clientHeight-$('#walk').offsetHeight,s=Math.max(view.s,Math.min(W,stage.clientHeight)/320),v0={...view};centerOn(p.x,p.y,s,W/2,Math.max(60,Hh/2));const v1={...view};view=v0;sel={kind:'p',o:p};await slideTo(v1)}
 function walkNext(){if(!walk)return;const cur=walk.p;walkGo(nearestFrom(walkLeft().filter(p=>p!==cur),cur))}
 function walkAfterDialog(){if(!walk||!walk.p)return;const p=pins.find(x=>x.id===walk.p.id);if(!p){walkNext();return}walk.p=p;if(!untested(p))walkNext();else renderWalk()}
 function renderWalk(){const w=$('#walk');if(!walk){w.hidden=true;return}const S=walkSet(),N=S.length,done=S.filter(p=>!untested(p)).length,p=walk.p&&pins.find(x=>x.id===walk.p.id)||walk.p;
@@ -597,7 +608,7 @@ const normA=s=>String(s||'').toUpperCase().replace(/\bDASH\b/g,'-').replace(/[\s
 const NUMW={zero:0,one:1,two:2,to:2,too:2,three:3,four:4,for:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
 const numW=s=>s.split(/\s+/).map(w=>w in NUMW?NUMW[w]:w).join(' ');
 function reasonOf(r){r=r||'';return /no alarm|not alarm|no signal|didn.?t alarm/.test(r)?'No alarm':/trouble/.test(r)?'Trouble':/damage/.test(r)?'Damaged':/missing/.test(r)?'Missing':/obstruct|blocked/.test(r)?'Obstructed':/dirt|clean|dust/.test(r)?'Dirty/needs cleaning':/wrong|location/.test(r)?'Wrong location':'Other'}
-const TYPEW=/\b(smoke|heat|pull|station|horn|strobe|speaker|module|monitor|control|relay|duct|detector|flow|water|tamper|switch|panel|fatc|facp|dact|communicator|terminal|cabinet|door|holder|junction|box|line|array|device)\b/g;
+const TYPEW=/\b(smoke|heat|pull|station|horn|strobe|speaker|module|monitor|control|relay|duct|detector|flow|water|tamper|switch|panel|fatc|facp|dact|communicator|terminal|cabinet|door|holder|junction|box|surge|suppressor|spd|tvss|line|array|device)\b/g;
 function parseVoice(text){const raw=String(text||'').trim(),t=raw.toLowerCase().replace(/[,!?]/g,'').replace(/\.$/,'').replace(/\s+/g,' ').trim();let m;
  if(/^(skip|next)\b/.test(t))return{cmd:'skip'};
  if(/^(pass|passed|passes|good)$/.test(t))return{cmd:'pass'};
@@ -661,12 +672,12 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v14',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v15',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
-  const ly=await get('meta','layers:'+pl.id);if(ly)man.layers[pl.id]=ly;const sc=await get('meta','scale:'+pl.id);if(sc)(man.scales??={})[pl.id]=sc}
- const last=await get('meta','last:'+pid);if(last)man.meta.last=last;const job=await get('meta','job:'+pid);if(job)man.meta.job=job;if(withLearned)man.learned=await all('learned');man.mycodes=await all('mycodes');
+  const ly=await get('meta','layers:'+pl.id);if(ly)man.layers[pl.id]=ly;const sc=await get('meta','scale:'+pl.id);if(sc)(man.scales??={})[pl.id]=sc;const ro=await get('meta','rot:'+pl.id);if(ro)(man.rots??={})[pl.id]=ro}
+ const last=await get('meta','last:'+pid);if(last)man.meta.last=last;const job=await get('meta','job:'+pid);if(job)man.meta.job=job;if(withLearned)man.learned=await all('learned');man.mycodes=await all('mycodes');man.cktpl=Object.keys(CKT).length?CKT:null;
  files.unshift({name:'project.json',blob:new Blob([JSON.stringify(man)],{type:'application/json'})});const tot=files.reduce((a,f)=>a+f.blob.size,0);let done=0;return zipBlob(files,n=>{done+=n;onP&&onP(done/tot)})}
 async function readBpm(file){const z=await unzipBlob(file),mj=z.get('project.json');if(!mj)throw new Error('this file has no project.json, it is not a Blueprint Markup project');let man;try{man=JSON.parse(await mj.blob.text())}catch{throw new Error('project.json is damaged')}
  if(man.format!==BPM_FMT)throw new Error('this is not a Blueprint Markup project file');if(!Number.isInteger(man.version)||man.version<1)throw new Error('unknown project file version');if(man.version>BPM_VER)throw new Error(`this file was saved by a newer app (format v${man.version}; this app reads up to v${BPM_VER}). Reload the app to update it, then try again.`);
@@ -684,6 +695,8 @@ async function importBpm(file,replaceId,onP){const{z,man}=await readBpm(file);
  // 2) write everything; on failure remove what was written
  const wrote=[];try{for(const p of plans){await put('plans',p);wrote.push(['plans',p.id])}for(const m of mk){await put('markups',m);wrote.push(['markups',m.id])}for(const p of pn){await put('pins',p);wrote.push(['pins',p.id])}for(const m of media){await put('media',m);wrote.push(['media',m.id])}
   for(const[o,l]of Object.entries(man.layers||{}))if(idm.has(o))await put('meta',l,'layers:'+idm.get(o));
+  for(const[o,l]of Object.entries(man.rots||{}))if(idm.has(o)&&l&&typeof l==='object')await put('meta',l,'rot:'+idm.get(o));
+  if(man.cktpl&&typeof man.cktpl==='object'&&!Object.keys(CKT).length){CKT=sanTpl(man.cktpl);await put('meta',CKT,'cktpl')}
   for(const[o,l]of Object.entries(man.scales||{}))if(idm.has(o)&&l&&typeof l==='object')await put('meta',l,'scale:'+idm.get(o));
   let nl=0;if(Array.isArray(man.learned)&&man.learned.length){const have=new Set((await all('learned')).map(r=>r.id));for(const r of man.learned)if(r&&r.fp&&r.g&&!have.has(r.id)){await put('learned',r);nl++}lrCache=null;learnInfoUpd()}
   let nm=0;if(Array.isArray(man.mycodes)&&man.mycodes.length){const have=new Set((await all('mycodes')).map(r=>r.id));for(const r of man.mycodes)if(r&&r.section&&r.title&&!have.has(r.id)){await put('mycodes',{...r,id:r.id||uid(),personal:true});nm++}MY_CODES=null}
@@ -978,3 +991,71 @@ function renderMBar(){const b=$('#mBar');if(tool!=='measure'||!plan){b.hidden=tr
  if($('#mClr'))$('#mClr').onclick=async()=>{if(!confirm(pp?`Remove the page ${page} scale (falls back to the plan scale if set)?`:'Remove this plan\'s scale?'))return;const v=SCL[plan.id];if(pp)delete v.pages[page];else v.def=null;await put('meta',v,'scale:'+plan.id);renderMBar();draw()};
  b.querySelectorAll('[data-ref]').forEach(x=>x.onclick=()=>{MS.refs[x.dataset.ref]=!MS.refs[x.dataset.ref];renderMBar();mRead()});mRead()}
 get('meta','munit').then(u=>{if(u==='m'||u==='ft')MS.unit=u}).catch(()=>{});
+
+// ---------- v15: spellcheck text dialog (native browser spellcheck) ----------
+const FA_TERMS=['FACP','FACU','DACT','FATC','NAC','SLC','IDC','SPD','TVSS','ECS','MNS','EVACS','AHJ','ITM','candela','strobe','annunciator','addressable','supervisory','pre-action','preaction','sprinkler','duct','waterflow','tamper','PIV','OS&Y','FDC','ADA','AFF','dB','dBA','NFPA','IFC','IBC','Notifier','Siemens','Simplex','Edwards','Kidde','Gamewell','Silent Knight'];
+function faTermsIn(t){const W=new Set(String(t).match(/[A-Za-z&-]+/g)||[]),hit=[];for(const f of FA_TERMS)if([...W].some(w=>w.toLowerCase()===f.toLowerCase()))hit.push(f);return hit}
+function askText(title,init){return new Promise(res=>{const d=$('#txtDlg');$('#txtH').textContent=title;const ta=$('#txtIn');ta.value=init||'';const upd=()=>{const h=faTermsIn(ta.value);$('#txtFa').textContent=h.length?'Fire-alarm terms OK even if underlined: '+h.join(', '):'Spell check uses your device keyboard/browser dictionary.'};ta.oninput=upd;upd();
+ const done=()=>{d.removeEventListener('close',done);res(d.returnValue==='ok'?ta.value.replace(/\s+$/,''):null)};d.returnValue='';d.addEventListener('close',done);d.showModal();setTimeout(()=>ta.focus(),50)})}
+// ---------- v15: rotate page view ----------
+function updRotBtn(){const b=$('#rotBtn');if(b)b.textContent=VR?`⟳${VR}°`:'⟳'}
+async function rotView(dir){if(!plan||!pageW)return;const c=toW(stage.clientWidth/2,stage.clientHeight/2),s=view.s;VR=(VR+(dir<0?270:90))%360;if(VR)ROTS[page]=VR;else delete ROTS[page];await put('meta',{...ROTS},'rot:'+plan.id);
+ centerOn(c.x,c.y,s,stage.clientWidth/2,stage.clientHeight/2);tile=null;updRotBtn();draw();scheduleRender();renderThumbs()}
+{const b=$('#rotBtn');let lp=0,long=false;b.onclick=e=>{if(long){long=false;return}rotView(1)};b.oncontextmenu=e=>{e.preventDefault();rotView(-1)};
+ b.addEventListener('pointerdown',()=>{long=false;lp=setTimeout(()=>{long=true;rotView(-1)},550)});['pointerup','pointerleave','pointercancel'].forEach(k=>b.addEventListener(k,()=>clearTimeout(lp)))}
+// ---------- v15: smooth slide (walk) ----------
+let slideRaf=0,slideTok=0;
+function slideTo(v1,ms=500){cancelAnimationFrame(slideRaf);const tok=++slideTok,v0={...view},t0=performance.now(),ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+ // interpolate in log-scale for zoom, keep the target point fixed in the end state
+ return new Promise(res=>{const step=now=>{if(tok!==slideTok){res(false);return}const t=Math.min(1,(now-t0)/ms),k=ease(t),s=Math.exp(Math.log(v0.s)+(Math.log(v1.s)-Math.log(v0.s))*k);
+  view={s,x:v0.x+(v1.x-v0.x)*k,y:v0.y+(v1.y-v0.y)*k};if(t<1){fastView();slideRaf=requestAnimationFrame(step)}else{view={...v1};draw();scheduleRender();res(true)}};slideRaf=requestAnimationFrame(step)})}
+stage.addEventListener('pointerdown',()=>{if(slideRaf){slideTok++;cancelAnimationFrame(slideRaf);slideRaf=0;requestDraw()}},true);
+stage.addEventListener('wheel',()=>{if(slideRaf){slideTok++;cancelAnimationFrame(slideRaf);slideRaf=0}},{capture:true,passive:true});
+// ---------- v15: walk type picker ----------
+async function walkPick(){if(!plan)return alert('Open a plan first.');if(!pins.length)return alert('This plan has no pins yet. Place pins or use 🔍 Detect devices first.');
+ const last=(await get('meta','walkTypes'))||null,types=[...new Set(pins.map(p=>p.type))].sort((a,b)=>(TYPES[a]?.n||a).localeCompare(TYPES[b]?.n||b));
+ $('#wkTypes').innerHTML=types.map(t=>{const all_=pins.filter(p=>p.type===t),un=all_.filter(untested).length;return`<label><input type="checkbox" value="${t}"${!last||last.includes(t)?' checked':''}><span class="dot" style="display:inline-block;background:${(TYPES[t]||TYPES.other).c}"></span> ${esc(TYPES[t]?.n||t)} <small style="color:#94a3b8">${un} untested / ${all_.length}</small></label>`}).join('');
+ const bx=()=>[...document.querySelectorAll('#wkTypes input')];$('#wkAll').onclick=()=>bx().forEach(b=>b.checked=true);$('#wkNone').onclick=()=>bx().forEach(b=>b.checked=false);$('#wkProj').parentElement.hidden=true;
+ $('#wkGo').onclick=async()=>{const sel_=bx().filter(b=>b.checked).map(b=>b.value);if(!sel_.length){alert('Tick at least one device type.');return}await put('meta',sel_,'walkTypes');$('#walkDlg').close();startWalk('',sel_.length===types.length?null:sel_)};$('#walkDlg').showModal()}
+// ---------- v15: page thumbnails ----------
+let THB={},thObs=null;
+function thumbsWanted(){return innerWidth>=800}
+async function thumbFor(n){const key=plan.id+':'+n;if(THB[key])return THB[key];let url=null;try{
+  if(pdf){const pg=await pdf.getPage(n),vp=pg.getViewport({scale:1}),sc=Math.min(150/vp.width,150/vp.height),c=document.createElement('canvas');c.width=Math.ceil(vp.width*sc);c.height=Math.ceil(vp.height*sc);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
+   if(n===page&&baseBm)x.drawImage(baseBm.c,0,0,c.width,c.height);else await pg.render({canvasContext:x,viewport:pg.getViewport({scale:sc})}).promise;url=c.toDataURL('image/jpeg',.7)}
+  else if(bmp){const c=document.createElement('canvas'),sc=Math.min(150/pageW,150/pageH);c.width=Math.ceil(pageW*sc);c.height=Math.ceil(pageH*sc);c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);url=c.toDataURL('image/jpeg',.7)}}catch{}
+ THB[key]=url;return url}
+function renderThumbs(){const b=$('#thumbs');if(!plan||b.hidden)return;const N=plan.pages||1;
+ b.innerHTML=`<div class="thh"><b>Pages</b><button type="button" class="btn" id="thX" title="Hide">✕</button></div>`+Array.from({length:N},(_,i)=>{const n=i+1,ps=pins.filter(p=>p.page===n),f=ps.filter(p=>p.status==='failed').length,r=ROTS[n]||0;
+  return`<button type="button" class="th${n===page?' on':''}" data-pg="${n}"><img alt="" data-n="${n}"${THB[plan.id+':'+n]?` src="${THB[plan.id+':'+n]}"`:''} style="transform:rotate(${r}deg)"><span class="thn">${n}</span>${ps.length?`<span class="thb${f?' f':''}">${f?f+'✖':ps.length}</span>`:''}</button>`}).join('');
+ $('#thX').onclick=()=>{b.hidden=true;$('#thBtn').classList.remove('pri')};
+ b.querySelectorAll('[data-pg]').forEach(x=>x.onclick=()=>{const n=+x.dataset.pg;if(n!==page){$('#pageSel').value=n;gotoPage(n).then(()=>{MS.pts=[];renderMBar();renderThumbs()})}});
+ if(thObs)thObs.disconnect();thObs=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting){const im=e.target;thObs.unobserve(im);if(!im.src)setTimeout(async()=>{const u=await thumbFor(+im.dataset.n);if(u)im.src=u},30)}},{root:b});
+ b.querySelectorAll('img[data-n]').forEach(im=>thObs.observe(im));b.querySelector('.th.on')?.scrollIntoView({block:'nearest',inline:'nearest'})}
+$('#thBtn').onclick=()=>{const b=$('#thumbs');b.hidden=!b.hidden;$('#thBtn').classList.toggle('pri',!b.hidden);renderThumbs()};
+{const _ac=afterChange;afterChange=function(){_ac();if(!$('#thumbs').hidden)renderThumbs()}}
+// open the strip by default on wide screens, after first render
+setTimeout(()=>{if(thumbsWanted()&&plan&&$('#thumbs').hidden){$('#thumbs').hidden=false;$('#thBtn').classList.add('pri');renderThumbs()}},1500);
+{const _g=gotoPage;gotoPage=async function(n,seq){const r=await _g(n,seq);if(!$('#thumbs').hidden)renderThumbs();else if(thumbsWanted()&&plan){$('#thumbs').hidden=false;$('#thBtn').classList.add('pri');renderThumbs()}return r}}
+// ---------- v15: editable checklist templates ----------
+function sanTpl(o){const r={};for(const[k,v]of Object.entries(o||{}))if(TYPES[k]&&Array.isArray(v)){const it=v.map(x=>String(x||'').trim().slice(0,160)).filter(Boolean).slice(0,40);if(it.length)r[k]=it}return r}
+get('meta','cktpl').then(v=>{if(v)CKT=sanTpl(v)}).catch(()=>{});
+let ckEd={t:null,items:[]};
+function ckRender(){const t=ckEd.t,ov=!!CKT[t];$('#ckInfo').textContent=(ov?'Custom template.':'Built-in default.')+' New pins of this type use it; existing pins keep their own list until you tap ↺ on the pin.';
+ $('#ckItems').innerHTML=ckEd.items.map((x,i)=>`<div class="row ckrow"><input value="${esc(x)}" data-i="${i}" spellcheck="true" lang="en" maxlength="160"><button type="button" class="btn" data-up="${i}" title="Move up"${i?'':' disabled'}>↑</button><button type="button" class="btn" data-dn="${i}" title="Move down"${i<ckEd.items.length-1?'':' disabled'}>↓</button><button type="button" class="btn danger" data-rm="${i}" title="Remove">✕</button></div>`).join('')||'<small>No items.</small>';
+ const sync=()=>document.querySelectorAll('#ckItems input').forEach(e=>ckEd.items[+e.dataset.i]=e.value);
+ document.querySelectorAll('#ckItems input').forEach(e=>e.oninput=sync);
+ document.querySelectorAll('#ckItems [data-up]').forEach(b=>b.onclick=()=>{sync();const i=+b.dataset.up;[ckEd.items[i-1],ckEd.items[i]]=[ckEd.items[i],ckEd.items[i-1]];ckRender()});
+ document.querySelectorAll('#ckItems [data-dn]').forEach(b=>b.onclick=()=>{sync();const i=+b.dataset.dn;[ckEd.items[i+1],ckEd.items[i]]=[ckEd.items[i],ckEd.items[i+1]];ckRender()});
+ document.querySelectorAll('#ckItems [data-rm]').forEach(b=>b.onclick=()=>{sync();ckEd.items.splice(+b.dataset.rm,1);ckRender()})}
+function ckOpen(t){$('#ckType').innerHTML=Object.entries(TYPES).map(([k,v])=>`<option value="${k}">${esc(v.n)}${CKT[k]?' ✎':''}</option>`).join('');ckEd={t,items:[...ckTpl(t)]};$('#ckType').value=t;ckRender();$('#ckDlg').showModal()}
+$('#ckType').onchange=e=>{ckEd={t:e.target.value,items:[...ckTpl(e.target.value)]};ckRender()};
+$('#ckAdd').onclick=()=>{ckEd.items.push('');ckRender();const L=document.querySelectorAll('#ckItems input');L[L.length-1]?.focus()};
+$('#ckDef').onclick=()=>{ckEd.items=[...(CHECKS[ckEd.t]||CHECKS.other)];ckRender()};
+$('#ckSave').onclick=async()=>{document.querySelectorAll('#ckItems input').forEach(e=>ckEd.items[+e.dataset.i]=e.value);const it=ckEd.items.map(x=>x.trim()).filter(Boolean);const def=CHECKS[ckEd.t]||CHECKS.other;
+ if(!it.length||JSON.stringify(it)===JSON.stringify(def))delete CKT[ckEd.t];else CKT[ckEd.t]=it;await put('meta',{...CKT},'cktpl');toast(`Template saved for ${TYPES[ckEd.t]?.n||ckEd.t}`);ckOpen(ckEd.t);
+ if(dlg.open&&cur&&cur.type===ckEd.t&&!ckl.some(c=>c.v)){ckl=checkItems(cur.type);renderChecks()}};
+$('#ckExp').onclick=()=>{const b=new Blob([JSON.stringify({format:'bpm-checklists',version:1,templates:CKT},null,1)],{type:'application/json'});dl(b,'checklist-templates.json')};
+$('#ckImp').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const j=JSON.parse(await f.text()),tp=sanTpl(j.templates||j);if(!Object.keys(tp).length)throw new Error('no templates found');if(!confirm(`Import ${Object.keys(tp).length} template(s)? Existing templates for those types are replaced.`))return;Object.assign(CKT,tp);await put('meta',{...CKT},'cktpl');ckOpen(ckEd.t||Object.keys(tp)[0]);toast('Templates imported')}catch(err){alert('Import failed: '+err.message)}};
+$('#ckEdit').onclick=()=>ckOpen(form.elements.type.value||cur?.type||'smoke');
+$('#ckReset').onclick=()=>{if(ckl.some(c=>c.v)&&!confirm('Replace this pin\'s checklist with the current template? Answers on this pin are cleared.'))return;ckl=checkItems(form.elements.type.value);renderChecks()};
