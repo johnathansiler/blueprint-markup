@@ -152,14 +152,14 @@ function resizeTo(m,o,h,w){if(isLine(m)){if(h===0){m.x1=w.x;m.y1=w.y}else{m.x2=w
  const x0=Math.min(o.x1,o.x2),y0=Math.min(o.y1,o.y2),X0=Math.max(o.x1,o.x2),Y0=Math.max(o.y1,o.y2),L=h===0||h===3,T=h===0||h===1;
  if(m.type==='text'){const nh=Math.max(6/view.s,T?Y0-w.y:w.y-y0);m.fs=o.fs*nh/((Y0-y0)||1);const tw=textBox({...m,x1:0,y1:0}).x2;Object.assign(m,{x1:L?X0-tw:x0,y1:T?Y0-m.fs*1.15:y0});textBox(m);return}
  let x=L?w.x:x0,X=L?X0:w.x,y=T?w.y:y0,Y=T?Y0:w.y;m.x1=Math.min(x,X);m.x2=Math.max(x,X);m.y1=Math.min(y,Y);m.y2=Math.max(y,Y)}
-let CR=0;function drawPin(c,p,s,hl,bare,nolab){const T=TYPES[p.type]||TYPES.other,r=pinR();c.save();if(!bare)c.globalAlpha=opOf(p,true);const oo=!bare&&OFFMAP&&OFFMAP.get(p.id);if(oo)drawLeader(c,p.x,p.y,p.x+oo.dx,p.y+oo.dy,T.c);c.translate(p.x+(oo?oo.dx:0),p.y+(oo?oo.dy:0));if(CR)c.rotate(-CR);
+let CR=0;function drawPin(c,p,s,hl,bare,nolab){const T=TYPES[p.type]||TYPES.other,r=pinR();c.save();if(!bare)c.globalAlpha=opOf(p,true);const oo=!bare&&OFFMAP&&OFFMAP.get(p.id);if(oo)drawLeader(c,p.x,p.y,p.x+oo.dx,p.y+oo.dy,T.c);c.translate(p.x+(oo?oo.dx:0),p.y+(oo?oo.dy:0));if(CR)c.rotate(-CR);if(oo&&oo.cl&&!hl)c.scale(.82,.82);
  // s is kept for call-site compat; pin geometry is in plan points so it scales with view
  const sc=ST[p.status]||ST['not tested'];if(hl&&!bare){c.beginPath();c.arc(0,0,r*1.75,0,7);c.fillStyle='rgba(56,189,248,.35)';c.fill()}
  c.fillStyle=T.c;c.strokeStyle=bare?'#fff':sc;c.lineWidth=bare?2:pinLW();c.beginPath();
  if(T.sq)c.rect(-r,-r,2*r,2*r);else if(p.type==='heat'){c.moveTo(0,-r*1.2);c.lineTo(r*1.1,r*.8);c.lineTo(-r*1.1,r*.8);c.closePath()}else if(p.type==='pull'){c.moveTo(0,-r*1.2);c.lineTo(r*1.2,0);c.lineTo(0,r*1.2);c.lineTo(-r*1.2,0);c.closePath()}else c.arc(0,0,r,0,7);
  c.fill();c.stroke();c.fillStyle='#fff';c.font=`bold ${T.l.length>2?6.5:T.l.length>1?8:11}px sans-serif`;c.textAlign='center';c.textBaseline='middle';c.fillText(T.l,0,p.type==='heat'?r*.15:0);
  if(bare){c.restore();return}c.fillStyle=sc;c.strokeStyle='#fff';c.lineWidth=1.2;c.beginPath();c.arc(r*.95,-r*.95,4.5,0,7);c.fill();c.stroke();
- if(p.address&&!nolab){c.font=`10px sans-serif`;c.textAlign='left';c.lineWidth=2.5;c.lineJoin='round';c.strokeStyle='#fff';c.strokeText(p.address,r*1.3,r*.3);c.fillStyle='#111';c.fillText(p.address,r*1.3,r*.3)}c.restore()}
+ if(p.address&&!nolab&&(!oo||!oo.cl||hl||view.s>=2.5)){c.globalAlpha=1;c.font=`10px sans-serif`;c.textAlign='left';c.lineWidth=2.5;c.lineJoin='round';c.strokeStyle='#fff';c.strokeText(p.address,r*1.3,r*.3);c.fillStyle='#111';c.fillText(p.address,r*1.3,r*.3)}c.restore()}
 function setT(c){const d=dpr(),s=view.s*d,e=view.x*d,f=view.y*d;
  if(VR===90)c.setTransform(0,s,-s,0,s*pageH+e,f);else if(VR===180)c.setTransform(-s,0,0,-s,s*pageW+e,s*pageH+f);else if(VR===270)c.setTransform(0,-s,s,0,e,s*pageW+f);else c.setTransform(s,0,0,s,e,f)}
 function drawBase(){drawn={...view};cv.style.transform=ov.style.transform='';ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);if(!plan||!pageW)return;setT(ctx);
@@ -481,7 +481,7 @@ async function runDetect(groups,all){const want=groups.flatMap(g=>DG[g].d),pl=pl
    // Label panel boxes using the page text layer (FACP/DACT/SYS/FATC) and drop legend-side hits
    try{const tc=await pg.getTextContent(),TB=vp.width>vp.height?vp.width*.825:vp.width;
     const labs=[];for(const it of tc.items){const s=(it.str||'').trim();if(!s)continue;
-     let typ=null;if(/^FACP\b/i.test(s))typ='FACP';else if(/^DACT\b/i.test(s))typ='DACT';else if(/^FATC\d*/i.test(s))typ='FATC';else if(/^(SYS\d+|AMP\b|ANNUN)/i.test(s))typ='PANEL_BOX';
+     let typ=null;if(/^FACP[-\s]?\d*$/i.test(s))typ='FACP';else if(/^DACT[-\s]?\d*$/i.test(s))typ='DACT';else if(/^FATC[-\s]?\d*$/i.test(s))typ='FATC';else if(/^(SYS\d+|AMP\d*|ANNUN\w*)$/i.test(s))typ='PANEL_BOX';
      else if(/^(TS|TAMPER)$/i.test(s))typ='TAMPER';else if(/^(FS|WF|FLOW)$/i.test(s))typ='FLOW';if(!typ)continue;
      const m=pdfjsLib.Util.transform(vp.transform,it.transform),x=m[4],y=m[5]-(it.height||0)*.5;if(x>TB)continue;
      labs.push({type:typ,x,y,fp:{s:'text',gl:s.slice(0,12),v:[0,0,0,0,0,0,0]}})}
@@ -677,7 +677,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v17',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v18',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -1086,14 +1086,21 @@ stage.addEventListener('pointerdown',e=>{if(ted&&e.target!==ted.el)tedEnd(true)}
 
 // ---------- v16: de-overlap pins & ghosts (display only; stored x,y stay on the device) ----------
 var OFFMAP=null,SCRNOFF=null;
-function pinOffsets(list){const M=new Map(),r=pinR(),th=r*1.7,n=list.length;if(n<2)return M;const key=o=>o.id||o;
+const PANEL_T=new Set(['panel','dact','fatc','panelbox']),PANEL_G=new Set(['facp','dact','fatc','panelbox']);
+function isPanelO(o){return PANEL_T.has(o.type)||PANEL_G.has(o.g)}
+function pinOffsets(list){const M=new Map(),r=pinR(),th=r*3,n=list.length;const key=o=>o.id||o;
+ // v18: panel equipment markers sit off the printed FACP/DACT/FATC box (up-right, long leader) so the plan text stays readable
+ for(const o of list)if(isPanelO(o))M.set(key(o),{dx:r*3.4,dy:-r*3.4,pn:1});
+ if(n<2)return M;
  // union-find over pairs closer than th (grid bucketed)
  const par=list.map((_,i)=>i),f=i=>par[i]===i?i:(par[i]=f(par[i])),G=new Map(),C=th;
  list.forEach((o,i)=>{const k=Math.floor(o.x/C)+','+Math.floor(o.y/C);(G.get(k)||G.set(k,[]).get(k)).push(i)});
  list.forEach((o,i)=>{const gx=Math.floor(o.x/C),gy=Math.floor(o.y/C);for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)for(const j of G.get((gx+a)+','+(gy+b))||[])if(j>i&&Math.hypot(list[j].x-o.x,list[j].y-o.y)<th)par[f(j)]=f(i)});
  const cl=new Map();list.forEach((o,i)=>{const k=f(i);(cl.get(k)||cl.set(k,[]).get(k)).push(o)});
- for(const g of cl.values()){if(g.length<2)continue;const cx=g.reduce((a,o)=>a+o.x,0)/g.length,cy=g.reduce((a,o)=>a+o.y,0)/g.length,R=Math.max(r*2.3,g.length*r*2.3/(2*Math.PI));
-  g.sort((a,b)=>Math.atan2(a.y-cy,a.x-cx)-Math.atan2(b.y-cy,b.x-cx));g.forEach((o,i)=>{const t=-Math.PI/2+i*2*Math.PI/g.length;M.set(key(o),{dx:cx+R*Math.cos(t)-o.x,dy:cy+R*Math.sin(t)-o.y})})}
+ for(const g of cl.values()){if(g.length<2)continue;const cx=g.reduce((a,o)=>a+o.x,0)/g.length,cy=g.reduce((a,o)=>a+o.y,0)/g.length;
+  // v18: ring well clear of the symbols (2.4x the old radius); >8 markers spill into an outer ring (spiral)
+  g.sort((a,b)=>Math.atan2(a.y-cy,a.x-cx)-Math.atan2(b.y-cy,b.x-cx));const per=8,rings=Math.ceil(g.length/per);
+  g.forEach((o,i)=>{const ring=Math.floor(i/per),cnt=ring<rings-1?per:g.length-ring*per,R=Math.max(r*7,cnt*r*2.4/(2*Math.PI))+ring*r*2.6,t=-Math.PI/2+(i%per)*2*Math.PI/cnt+ring*.4;M.set(key(o),{dx:cx+R*Math.cos(t)-o.x,dy:cy+R*Math.sin(t)-o.y,cl:1})})}
  return M}
 function drawLeader(c,x,y,X,Y,col){c.save();c.globalAlpha=Math.max(.7,c.globalAlpha);c.strokeStyle=col;c.lineWidth=1.2;c.beginPath();c.moveTo(x,y);c.lineTo(X,Y);c.stroke();c.fillStyle=col;c.strokeStyle='#fff';c.lineWidth=.8;c.beginPath();c.arc(x,y,2.4,0,7);c.fill();c.stroke();c.restore()}
 
