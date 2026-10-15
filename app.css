@@ -75,3 +75,13 @@ dialog input,dialog select,dialog textarea{font-size:16px;min-height:42px}
 #ghBar .btn{padding:3px 8px;min-height:32px;font-size:13px}#ghBar .chip{padding:2px 7px;border-radius:12px;border:1.5px solid;background:#1e293b;color:#e2e8f0;font-size:12px;min-height:28px;cursor:pointer}
 #detTypes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:2px 8px}#detTypes label,#detScope label{display:flex;align-items:center;gap:6px;margin:2px 0;min-height:36px;font-size:14px}
 #detDlg input[type=checkbox],#detDlg input[type=radio]{width:22px;min-height:22px;height:22px;flex:none;margin:0}#detTypes .sw{width:12px;height:12px;border-radius:50%;flex:none}
+
+/* v9 */
+#selBar{position:absolute;left:6px;top:6px;z-index:3;background:#000d;border-radius:8px;padding:4px 6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:13px;max-width:calc(100% - 12px)}#selBar .btn{padding:3px 8px;min-height:34px;font-size:13px}#selBar label{display:flex;align-items:center;gap:4px}
+#selBox{position:absolute;border:2px dashed #38bdf8;background:#38bdf822;pointer-events:none;z-index:2}
+.lay{display:flex;flex-direction:column;margin:2px 0 8px}.lay label{display:flex;align-items:center;gap:8px;min-height:38px;margin:0}#layDlg input[type=checkbox],#layDlg input[type=radio]{width:22px;height:22px;min-height:22px;flex:none;margin:0}
+#walk{position:absolute;left:0;right:0;bottom:0;z-index:4;background:#1e293bf2;border-top:2px solid #2563eb;padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:6px}
+#walk .wh{display:flex;align-items:center;gap:6px;flex-wrap:wrap}#walk .wt{font-size:18px;font-weight:700;flex:1;min-width:0;overflow-wrap:anywhere}#walk .wb{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}#walk .wb .btn{min-height:56px;font-size:18px}
+#walk .reasons{display:flex;flex-wrap:wrap;gap:4px}#walk .reasons .btn{min-height:40px}#walk select{min-height:36px;max-width:150px;padding:3px 6px}.ok{background:#15803d}
+#toast{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;z-index:6;background:#0f172af2;border:1px solid #475569;border-radius:10px;padding:6px 8px 6px 12px;display:flex;align-items:center;gap:8px;max-width:calc(100% - 16px);font-size:14px}#toast .btn{padding:3px 8px;min-height:32px}
+#walk:not([hidden])~#toast{bottom:auto;top:8px}

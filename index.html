@@ -9,6 +9,7 @@
  <button class="btn" id="prev">◀</button><select id="pageSel" title="Page"></select><button class="btn" id="next">▶</button>
  <span class="sp"></span>
  <button class="btn" id="exPng">PNG</button><button class="btn" id="exPdf">PDF</button>
+ <button class="btn" id="layBtn" title="Layers &amp; filters">👁</button><button class="btn" id="walkBtn" title="Walk mode: test devices one by one">🚶</button><button class="btn" id="micBtn" title="Voice command" hidden>🎤</button>
  <button class="btn" id="listBtn">☰ Pins</button>
 </header>
 <div id="tools">
@@ -31,7 +32,7 @@
  <button id="fit" class="tool" title="Fit">⤢</button>
  <button id="detBtn" class="tool" title="Detect devices (suggest pins from the plan's symbols)">🔍</button>
 </div>
-<main id="stage"><canvas id="cv"></canvas><canvas id="ov"></canvas><div id="empty">Open a PDF plan set (or image) with 📂</div><div id="busy" hidden><span id="busyTxt">Rendering</span> <b id="busyPct">…</b><div id="busyTrack"><div id="busyBar"></div></div><button type="button" class="btn" id="stop">Stop</button></div><div id="ghBar" hidden></div><div id="err" hidden><span id="errTxt"></span><button type="button" class="btn" id="errX" title="Dismiss">✕</button></div></main>
+<main id="stage"><canvas id="cv"></canvas><canvas id="ov"></canvas><div id="empty">Open a PDF plan set (or image) with 📂</div><div id="busy" hidden><span id="busyTxt">Rendering</span> <b id="busyPct">…</b><div id="busyTrack"><div id="busyBar"></div></div><button type="button" class="btn" id="stop">Stop</button></div><div id="ghBar" hidden></div><div id="selBar" hidden></div><div id="walk" hidden></div><div id="toast" hidden><span id="toastTxt"></span><button type="button" class="btn" id="toastUndo">↶ Undo</button></div><div id="err" hidden><span id="errTxt"></span><button type="button" class="btn" id="errX" title="Dismiss">✕</button></div></main>
 <aside id="panel" hidden><div class="ph"><button class="btn tab on" id="modePins">Pins</button><button class="btn tab" id="modeDefs">⚠ Deficiencies <b id="defCount"></b></button><span class="sp"></span><button class="btn" id="csvBtn" title="Export device list (CSV, whole project)">CSV</button><button class="btn" id="testerBtn" title="Tester name">👤</button><button class="btn" id="closeList">✕</button></div>
  <input id="q" placeholder="Search address, type, loop, notes…">
  <div class="row"><select id="fType"><option value="">All types</option></select>
@@ -47,7 +48,14 @@
  <div class="row" style="margin:8px 0 4px"><b>Device types</b><span class="sp"></span><button type="button" class="btn" id="detAll">All</button><button type="button" class="btn" id="detNone">None</button></div>
  <div id="detTypes"></div>
  <div class="row" id="detScope"><label><input type="radio" name="scope" value="page" checked> This page</label><label><input type="radio" name="scope" value="all"> All pages of this plan</label></div>
+ <div class="row"><small id="learnInfo" style="color:#94a3b8"></small><button type="button" class="btn" id="learnReset">Reset</button></div>
  <div class="row"><span class="sp"></span><button class="btn" value="cancel">Cancel</button><button class="btn pri" id="detGo" value="go">Detect</button></div></form></dialog>
+<dialog id="layDlg"><form method="dialog" id="layForm"><h3 style="margin:4px 0">👁 Layers &amp; filters <small style="color:#94a3b8;font-weight:normal">(this plan)</small></h3>
+ <div class="lay"><label><input type="checkbox" name="shapes"> Markups: shapes (▢ ◯ ✔)</label><label><input type="checkbox" name="clouds"> Markups: clouds</label><label><input type="checkbox" name="text"> Markups: text &amp; arrows/lines</label>
+ <label><input type="checkbox" name="pins"> Pins</label><label><input type="checkbox" name="labels"> Pin labels (address)</label><label><input type="checkbox" name="ghosts"> Detect suggestions</label></div>
+ <b>Pins shown</b><div class="lay"><label><input type="radio" name="only" value=""> All pins</label><label><input type="radio" name="only" value="failed"> Only failed</label><label><input type="radio" name="only" value="untested"> Only untested</label><label><input type="checkbox" name="dim"> Dim passed pins</label></div>
+ <div class="lay"><label><input type="checkbox" name="exp"> Apply to PNG/PDF exports too</label></div>
+ <div class="row"><button type="button" class="btn" id="layReset">Show all</button><span class="sp"></span><button class="btn pri" value="ok">Done</button></div></form></dialog>
 <dialog id="ghDlg"><form method="dialog" id="ghForm"><h3 style="margin:4px 0" id="ghHead">Suggested device</h3>
  <label>Type <select id="ghType"></select></label><small id="ghInfo" style="color:#94a3b8"></small>
  <div class="row" style="margin-top:10px"><button type="button" class="btn danger" id="ghRej">✕ Reject</button><button type="button" class="btn" id="ghAllType">Accept all of this type</button><span class="sp"></span><button class="btn" value="cancel">Close</button><button type="button" class="btn pri" id="ghAcc">✔ Accept</button></div></form></dialog>

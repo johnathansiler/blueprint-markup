@@ -25,15 +25,17 @@ function autoStatus(cs){const a=(cs||[]).filter(c=>c.v);if(!a.length)return'not 
 function reasonFor(item){return /alarm|activat|audible|signal|received|operat|visible|flash|flow/i.test(item)?'No alarm':/clean/i.test(item)?'Dirty/needs cleaning':/obstruct|accessib/i.test(item)?'Obstructed':/address|label/i.test(item)?'Wrong location':/condition|mount|led|base/i.test(item)?'Damaged':/trouble|supervis|wiring/i.test(item)?'Trouble':'Other'}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 // ---------- IndexedDB ----------
-let dbp;function db(){return dbp||(dbp=new Promise((res,rej)=>{const r=indexedDB.open('blueprint-markup',2);r.onupgradeneeded=e=>{const d=r.result,t=r.transaction;if(e.oldVersion<1){d.createObjectStore('plans',{keyPath:'id'});for(const s of['markups','pins','media']){const o=d.createObjectStore(s,{keyPath:'id'});o.createIndex(s==='media'?'pinId':'planId',s==='media'?'pinId':'planId')}d.createObjectStore('meta')}
- if(e.oldVersion<2){const pid='p'+uid();d.createObjectStore('projects',{keyPath:'id'}).put({id:pid,name:'My project',created:Date.now()});t.objectStore('meta').put(pid,'project');t.objectStore('plans').openCursor().onsuccess=ev=>{const c=ev.target.result;if(c){c.update({...c.value,projectId:pid});c.continue()}}}};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))}
+let dbp;function db(){return dbp||(dbp=new Promise((res,rej)=>{const r=indexedDB.open('blueprint-markup',3);r.onupgradeneeded=e=>{const d=r.result,t=r.transaction;if(e.oldVersion<1){d.createObjectStore('plans',{keyPath:'id'});for(const s of['markups','pins','media']){const o=d.createObjectStore(s,{keyPath:'id'});o.createIndex(s==='media'?'pinId':'planId',s==='media'?'pinId':'planId')}d.createObjectStore('meta')}
+ if(e.oldVersion<2){const pid='p'+uid();d.createObjectStore('projects',{keyPath:'id'}).put({id:pid,name:'My project',created:Date.now()});t.objectStore('meta').put(pid,'project');t.objectStore('plans').openCursor().onsuccess=ev=>{const c=ev.target.result;if(c){c.update({...c.value,projectId:pid});c.continue()}}}
+ if(e.oldVersion<3&&!d.objectStoreNames.contains('learned'))d.createObjectStore('learned',{keyPath:'id'})};r.onsuccess=()=>{r.result.onversionchange=()=>r.result.close();res(r.result)};r.onblocked=()=>console.info('db upgrade waiting for other tabs');r.onerror=()=>rej(r.error)}))}
 async function tx(store,mode,fn){const d=await db();return new Promise((res,rej)=>{const t=d.transaction(store,mode),s=t.objectStore(store);let out;const r=fn(s);if(r)r.onsuccess=()=>out=r.result;t.oncomplete=()=>res(out);t.onerror=()=>rej(t.error)})}
 const put=(s,v,k)=>tx(s,'readwrite',o=>o.put(v,k)),get=(s,k)=>tx(s,'readonly',o=>o.get(k)),del=(s,k)=>tx(s,'readwrite',o=>o.delete(k)),all=s=>tx(s,'readonly',o=>o.getAll()),byIdx=(s,i,v)=>tx(s,'readonly',o=>o.index(i).getAll(v));
 // ---------- state ----------
 const cv=$('#cv'),ctx=cv.getContext('2d'),stage=$('#stage');
 let plan=null,pdf=null,page=1,pageW=0,pageH=0,bmp=null,bmpScale=0,renderTask=null,renderTimer=0,baseBm=null,tile=null,project=null;
 const ov=$('#ov'),octx=ov.getContext('2d');
-let markups=[],pins=[],view={s:1,x:0,y:0},tool='pan',sel=null,draft=null,ghosts=[],det=null,detW=null;
+let markups=[],pins=[],view={s:1,x:0,y:0},tool='pan',sel=null,draft=null,ghosts=[],det=null,detW=null,msel=[],clip=null,pasteArm=false,lpT=0,walk=null;
+const LAY0={shapes:true,clouds:true,text:true,pins:true,labels:true,ghosts:true,only:'',dim:false,exp:false};let lay={...LAY0};
 const dpr=()=>window.devicePixelRatio||1;
 let lastW=0,lastH=0;function resize(){const w=stage.clientWidth,h=stage.clientHeight;if(lastW&&pageW){const cx=(lastW/2-view.x)/view.s,cy=(lastH/2-view.y)/view.s;view.x=w/2-cx*view.s;view.y=h/2-cy*view.s}const wide=innerWidth>=800;if(wide!==resize.wide){resize.wide=wide;$('#panel').hidden=!wide;renderList()}lastW=w;lastH=h;cv.width=ov.width=w*dpr();cv.height=ov.height=h*dpr();draw();scheduleRender()}
 new ResizeObserver(()=>resize()).observe(stage);
@@ -51,13 +53,13 @@ $('#planSel').onchange=e=>openPlan(e.target.value);
 let loadTask=null,opSeq=0;
 const withTimeout=(p,ms,msg)=>new Promise((res,rej)=>{const t=setTimeout(()=>rej(new Error(msg)),ms);p.then(v=>{clearTimeout(t);res(v)},e=>{clearTimeout(t);rej(e)})});
 function stopAll(){opSeq++;if(loadTask){try{loadTask.destroy()}catch{}loadTask=null}if(renderTask){try{renderTask.cancel()}catch{}renderTask=null}clearTimeout(renderTimer);busy(0)}
-async function openPlan(id,pg=1){const p=await get('plans',id);if(!p)return;if(det)cancelDetect();stopAll();if(plan?.id!==id){ghosts=[];renderGhostBar()}const seq=opSeq;hideErr();plan=p;busy(1,'Loading');prog(0);
+async function openPlan(id,pg=1){const p=await get('plans',id);if(!p)return;if(det)cancelDetect();stopAll();if(plan?.id!==id){ghosts=[];renderGhostBar();if(walk)exitWalk()}const seq=opSeq;hideErr();plan=p;busy(1,'Loading');prog(0);
  try{if(pdf){pdf.destroy();pdf=null}pageW=0;draw();
   if(p.kind==='pdf'){if(!p.blob||!p.blob.size)throw new Error('the stored file is empty');
    const data=new Uint8Array(await withTimeout(p.blob.arrayBuffer(),30000,'reading the stored file timed out'));if(seq!==opSeq)return;prog(.1);
    const t=pdfjsLib.getDocument({data,disableFontFace:false});loadTask=t;t.onProgress=e=>{if(e.total)prog(.1+.2*Math.min(1,e.loaded/e.total))};
    const d=await withTimeout(t.promise,60000,'the PDF engine did not respond within 60 s');if(seq!==opSeq||loadTask!==t){d.destroy();return}loadTask=null;pdf=d;p.pages=d.numPages}else p.pages=1;
-  prog(.3);markups=await byIdx('markups','planId',id);pins=await byIdx('pins','planId',id);
+  prog(.3);lay={...LAY0,...((await get('meta','layers:'+id))||{})};layMark();markups=await byIdx('markups','planId',id);pins=await byIdx('pins','planId',id);
   await put('meta',id,'last:'+p.projectId);await refreshPlans();$('#empty').hidden=true;await gotoPage(Math.min(pg,p.pages)||1,seq)}
  catch(e){if(seq===opSeq){if(loadTask){try{loadTask.destroy()}catch{}loadTask=null}showErr(`Could not open "${p.name}": ${e&&e.message||e}`)}}
  finally{if(seq===opSeq)busy(0)}}
@@ -65,7 +67,7 @@ async function buildPageSel(){fillPageSel(null);let labels=null;try{labels=pdf&&
 function fillPageSel(labels){if(!plan)return;const sel=$('#pageSel');sel.innerHTML='';for(let i=1;i<=plan.pages;i++){const n=pins.filter(x=>x.page===i).length;sel.add(new Option(`${labels?.[i-1]||'Pg '+i} / ${plan.pages}${n?` (${n}📍)`:''}`,i))}sel.value=page}
 $('#pageSel').onchange=e=>gotoPage(+e.target.value);$('#prev').onclick=()=>plan&&page>1&&gotoPage(page-1);$('#next').onclick=()=>plan&&page<plan.pages&&gotoPage(page+1);
 async function gotoPage(n,seq){if(!plan)return;const own=seq===undefined;if(own){if(renderTask){try{renderTask.cancel()}catch{}renderTask=null}seq=++opSeq;hideErr()}
- page=n;sel=null;updUR();renderGhostBar();bmp=null;bmpScale=0;baseBm=tile=null;busy(1,'Rendering');prog(.3);
+ page=n;sel=null;msel=[];updUR();renderGhostBar();renderSelBar();bmp=null;bmpScale=0;baseBm=tile=null;busy(1,'Rendering');prog(.3);
  try{if(pdf){const pg=await withTimeout(pdf.getPage(n),30000,'reading page '+n+' timed out');if(seq!==opSeq)return;const vp=pg.getViewport({scale:1});pageW=vp.width;pageH=vp.height}
   else{const im=await createImageBitmap(plan.blob);pageW=im.width;pageH=im.height;bmp=im;bmpScale=1}
   put('meta',{plan:plan.id,page:n},'lastPage');fit();prog(.35);await buildPageSel();if(seq!==opSeq)return;prog(.4);
@@ -127,28 +129,28 @@ function resizeTo(m,o,h,w){if(isLine(m)){if(h===0){m.x1=w.x;m.y1=w.y}else{m.x2=w
  const x0=Math.min(o.x1,o.x2),y0=Math.min(o.y1,o.y2),X0=Math.max(o.x1,o.x2),Y0=Math.max(o.y1,o.y2),L=h===0||h===3,T=h===0||h===1;
  if(m.type==='text'){const nh=Math.max(6/view.s,T?Y0-w.y:w.y-y0);m.fs=o.fs*nh/((Y0-y0)||1);const tw=textBox({...m,x1:0,y1:0}).x2;Object.assign(m,{x1:L?X0-tw:x0,y1:T?Y0-m.fs*1.15:y0});textBox(m);return}
  let x=L?w.x:x0,X=L?X0:w.x,y=T?w.y:y0,Y=T?Y0:w.y;m.x1=Math.min(x,X);m.x2=Math.max(x,X);m.y1=Math.min(y,Y);m.y2=Math.max(y,Y)}
-function drawPin(c,p,s,hl,bare){const T=TYPES[p.type]||TYPES.other,r=13/s;c.save();c.translate(p.x,p.y);
+function drawPin(c,p,s,hl,bare,nolab){const T=TYPES[p.type]||TYPES.other,r=13/s;c.save();c.translate(p.x,p.y);
  const sc=ST[p.status]||ST['not tested'];if(hl&&!bare){c.beginPath();c.arc(0,0,r*1.75,0,7);c.fillStyle='rgba(56,189,248,.35)';c.fill()}
  c.fillStyle=T.c;c.strokeStyle=bare?'#fff':sc;c.lineWidth=(bare?2:4.5)/s;c.beginPath();
  if(T.sq)c.rect(-r,-r,2*r,2*r);else if(p.type==='heat'){c.moveTo(0,-r*1.2);c.lineTo(r*1.1,r*.8);c.lineTo(-r*1.1,r*.8);c.closePath()}else if(p.type==='pull'){c.moveTo(0,-r*1.2);c.lineTo(r*1.2,0);c.lineTo(0,r*1.2);c.lineTo(-r*1.2,0);c.closePath()}else c.arc(0,0,r,0,7);
  c.fill();c.stroke();c.fillStyle='#fff';c.font=`bold ${(T.l.length>2?7:T.l.length>1?9:12)/s}px sans-serif`;c.textAlign='center';c.textBaseline='middle';c.fillText(T.l,0,p.type==='heat'?r*.15:0);
  if(bare){c.restore();return}c.fillStyle=sc;c.strokeStyle='#fff';c.lineWidth=1.5/s;c.beginPath();c.arc(r*.95,-r*.95,5.5/s,0,7);c.fill();c.stroke();
- if(p.address){c.font=`${11/s}px sans-serif`;c.textAlign='left';c.lineWidth=3/s;c.lineJoin='round';c.strokeStyle='#fff';c.strokeText(p.address,r*1.3,r*.3);c.fillStyle='#111';c.fillText(p.address,r*1.3,r*.3)}c.restore()}
+ if(p.address&&!nolab){c.font=`${11/s}px sans-serif`;c.textAlign='left';c.lineWidth=3/s;c.lineJoin='round';c.strokeStyle='#fff';c.strokeText(p.address,r*1.3,r*.3);c.fillStyle='#111';c.fillText(p.address,r*1.3,r*.3)}c.restore()}
 function setT(c){const d=dpr();c.setTransform(view.s*d,0,0,view.s*d,view.x*d,view.y*d)}
 function drawBase(){drawn={...view};cv.style.transform=ov.style.transform='';ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);if(!plan||!pageW)return;setT(ctx);
  ctx.fillStyle='#fff';ctx.fillRect(0,0,pageW,pageH);ctx.imageSmoothingQuality='high';if(bmp)ctx.drawImage(bmp,0,0,pageW,pageH);if(baseBm)ctx.drawImage(baseBm.c,0,0,pageW,pageH);if(tile)ctx.drawImage(tile.c,tile.x,tile.y,tile.c.width/tile.s,tile.c.height/tile.s)}
 function drawOverlay(){const ctx=octx;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,ov.width,ov.height);if(!plan||!pageW)return;setT(ctx);
- for(const m of markups)if(m.page===page)drawMarkup(ctx,m,view.s);if(draft)drawMarkup(ctx,draft,view.s);
+ for(const m of markups)if(m.page===page&&mVis(m))drawMarkup(ctx,m,view.s);if(draft)drawMarkup(ctx,draft,view.s);
  if(sel&&sel.kind==='m'){const m=sel.o;ctx.save();ctx.setLineDash([6/view.s,4/view.s]);ctx.strokeStyle='#2563eb';ctx.lineWidth=1.5/view.s;const p=8/view.s;if(!isLine(m))ctx.strokeRect(Math.min(m.x1,m.x2)-p,Math.min(m.y1,m.y2)-p,Math.abs(m.x2-m.x1)+2*p,Math.abs(m.y2-m.y1)+2*p);
   ctx.setLineDash([]);ctx.fillStyle='#fff';ctx.lineWidth=2.5/view.s;for(const[hx,hy]of handles(m)){ctx.beginPath();ctx.arc(hx,hy,9/view.s,0,7);ctx.fill();ctx.stroke()}ctx.restore()}
- for(const p of pins)if(p.page===page)drawPin(ctx,p,view.s,sel&&sel.o===p);drawGhosts(ctx)}
+ for(const p of pins)if(p.page===page&&pVis(p))drawPinL(ctx,p,view.s,sel&&sel.o===p||msel.includes(p));drawMsel(ctx);if(lay.ghosts)drawGhosts(ctx);if(walk?.p&&walk.p.page===page){ctx.save();ctx.strokeStyle='#38bdf8';ctx.lineWidth=4/view.s;ctx.beginPath();ctx.arc(walk.p.x,walk.p.y,26/view.s,0,7);ctx.stroke();ctx.restore()}}
 function draw(){drawBase();drawOverlay()}
 // during pan/pinch/wheel move the already-drawn canvases with a cheap CSS transform; repaint once the gesture pauses (150ms) or on release
 let drawn=null,gTimer=0;function fastView(){if(drawn){const k=view.s/drawn.s,t=`translate(${view.x-drawn.x*k}px,${view.y-drawn.y*k}px) scale(${k})`;cv.style.transform=ov.style.transform=t}clearTimeout(gTimer);gTimer=setTimeout(()=>{gTimer=0;requestDraw()},150);scheduleRender()}
 let raf=0,rafB=0;function requestDraw(b=true){if(b)rafB=1;if(!raf)raf=requestAnimationFrame(()=>{raf=0;if(rafB)drawBase();drawOverlay();rafB=0})}
 // ---------- hit testing ----------
-function hit(w){const tol=10/view.s;for(const p of[...pins].reverse())if(p.page===page&&Math.hypot(p.x-w.x,p.y-w.y)<18/view.s)return{kind:'p',o:p};
- for(const m of[...markups].reverse()){if(m.page!==page)continue;if(isLine(m)){const dx=m.x2-m.x1,dy=m.y2-m.y1,t=Math.max(0,Math.min(1,((w.x-m.x1)*dx+(w.y-m.y1)*dy)/((dx*dx+dy*dy)||1)));if(Math.hypot(m.x1+t*dx-w.x,m.y1+t*dy-w.y)<tol*1.4)return{kind:'m',o:m};continue}const x=Math.min(m.x1,m.x2),y=Math.min(m.y1,m.y2),X=Math.max(m.x1,m.x2),Y=Math.max(m.y1,m.y2);if(w.x>x-tol&&w.x<X+tol&&w.y>y-tol&&w.y<Y+tol)return{kind:'m',o:m}}return null}
+function hit(w){const tol=10/view.s;for(const p of[...pins].reverse())if(p.page===page&&pVis(p)&&Math.hypot(p.x-w.x,p.y-w.y)<18/view.s)return{kind:'p',o:p};
+ for(const m of[...markups].reverse()){if(m.page!==page||!mVis(m))continue;if(isLine(m)){const dx=m.x2-m.x1,dy=m.y2-m.y1,t=Math.max(0,Math.min(1,((w.x-m.x1)*dx+(w.y-m.y1)*dy)/((dx*dx+dy*dy)||1)));if(Math.hypot(m.x1+t*dx-w.x,m.y1+t*dy-w.y)<tol*1.4)return{kind:'m',o:m};continue}const x=Math.min(m.x1,m.x2),y=Math.min(m.y1,m.y2),X=Math.max(m.x1,m.x2),Y=Math.max(m.y1,m.y2);if(w.x>x-tol&&w.x<X+tol&&w.y>y-tol&&w.y<Y+tol)return{kind:'m',o:m}}return null}
 // ---------- input ----------
 const ptrs=new Map();let gesture=null;
 stage.addEventListener('pointerdown',e=>{if(!plan||e.target!==cv)return;stage.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.offsetX,y:e.offsetY});
@@ -156,7 +158,8 @@ stage.addEventListener('pointerdown',e=>{if(!plan||e.target!==cv)return;stage.se
  const w=toW(e.offsetX,e.offsetY);const start={sx:e.offsetX,sy:e.offsetY,moved:false};
  if(tool==='pan'||e.button===1){gesture={type:'pan',...start,v:{...view}};return}
  if(tool==='select'){if(sel?.kind==='m'){const hi=handleHit(sel.o,e.offsetX,e.offsetY);if(hi>=0){gesture={type:'resize',h:hi,...start,orig:structuredClone(sel.o)};return}}
-  const prev=sel?.o;sel=hit(w);if(sel)gesture={type:'move',...start,w,orig:JSON.parse(JSON.stringify(sel.o)),wasSel:prev===sel.o};else gesture={type:'pan',...start,v:{...view}};requestDraw(false);return}
+  const prev=sel?.o;sel=hit(w);if(sel)gesture={type:'move',...start,w,orig:JSON.parse(JSON.stringify(sel.o)),wasSel:prev===sel.o};else gesture={type:'pan',...start,v:{...view}};requestDraw(false);
+  const G0=gesture,hitO=sel?.o;clearTimeout(lpT);lpT=setTimeout(()=>{if(gesture!==G0||G0.moved||ptrs.size!==1)return;if(hitO){gesture=null;toggleMsel(hitO);if(navigator.vibrate)navigator.vibrate(20)}else{gesture={type:'box',...start,moved:false,w0:w,w1:w};showBox()}},450);return}
  if(tool==='pin'){gesture={type:'pin',...start,w};return}
  if(tool==='text'){gesture={type:'text',...start,w};return}
  draft={id:uid(),planId:plan.id,page,type:tool,x1:w.x,y1:w.y,x2:w.x,y2:w.y,color:$('#color').value,w:SZ[$('#size').value]||3};gesture={type:'draw',...start}});
@@ -166,9 +169,13 @@ stage.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.s
  if(gesture.type==='pan'){view.x=gesture.v.x+dx;view.y=gesture.v.y+dy;fastView()}
  else if(gesture.type==='move'){const o=sel.o,g=gesture.orig,ddx=dx/view.s,ddy=dy/view.s;if(sel.kind==='p'){o.x=g.x+ddx;o.y=g.y+ddy}else{o.x1=g.x1+ddx;o.x2=g.x2+ddx;o.y1=g.y1+ddy;o.y2=g.y2+ddy}requestDraw(false)}
  else if(gesture.type==='resize'){resizeTo(sel.o,gesture.orig,gesture.h,toW(e.offsetX,e.offsetY));requestDraw(false)}
- else if(gesture.type==='draw'){const w=toW(e.offsetX,e.offsetY);draft.x2=w.x;draft.y2=w.y;requestDraw(false)}});
-async function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);const g=gesture;if(g?.type==='pinch'){if(ptrs.size===0){gesture=null;requestDraw()}return}gesture=null;if(!g)return;if(g.type==='pan')requestDraw();
+ else if(gesture.type==='draw'){const w=toW(e.offsetX,e.offsetY);draft.x2=w.x;draft.y2=w.y;requestDraw(false)}
+ else if(gesture.type==='box'){gesture.w1=toW(e.offsetX,e.offsetY);showBox()}});
+async function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);clearTimeout(lpT);const g=gesture;if(g?.type==='pinch'){if(ptrs.size===0){gesture=null;requestDraw()}return}gesture=null;if(!g)return;if(g.type==='pan')requestDraw();
  const w=toW(e.offsetX,e.offsetY);
+ if(g.type==='box'){boxSelect(g.w0,g.w1);return}
+ if(pasteArm&&!g.moved&&g.type!=='pinch'){pasteArm=false;draft=null;await doPaste(w);return}
+ if(tool==='select'&&!g.moved&&g.type==='pan'&&msel.length){msel=[];renderSelBar();requestDraw(false)}
  if(!g.moved&&(g.type==='pan'||g.type==='move')){const gh=ghostHit(w);if(gh&&!(g.type==='move'&&g.wasSel)){sel=null;openGhost(gh);return}const h=hit(w);if(h&&h.kind==='p'){openPin(h.o);return}}
  if(!g.moved&&(g.type==='resize'||g.type==='move'&&g.wasSel)&&sel?.o.type==='text'){const t=prompt('Edit text:',sel.o.text);if(t!==null&&t.trim()&&t!==sel.o.text){const b=structuredClone(sel.o);await change('markups',b,textBox({...b,text:t.trim()}))}return}
  if((g.type==='move'||g.type==='resize')&&g.moved&&sel)await change(sel.kind==='p'?'pins':'markups',g.orig,sel.o);
@@ -192,8 +199,9 @@ async function applyState(store,id,o,media){const arr=store==='pins'?pins:markup
  if(o){o=structuredClone(o);if(i>=0)arr[i]=o;else arr.push(o);await put(store,o);if(media)for(const m of media)await put('media',m);if(sel?.o.id===id)sel.o=o;return o}
  if(i>=0)arr.splice(i,1);if(sel?.o.id===id)sel=null;await del(store,id);if(store==='pins')for(const m of await byIdx('media','pinId',id))await del('media',m.id)}
 async function change(store,before,after,media){if(!plan)return;const id=(after||before).id;await applyState(store,id,after);const h=H();h.u.push({store,id,before:before&&structuredClone(before),after:after&&structuredClone(after),media});if(h.u.length>300)h.u.shift();h.r=[];afterChange()}
-async function undo(){if(!plan)return;const h=H(),op=h.u.pop();if(!op)return;if(op.batch){for(const b of op.batch)await applyState(op.store,b.id,b.before);if(op.ghosts)ghosts.push(...structuredClone(op.ghosts))}else await applyState(op.store,op.id,op.before,op.media);h.r.push(op);afterChange()}
-async function redo(){if(!plan)return;const h=H(),op=h.r.pop();if(!op)return;if(op.batch){for(const b of op.batch)await applyState(op.store,b.id,b.after);if(op.ghosts){const ids=new Set(op.ghosts.map(g=>g.id));ghosts=ghosts.filter(g=>!ids.has(g.id))}}else await applyState(op.store,op.id,op.after);h.u.push(op);afterChange()}
+async function undo(){if(!plan)return;const h=H(),op=h.u.pop();if(!op)return;if(op.multi){for(const b of op.multi.slice().reverse())await applyState(b.store,b.id,b.before,b.media)}else if(op.batch){for(const b of op.batch)await applyState(op.store,b.id,b.before);if(op.ghosts)ghosts.push(...structuredClone(op.ghosts))}else await applyState(op.store,op.id,op.before,op.media);h.r.push(op);afterChange()}
+async function redo(){if(!plan)return;const h=H(),op=h.r.pop();if(!op)return;if(op.multi){for(const b of op.multi)await applyState(b.store,b.id,b.after)}else if(op.batch){for(const b of op.batch)await applyState(op.store,b.id,b.after);if(op.ghosts){const ids=new Set(op.ghosts.map(g=>g.id));ghosts=ghosts.filter(g=>!ids.has(g.id))}}else await applyState(op.store,op.id,op.after);h.u.push(op);afterChange()}
+async function changeMulti(list){if(!plan||!list.length)return;for(const b of list)await applyState(b.store,b.id,b.after);const h=H();h.u.push({multi:list.map(b=>({...b,before:b.before&&structuredClone(b.before),after:b.after&&structuredClone(b.after)}))});if(h.u.length>300)h.u.shift();h.r=[];afterChange()}
 async function changeBatch(store,afters,gh){if(!plan||!afters.length)return;for(const a of afters)await applyState(store,a.id,a);const h=H();h.u.push({store,batch:afters.map(a=>({id:a.id,before:null,after:structuredClone(a)})),ghosts:gh&&structuredClone(gh)});if(h.u.length>300)h.u.shift();h.r=[];afterChange()}
 function updUR(){const h=plan&&hist[plan.id];$('#undo').disabled=!h?.u.length;$('#redo').disabled=!h?.r.length}
 function afterChange(){updUR();draw();renderList();renderGhostBar();if(plan)fillPageSel(null)}
@@ -233,8 +241,8 @@ form.elements.type.addEventListener('change',()=>{if(!ckl.some(c=>c.v)){ckl=chec
 form.addEventListener('submit',async e=>{if(e.submitter?.value!=='save')return;
  if(form.elements.status.value==='failed'&&!form.elements.reason.value){e.preventDefault();alert('Pick a fail reason for this failed device.');form.elements.reason.focus();return}
  const b=structuredClone(cur),a={...b};for(const k of PK)a[k]=form.elements[k].value;if(ckl.some(c=>c.v)||b.checks)a.checks=structuredClone(ckl);if(a.status!=='failed'){a.reason='';a.reasonText='';a.severity=''}
- if(a.status!==b.status){a.testedAt=Date.now();a.tester=await getTester()}if(JSON.stringify(a)!==JSON.stringify(b))await change('pins',b,a);cur=pins.find(x=>x.id===a.id)});
-dlg.addEventListener('close',()=>{if(rec)rec.stop()});
+ if(a.status!==b.status){a.testedAt=Date.now();a.tester=await getTester()}if(b.fp&&a.type!==b.type){const ng=groupFor(a.type,b.detG);a.detG=ng;learn(b.fp,ng)}if(JSON.stringify(a)!==JSON.stringify(b))await change('pins',b,a);cur=pins.find(x=>x.id===a.id)});
+dlg.addEventListener('close',()=>{if(rec)rec.stop();if(walk)setTimeout(walkAfterDialog,0)});
 $('#pinDel').onclick=async()=>{if(!confirm('Delete this pin and its media?'))return;await deletePin(cur);dlg.close()};
 async function deletePin(p){await change('pins',p,null,await byIdx('media','pinId',p.id))}
 // ---------- list ----------
@@ -290,20 +298,20 @@ $('#csvBtn').onclick=async()=>{if(!project)return;const rows=[['plan','page','ty
  const cell=v=>{v=String(v??'');if(/^[=+\-@\t\r]/.test(v))v="'"+v;return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
  dl(new Blob(['\ufeff'+rows.map(r=>r.map(cell).join(',')).join('\r\n')],{type:'text/csv'}),project.name.replace(/[\\/:*?"<>|]/g,'_')+'-devices.csv')};
 // ---------- export ----------
-function drawLegend(x,ps){const pp=pins.filter(p=>p.page===page);if(!pp.length)return;const types=[...new Set(pp.map(p=>p.type))],sts=STATUSES.filter(s=>pp.some(p=>(p.status||'not tested')===s));
+function drawLegend(x,ps){const pp=pins.filter(p=>p.page===page&&(!lay.exp||pVis(p)));if(!pp.length)return;const types=[...new Set(pp.map(p=>p.type))],sts=STATUSES.filter(s=>pp.some(p=>(p.status||'not tested')===s));
  const u=1/ps,row=26*u,pad=10*u,rows=1+types.length+sts.length,w=190*u,h=pad*2+rows*row,X=12*u,Y=pageH-h-12*u;
  x.save();x.fillStyle='rgba(255,255,255,.93)';x.strokeStyle='#334155';x.lineWidth=1.5*u;x.fillRect(X,Y,w,h);x.strokeRect(X,Y,w,h);x.fillStyle='#111';x.font=`bold ${13*u}px sans-serif`;x.textBaseline='middle';x.textAlign='left';x.fillText('Legend',X+pad,Y+pad+row/2);
  let y=Y+pad+row*1.5;for(const t of types){drawPin(x,{type:t,x:X+pad+14*u,y},ps,false,true);x.fillStyle='#111';x.font=`${12*u}px sans-serif`;x.textAlign='left';x.textBaseline='middle';x.fillText(TYPES[t]?.n||t,X+pad+34*u,y);y+=row}
  for(const s of sts){x.fillStyle=ST[s];x.strokeStyle='#fff';x.lineWidth=2*u;x.beginPath();x.arc(X+pad+14*u,y,6*u,0,7);x.fill();x.stroke();x.fillStyle='#111';x.font=`${12*u}px sans-serif`;x.textAlign='left';x.fillText('Status: '+s,X+pad+34*u,y);y+=row}x.restore()}
 async function composite(){const sc=Math.min(3,Math.sqrt(30e6/(pageW*pageH)));const c=document.createElement('canvas');c.width=Math.round(pageW*sc);c.height=Math.round(pageH*sc);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
  if(pdf){const pg=await pdf.getPage(page);await pg.render({canvasContext:x,viewport:pg.getViewport({scale:sc})}).promise}else x.drawImage(bmp,0,0,c.width,c.height);
- x.setTransform(sc,0,0,sc,0,0);const ps=1/Math.max(1,Math.max(pageW,pageH)/1200);for(const m of markups)if(m.page===page)drawMarkup(x,m,1/1.5);for(const p of pins)if(p.page===page)drawPin(x,p,ps,false);drawLegend(x,ps);return c}
+ x.setTransform(sc,0,0,sc,0,0);const ps=1/Math.max(1,Math.max(pageW,pageH)/1200);const E=lay.exp;for(const m of markups)if(m.page===page&&(!E||mVis(m)))drawMarkup(x,m,1/1.5);for(const p of pins)if(p.page===page&&(!E||pVis(p)))(E?drawPinL:drawPin)(x,p,ps,false);drawLegend(x,ps);return c}
 const base=()=>`${plan.name.replace(/\.[^.]+$/,'')}-p${page}`;
 function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
 $('#exPng').onclick=async()=>{if(!plan)return;busy(1,'Exporting');try{const c=await composite();await new Promise(r=>c.toBlob(b=>{dl(b,base()+'.png');r()},'image/png'))}catch(e){showErr('PNG export failed: '+e.message)}finally{busy(0)}};
 $('#exPdf').onclick=async()=>{if(!plan)return;busy(1,'Exporting');try{const c=await composite();const{jsPDF}=window.jspdf;const doc=new jsPDF({orientation:pageW>pageH?'l':'p',unit:'pt',format:[pageW,pageH]});
  doc.addImage(c.toDataURL('image/jpeg',.9),'JPEG',0,0,pageW,pageH);
- const ps=pins.filter(p=>p.page===page);if(ps.length){doc.addPage([612,792],'p');doc.setFontSize(14);doc.text(`Device list - ${plan.name} page ${page}`,40,40);doc.setFontSize(10);let y=64;
+ const ps=pins.filter(p=>p.page===page&&(!lay.exp||pVis(p)));if(ps.length){doc.addPage([612,792],'p');doc.setFontSize(14);doc.text(`Device list - ${plan.name} page ${page}`,40,40);doc.setFontSize(10);let y=64;
   for(const p of ps){if(y>760){doc.addPage([612,792],'p');y=40}doc.text(`${TYPES[p.type].n} | Addr ${p.address||'-'} | Loop ${p.loop||'-'} | ${p.status}${p.testedAt?' '+fmtT(p.testedAt):''}${p.tester?' by '+p.tester:''}${p.notes?' | '+p.notes.slice(0,50):''}`.slice(0,120),40,y);y+=16}}
  const C=countRows(await projData());if(C.total.length){doc.addPage([612,792],'p');doc.setFontSize(14);doc.text(`Device counts - ${project.name}`,40,40);pdfCounts(doc,C,64)}
  dl(doc.output('blob'),base()+'.pdf')}catch(e){showErr('PDF export failed: '+e.message)}finally{busy(0)}};
@@ -390,16 +398,17 @@ const DG={spkw:{n:'Speaker/strobe – wall',t:'spkstrobe',d:['SPK_FOH_WALL','SPK
  strobe:{n:'Strobe only',t:'strobe',d:['STROBE_FOH','STROBE_BOH']},la:{n:'Line array speaker',t:'linearray',d:['LINE_ARRAY']},smoke:{n:'Smoke detector',t:'smoke',d:['SMOKE']},module:{n:'Module (monitor/control)',t:'module',d:['MODULE']},
  relay:{n:'Relay',t:'relay',d:['RELAY']},pull:{n:'Pull station',t:'pull',d:['PULL']},dh:{n:'Door holder',t:'doorholder',d:['DOOR_HOLDER']},ft:{n:'Flow / tamper switch',t:'flow',d:['FLOW_TAMPER'],note:'flow or tamper switch, verify'},
  jbox:{n:'Junction box',t:'jbox',d:['JBOX','JBOX_CEIL']},surge:{n:'Surge suppressor',t:'other',d:['SURGE'],note:'surge suppressor'}};
+for(const[k,n,t]of[['heat','Heat detector','heat'],['horn','Horn/strobe','horn'],['duct','Duct detector','duct'],['tamper','Tamper switch','tamper'],['panel','Panel','panel'],['oth','Other device','other']])DG[k]={n,t,d:[],x:1};
 const D2G={};for(const[k,g]of Object.entries(DG))for(const d of g.d)D2G[d]=k;
 const DEF_SEL=Object.keys(DG).filter(k=>k!=='jbox'&&k!=='surge');
 const gT=g=>TYPES[DG[g.g].t]||TYPES.other;
 for(const[k,g]of Object.entries(DG))$('#ghType').add(new Option(g.n,k));
-$('#detTypes').innerHTML=Object.entries(DG).map(([k,g])=>`<label><input type="checkbox" value="${k}"><span class="sw" style="background:${TYPES[g.t].c}"></span>${esc(g.n)}</label>`).join('');
+$('#detTypes').innerHTML=Object.entries(DG).filter(([k,g])=>!g.x).map(([k,g])=>`<label><input type="checkbox" value="${k}"><span class="sw" style="background:${TYPES[g.t].c}"></span>${esc(g.n)}</label>`).join('');
 const detBoxes=()=>[...document.querySelectorAll('#detTypes input')];
 $('#detAll').onclick=()=>detBoxes().forEach(b=>b.checked=true);$('#detNone').onclick=()=>detBoxes().forEach(b=>b.checked=false);
 $('#detBtn').onclick=async()=>{if(!plan)return alert('Open a PDF plan first.');if(!pdf)return alert('Detect devices works on vector PDF plans only (not photos or scans).');if(det)return;
  const saved=(await get('meta','detectSel'))||{groups:DEF_SEL,all:false};detBoxes().forEach(b=>b.checked=saved.groups.includes(b.value));
- $('#detForm').elements.scope.value=saved.all?'all':'page';$('#detScope label:last-child').lastChild.textContent=` All ${plan.pages} pages of this plan`;$('#detDlg').showModal()};
+ learnInfoUpd();$('#detForm').elements.scope.value=saved.all?'all':'page';$('#detScope label:last-child').lastChild.textContent=` All ${plan.pages} pages of this plan`;$('#detDlg').showModal()};
 $('#detForm').addEventListener('submit',async e=>{if(e.submitter?.value!=='go')return;const groups=detBoxes().filter(b=>b.checked).map(b=>b.value);
  if(!groups.length){e.preventDefault();alert('Tick at least one device type.');return}const all=$('#detForm').elements.scope.value==='all';
  await put('meta',{groups,all},'detectSel');runDetect(groups,all)});
@@ -413,28 +422,151 @@ async function runDetect(groups,all){const want=groups.flatMap(g=>DG[g].d),pl=pl
    if(all&&pages.length>1){let tx='';try{tx=(await pg.getTextContent()).items.map(t=>t.str).join(' ')}catch{}if(/\bSYMBOL\b/i.test(tx)&&/\b(QTY|DESCRIPTION)\b/i.test(tx)&&/LEGEND/i.test(tx)){R.stats.push({page:n,skipped:'legend sheet'});prog((i+1)/pages.length);continue}}
    const ol=await pg.getOperatorList();if(R.cancel||plan!==pl)return;prog((i+.5)/pages.length);
    const fn=[],args=[];for(let j=0;j<ol.fnArray.length;j++)if(keep.has(ol.fnArray[j])){fn.push(ol.fnArray[j]);args.push(ol.argsArray[j])}
-   const vp=pg.getViewport({scale:1}),t1=performance.now(),r=await detOnWorker({id:n,fn,args,O,vt:vp.transform,W:vp.width,H:vp.height,want});if(R.cancel||plan!==pl)return;
+   const vp=pg.getViewport({scale:1}),t1=performance.now(),r=await detOnWorker({id:n,fn,args,O,vt:vp.transform,W:vp.width,H:vp.height,want:null});if(R.cancel||plan!==pl)return;
    const near=(x,y)=>pins.some(p=>p.page===n&&Math.hypot(p.x-x,p.y-y)<18*r.k);
    ghosts=ghosts.filter(g=>!(g.page===n&&groups.includes(g.g)));
-   const add=r.items.filter(it=>!near(it.x,it.y)).map(it=>({id:uid(),page:n,x:it.x,y:it.y,det:it.type,g:D2G[it.type]}));ghosts.push(...add);found+=add.length;
-   R.stats.push({page:n,ops:ol.fnArray.length,paths:r.paths,found:r.items.length,kept:add.length,skipped:r.items.length-add.length,opsMs:Math.round(t1-t0),workerMs:Math.round(r.ms),totalMs:Math.round(performance.now()-t0),k:r.k});
+   const rules=await learnedRules();let nl=0;const items=[];for(const it of r.items){let g=D2G[it.type],lr=null;const m=matchRule(rules,it.fp);if(m){lr=m.g;nl++;if(m.g==='none')continue;g=m.g}if(groups.includes(g)||(lr&&DG[g]?.x))items.push({...it,g,learned:!!lr})}
+   const add=items.filter(it=>!near(it.x,it.y)).map(it=>({id:uid(),page:n,x:it.x,y:it.y,det:it.type,g:it.g,fp:it.fp,learned:it.learned}));ghosts.push(...add);found+=add.length;
+   R.stats.push({page:n,ops:ol.fnArray.length,paths:r.paths,found:items.length,kept:add.length,skipped:items.length-add.length,learnedHits:nl,opsMs:Math.round(t1-t0),workerMs:Math.round(r.ms),totalMs:Math.round(performance.now()-t0),k:r.k});
    prog((i+1)/pages.length);if(n===page)draw();renderGhostBar()}
   window.__detStats=R.stats;if(!found)showErr(`No ${groups.length===Object.keys(DG).length?'':'matching '}device symbols found${all?'':' on this page'}. Detection works on CAD-exported vector plans with standard symbols.`)}
  catch(e){if(!R.cancel)showErr('Detect devices failed: '+(e&&e.message||e))}
  finally{if(det===R){det=null;busy(0)}draw();renderGhostBar()}}
 function drawGhosts(c){const s=view.s,r=15/s;for(const g of ghosts){if(g.page!==page)continue;const T=gT(g);c.save();c.translate(g.x,g.y);c.setLineDash([5/s,3/s]);c.lineWidth=3/s;c.strokeStyle=T.c;c.fillStyle='rgba(255,255,255,.55)';c.beginPath();c.arc(0,0,r,0,7);c.fill();c.stroke();c.setLineDash([]);
  c.fillStyle=T.c;c.font=`bold ${(T.l.length>2?8:11)/s}px sans-serif`;c.textAlign='center';c.textBaseline='middle';c.fillText(T.l,0,0);c.fillStyle='#111';c.font=`bold ${9/s}px sans-serif`;c.fillText('?',r*.95,-r*.95);c.restore()}}
-function ghostHit(w){let best=null,bd=22/view.s;for(const g of ghosts){if(g.page!==page)continue;const d=Math.hypot(g.x-w.x,g.y-w.y);if(d<bd){bd=d;best=g}}return best}
+function ghostHit(w){if(!lay.ghosts)return null;let best=null,bd=22/view.s;for(const g of ghosts){if(g.page!==page)continue;const d=Math.hypot(g.x-w.x,g.y-w.y);if(d<bd){bd=d;best=g}}return best}
 let curG=null;function openGhost(g){curG=g;$('#ghType').value=g.g;ghInfoUpd();$('#ghDlg').showModal()}
 function ghInfoUpd(){const g=curG;if(!g)return;const n=ghosts.filter(x=>x.g===$('#ghType').value).length;$('#ghHead').textContent='Suggested: '+DG[$('#ghType').value].n;$('#ghInfo').textContent=`Becomes a "${TYPES[DG[$('#ghType').value].t].n}" pin (blank address/loop, not tested). Detected as ${g.det.replace(/_/g,' ').toLowerCase()}, page ${g.page}.`;$('#ghAllType').textContent=`Accept all ${n} of this type`}
-$('#ghType').onchange=()=>{if(curG){curG.g=$('#ghType').value;ghInfoUpd();draw();renderGhostBar()}};
+$('#ghType').onchange=()=>{if(curG){curG.g=$('#ghType').value;if(curG.fp)learn(curG.fp,curG.g);ghInfoUpd();draw();renderGhostBar()}};
 $('#ghAcc').onclick=async()=>{const g=curG;$('#ghDlg').close();if(g)await acceptGhosts([g])};
-$('#ghRej').onclick=()=>{const g=curG;$('#ghDlg').close();if(g){ghosts=ghosts.filter(x=>x!==g);draw();renderGhostBar()}};
+$('#ghRej').onclick=()=>{const g=curG;$('#ghDlg').close();if(g){if(g.fp)learn(g.fp,'none');ghosts=ghosts.filter(x=>x!==g);draw();renderGhostBar()}};
 $('#ghAllType').onclick=async()=>{const g=curG;$('#ghDlg').close();if(g)await acceptGhosts(ghosts.filter(x=>x.g===g.g))};
 async function acceptGhosts(list){if(!plan||!list.length)return;const out=[],used=[];for(const g of list){if(pins.some(p=>p.page===g.page&&Math.hypot(p.x-g.x,p.y-g.y)<14)||out.some(p=>p.page===g.page&&Math.hypot(p.x-g.x,p.y-g.y)<6)){used.push(g);continue}
-  const G=DG[g.g],boh=/_BOH/.test(g.det);out.push({id:uid(),planId:plan.id,page:g.page,x:g.x,y:g.y,type:G.t,address:'',loop:'',status:'not tested',notes:'Auto-detected'+(G.note?': '+G.note:'')+(boh?', back-of-house symbol':''),created:Date.now(),detected:g.det});used.push(g)}
+  const G=DG[g.g],boh=/_BOH/.test(g.det);out.push({id:uid(),planId:plan.id,page:g.page,x:g.x,y:g.y,type:G.t,address:'',loop:'',status:'not tested',notes:'Auto-detected'+(G.note?': '+G.note:'')+(boh?', back-of-house symbol':''),created:Date.now(),detected:g.det,detG:g.g,fp:g.fp});used.push(g)}
  const ids=new Set(used.map(g=>g.id));ghosts=ghosts.filter(g=>!ids.has(g.id));if(out.length)await changeBatch('pins',out,used);else{draw();renderGhostBar()}}
-function renderGhostBar(){const b=$('#ghBar');if(!ghosts.length){b.hidden=true;b.innerHTML='';return}const here=ghosts.filter(g=>g.page===page).length,cnt={};for(const g of ghosts)cnt[g.g]=(cnt[g.g]||0)+1;
+function renderGhostBar(){const b=$('#ghBar');if(!ghosts.length||walk||!lay.ghosts){b.hidden=true;b.innerHTML='';return}const here=ghosts.filter(g=>g.page===page).length,cnt={};for(const g of ghosts)cnt[g.g]=(cnt[g.g]||0)+1;
  b.innerHTML=`<b>🔍 ${ghosts.length} suggestion${ghosts.length>1?'s':''}</b><small>${here} on this page</small>`+Object.entries(cnt).map(([k,n])=>`<button type="button" class="chip" data-g="${k}" style="border-color:${TYPES[DG[k].t].c}" title="Accept all ${esc(DG[k].n)}">${esc(DG[k].n)} ${n}</button>`).join('')+`<span class="sp"></span><button type="button" class="btn pri" id="ghAccAll">✔ Accept all</button><button type="button" class="btn danger" id="ghRejAll">✕ Reject all</button>`;
  b.hidden=false;b.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{const L=ghosts.filter(g=>g.g===c.dataset.g);if(confirm(`Accept all ${L.length} "${DG[c.dataset.g].n}" suggestions as pins?`))acceptGhosts(L)});
  $('#ghAccAll').onclick=()=>{if(confirm(`Accept all ${ghosts.length} suggestions as pins?`))acceptGhosts(ghosts.slice())};$('#ghRejAll').onclick=()=>{if(confirm(`Reject all ${ghosts.length} suggestions?`)){ghosts=[];draw();renderGhostBar()}}}
+
+// ---------- v9: layers / visibility (saved per plan) ----------
+const mKind=m=>m.type==='cloud'?'clouds':(m.type==='text'||m.type==='arrow'||m.type==='line')?'text':'shapes';
+const untested=p=>p.status!=='passed'&&p.status!=='failed';
+function mVis(m){return lay[mKind(m)]!==false}
+function pVis(p){if(!lay.pins)return false;if(lay.only==='failed')return p.status==='failed';if(lay.only==='untested')return untested(p);return true}
+function drawPinL(c,p,s,hl){if(lay.dim&&p.status==='passed'){c.save();c.globalAlpha=.3;drawPin(c,p,s,hl,false,!lay.labels);c.restore()}else drawPin(c,p,s,hl,false,!lay.labels)}
+const layF=$('#layForm');
+function layToForm(){for(const k of['shapes','clouds','text','pins','labels','ghosts','dim','exp'])layF.elements[k].checked=!!lay[k];layF.elements.only.value=lay.only||''}
+function layMark(){const d=Object.keys(LAY0).some(k=>k!=='exp'&&lay[k]!==LAY0[k]);$('#layBtn').classList.toggle('pri',d)}
+async function laySave(){if(plan)await put('meta',lay,'layers:'+plan.id);layMark();sel=null;draw();renderGhostBar()}
+$('#layBtn').onclick=()=>{if(!plan)return alert('Open a plan first.');layToForm();$('#layDlg').showModal()};
+layF.addEventListener('change',()=>{for(const k of['shapes','clouds','text','pins','labels','ghosts','dim','exp'])lay[k]=layF.elements[k].checked;lay.only=layF.elements.only.value;laySave()});
+$('#layReset').onclick=()=>{lay={...LAY0,exp:lay.exp};layToForm();laySave()};
+// ---------- v9: multi-select, copy / cut / paste ----------
+const isPinO=o=>pins.includes(o);
+function selItems(){return msel.length?msel:sel?[sel.o]:[]}
+function toggleMsel(o){if(sel&&sel.o!==o&&!msel.includes(sel.o))msel.push(sel.o);const i=msel.indexOf(o);if(i>=0)msel.splice(i,1);else msel.push(o);sel=null;renderSelBar();requestDraw(false)}
+function bb(o){return isPinO(o)?{x:o.x-10,y:o.y-10,X:o.x+10,Y:o.y+10}:{x:Math.min(o.x1,o.x2),y:Math.min(o.y1,o.y2),X:Math.max(o.x1,o.x2),Y:Math.max(o.y1,o.y2)}}
+function drawMsel(c){if(!msel.length)return;c.save();c.setLineDash([6/view.s,4/view.s]);c.strokeStyle='#38bdf8';c.lineWidth=2/view.s;const p=6/view.s;for(const o of msel){if(o.page!==page)continue;const b=bb(o);c.strokeRect(b.x-p,b.y-p,b.X-b.x+2*p,b.Y-b.y+2*p)}c.restore()}
+function showBox(){let d=$('#selBox');if(!d){d=document.createElement('div');d.id='selBox';stage.append(d)}const g=gesture;if(!g||g.type!=='box'){d.remove();return}
+ const a={x:g.w0.x*view.s+view.x,y:g.w0.y*view.s+view.y},b={x:g.w1.x*view.s+view.x,y:g.w1.y*view.s+view.y};Object.assign(d.style,{left:Math.min(a.x,b.x)+'px',top:Math.min(a.y,b.y)+'px',width:Math.abs(b.x-a.x)+'px',height:Math.abs(b.y-a.y)+'px'})}
+function boxSelect(a,b){$('#selBox')?.remove();const x=Math.min(a.x,b.x),X=Math.max(a.x,b.x),y=Math.min(a.y,b.y),Y=Math.max(a.y,b.y),inn=o=>{const q=bb(o),cx=(q.x+q.X)/2,cy=(q.y+q.Y)/2;return cx>=x&&cx<=X&&cy>=y&&cy<=Y};
+ const L=[...markups.filter(m=>m.page===page&&mVis(m)&&inn(m)),...pins.filter(p=>p.page===page&&pVis(p)&&inn(p))];for(const o of L)if(!msel.includes(o))msel.push(o);sel=null;renderSelBar();requestDraw(false);toast(`${msel.length} selected`)}
+let clipPins=false;
+function renderSelBar(){const b=$('#selBar'),it=tool==='select'?selItems():msel;if(walk||(!it.length&&!clip)){b.hidden=true;b.innerHTML='';return}const np=it.filter(isPinO).length;
+ b.innerHTML=(it.length?`<b>${it.length} selected</b><button type="button" class="btn" id="cpBtn">⧉ Copy</button><button type="button" class="btn" id="cutBtn">✂ Cut</button>${np?`<label><input type="checkbox" id="cpPins" ${clipPins?'checked':''}> incl. ${np} pin${np>1?'s':''}</label>`:''}<button type="button" class="btn" id="selX" title="Clear selection">✕</button>`:'')
+  +(clip?`<button type="button" class="btn pri" id="pasteBtn" title="Paste at the same plan position">📋 Paste ${clip.m.length+clip.p.length}</button><button type="button" class="btn" id="pasteAt" title="Paste centred on the next point you tap">📍 at tap</button><button type="button" class="btn" id="clipX" title="Clear clipboard">✕</button>`:'');
+ b.hidden=false;const q=x=>b.querySelector(x);
+ if(q('#cpPins'))q('#cpPins').onchange=e=>clipPins=e.target.checked;
+ if(q('#cpBtn'))q('#cpBtn').onclick=()=>doCopy(false);if(q('#cutBtn'))q('#cutBtn').onclick=()=>doCopy(true);if(q('#selX'))q('#selX').onclick=()=>{msel=[];sel=null;renderSelBar();draw()};
+ if(q('#pasteBtn'))q('#pasteBtn').onclick=()=>doPaste(null);if(q('#pasteAt'))q('#pasteAt').onclick=()=>{pasteArm=true;toast('Tap where the copied items should go')};if(q('#clipX'))q('#clipX').onclick=()=>{clip=null;pasteArm=false;renderSelBar()}}
+async function doCopy(cut){const it=selItems(),ms=it.filter(o=>!isPinO(o)),ps=clipPins?it.filter(isPinO):[];if(!ms.length&&!ps.length){toast(it.length?'Tick "incl. pins" to copy pins':'Nothing selected');return}
+ const all=[...ms,...ps],bs=all.map(bb),cx=(Math.min(...bs.map(b=>b.x))+Math.max(...bs.map(b=>b.X)))/2,cy=(Math.min(...bs.map(b=>b.y))+Math.max(...bs.map(b=>b.Y)))/2;
+ clip={m:structuredClone(ms),p:structuredClone(ps),cx,cy,from:plan.id,page};
+ if(cut){const L=[];for(const m of ms)L.push({store:'markups',id:m.id,before:m,after:null});for(const p of ps)L.push({store:'pins',id:p.id,before:p,after:null,media:await byIdx('media','pinId',p.id)});msel=[];sel=null;await changeMulti(L);toast(`Cut ${all.length} item${all.length>1?'s':''}`,true)}
+ else toast(`Copied ${all.length} item${all.length>1?'s':''}${ps.length?` (${ps.length} pin${ps.length>1?'s':''})`:''}`);renderSelBar()}
+async function doPaste(at){if(!clip||!plan)return;const dx=at?at.x-clip.cx:0,dy=at?at.y-clip.cy:0,L=[],now=Date.now();
+ for(const m of clip.m){const n={...structuredClone(m),id:uid(),planId:plan.id,page,x1:m.x1+dx,y1:m.y1+dy,x2:m.x2+dx,y2:m.y2+dy};L.push({store:'markups',id:n.id,before:null,after:n})}
+ for(const p of clip.p){const n={...structuredClone(p),id:uid(),planId:plan.id,page,x:p.x+dx,y:p.y+dy,address:'',status:'not tested',created:now};for(const k of['checks','testedAt','tester','reason','reasonText','severity','fp','detected','detG'])delete n[k];L.push({store:'pins',id:n.id,before:null,after:n})}
+ await changeMulti(L);const ids=new Set(L.map(x=>x.id));msel=[...markups,...pins].filter(o=>ids.has(o.id));renderSelBar();draw();toast(`Pasted ${L.length} item${L.length>1?'s':''}${at?' at the tapped point':''}`,true)}
+document.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)||document.querySelector('dialog[open]'))return;const k=e.key.toLowerCase();if(!(e.ctrlKey||e.metaKey))return;if(k==='c'&&selItems().length){e.preventDefault();doCopy(false)}else if(k==='x'&&selItems().length){e.preventDefault();doCopy(true)}else if(k==='v'&&clip){e.preventDefault();doPaste(null)}});
+document.querySelectorAll('[data-t]').forEach(b=>b.addEventListener('click',()=>{if(tool!=='select')msel=[];renderSelBar()}));
+// keep the selection bar in sync with taps in select mode
+stage.addEventListener('pointerup',()=>setTimeout(()=>{if(tool==='select'||clip)renderSelBar()},0));
+// ---------- toast with undo ----------
+let toastT=0;function toast(msg,canUndo){$('#toastTxt').textContent=msg;$('#toastUndo').hidden=!canUndo;$('#toast').hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>$('#toast').hidden=true,canUndo?6000:3000)}
+$('#toastUndo').onclick=async()=>{$('#toast').hidden=true;await undo();if(walk)renderWalk()};
+// ---------- v9: walk mode ----------
+const REASONS=['No alarm','Trouble','Damaged','Missing','Obstructed','Dirty/needs cleaning','Other'];
+function walkSet(){return pins.filter(p=>!walk.type||p.type===walk.type)}
+function walkLeft(){return walkSet().filter(p=>untested(p)&&!walk.skip.has(p.id))}
+function nearestFrom(L,from){if(!L.length)return null;if(!from)return L.slice().sort((a,b)=>a.page-b.page)[0];return L.slice().sort((a,b)=>(a.page===from.page?0:1)-(b.page===from.page?0:1)||Math.abs(a.page-from.page)-Math.abs(b.page-from.page)||Math.hypot(a.x-from.x,a.y-from.y)-Math.hypot(b.x-from.x,b.y-from.y))[0]}
+$('#walkBtn').onclick=()=>walk?exitWalk():startWalk();
+function startWalk(type=''){if(!plan)return alert('Open a plan first.');if(!pins.length)return alert('This plan has no pins yet. Place pins or use 🔍 Detect devices first.');
+ walk={type,skip:new Set(),p:null,fail:false};msel=[];sel=null;renderSelBar();renderGhostBar();$('#walkBtn').classList.add('pri');
+ const c=toW(stage.clientWidth/2,stage.clientHeight/2),L=walkLeft(),here=L.filter(p=>p.page===page);
+ const first=sel?.kind==='p'&&untested(sel.o)?sel.o:nearestFrom(here.length?here:L,here.length?{page,...c}:null);walkGo(first)}
+function exitWalk(){walk=null;$('#walk').hidden=true;$('#walkBtn').classList.remove('pri');renderGhostBar();renderSelBar();draw()}
+async function walkGo(p){if(!walk)return;walk.p=p;walk.fail=false;renderWalk();if(!p){draw();return}if(p.page!==page)await gotoPage(p.page);
+ const W=stage.clientWidth,Hh=stage.clientHeight-$('#walk').offsetHeight,s=Math.max(view.s,Math.min(W,stage.clientHeight)/320);view={s,x:W/2-p.x*s,y:Math.max(60,Hh/2)-p.y*s};sel={kind:'p',o:p};draw();scheduleRender()}
+function walkNext(){if(!walk)return;const cur=walk.p;walkGo(nearestFrom(walkLeft().filter(p=>p!==cur),cur))}
+function walkAfterDialog(){if(!walk||!walk.p)return;const p=pins.find(x=>x.id===walk.p.id);if(!p){walkNext();return}walk.p=p;if(!untested(p))walkNext();else renderWalk()}
+function renderWalk(){const w=$('#walk');if(!walk){w.hidden=true;return}const S=walkSet(),N=S.length,done=S.filter(p=>!untested(p)).length,p=walk.p&&pins.find(x=>x.id===walk.p.id)||walk.p;
+ const types=[...new Set(pins.map(x=>x.type))];const head=`<div class="wh"><b>🚶 ${p?`${Math.min(done+1,N)} of ${N}`:`${done} of ${N} tested`}</b><select id="wType" title="Only this type"><option value="">All types</option>${types.map(t=>`<option value="${t}"${walk.type===t?' selected':''}>${esc(TYPES[t]?.n||t)}</option>`).join('')}</select><span class="sp"></span>${SR?'<button type="button" class="btn" id="wMic" title="Voice command">🎤</button>':''}<button type="button" class="btn" id="wExit">✕ Exit</button></div>`;
+ if(!p){w.innerHTML=head+`<div class="wt">${walk.skip.size?`No untested devices left (${walk.skip.size} skipped).`:'All devices in this set are tested. 🎉'}</div>${walk.skip.size?'<div class="row"><button type="button" class="btn" id="wRe">Revisit skipped</button></div>':''}`}
+ else w.innerHTML=head+`<div class="wt"><span class="dot" style="display:inline-block;background:${(TYPES[p.type]||TYPES.other).c}"></span> ${esc(TYPES[p.type]?.n||p.type)} ${p.address?esc(p.address):'<small style="color:#94a3b8">(no address)</small>'}${p.loop?' · Loop '+esc(p.loop):''} <small style="color:#94a3b8">pg ${p.page}${p.status==='in progress'?' · in progress':''}</small></div>
+ <div id="wHeard" style="color:#93c5fd;font-size:13px"${walk.heard?'':' hidden'}>🎤 “${esc(walk.heard||'')}”</div>
+ ${walk.fail?`<div><b>Fail reason</b> <label style="display:inline-flex;gap:4px;align-items:center;margin-left:8px"><input type="checkbox" id="wCrit" style="width:20px;height:20px;min-height:20px"> Critical</label></div><div class="reasons">${REASONS.map(r=>`<button type="button" class="btn danger" data-r="${r}">${r}</button>`).join('')}<button type="button" class="btn" id="wFailX">Cancel</button></div>`
+  :`<div class="wb"><button type="button" class="btn ok" id="wPass">✔ Pass</button><button type="button" class="btn danger" id="wFail">✖ Fail</button><button type="button" class="btn" id="wSkip">⏭ Skip</button></div><div class="row"><button type="button" class="btn" id="wOpen">📋 Open checklist</button><span class="sp"></span><small style="color:#94a3b8">Pass = all checklist items pass</small></div>`}`;
+ w.hidden=false;const q=x=>w.querySelector(x);
+ q('#wExit').onclick=exitWalk;q('#wType').onchange=e=>{walk.type=e.target.value;walk.skip.clear();const L=walkLeft();walkGo(nearestFrom(L,walk.p))};if(q('#wMic'))q('#wMic').onclick=startVoice;
+ if(q('#wRe'))q('#wRe').onclick=()=>{walk.skip.clear();walkGo(nearestFrom(walkLeft(),null))};
+ if(q('#wPass'))q('#wPass').onclick=()=>testPin(p,'pass');if(q('#wFail'))q('#wFail').onclick=()=>{walk.fail=true;renderWalk()};if(q('#wSkip'))q('#wSkip').onclick=()=>{walk.skip.add(p.id);walkNext()};
+ if(q('#wOpen'))q('#wOpen').onclick=()=>openPin(p);if(q('#wFailX'))q('#wFailX').onclick=()=>{walk.fail=false;renderWalk()};
+ w.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>testPin(p,'fail',b.dataset.r,q('#wCrit').checked))}
+async function testPin(p,res,reason,crit){p=pins.find(x=>x.id===p.id);if(!p)return;const b=structuredClone(p),a={...b,testedAt:Date.now(),tester:await getTester()};
+ if(res==='pass'){a.checks=(b.checks||checkItems(b.type)).map(c=>({...c,v:'pass'}));a.status='passed';a.reason=a.reasonText=a.severity=''}
+ else{a.status='failed';a.reason=reason||'Other';a.severity=crit?'Critical':'Non-critical';a.reasonText=b.reasonText||''}
+ await change('pins',b,a);toast(`${TYPES[a.type]?.n||a.type} ${a.address||''}: ${a.status}${res==='fail'?` (${a.reason}${crit?', critical':''})`:''}`,true);
+ if(walk&&walk.p?.id===p.id)walkNext()}
+// ---------- v9: voice commands (Web Speech API) ----------
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let srec=null;
+if(SR)$('#micBtn').hidden=false;
+$('#micBtn').onclick=startVoice;
+function startVoice(){if(!SR)return;if(srec){try{srec.stop()}catch{}return}
+ if(!navigator.onLine)toast('You are offline: on many phones voice recognition needs internet. If it fails, use the buttons.');
+ let r;try{r=new SR()}catch(e){toast('Voice is not available: '+e.message);return}srec=r;r.lang=navigator.language||'en-US';r.interimResults=false;r.maxAlternatives=1;r.continuous=false;
+ const on=b=>{for(const x of[$('#micBtn'),$('#wMic')])if(x)x.classList.toggle('danger',b)};on(true);
+ r.onresult=e=>{const t=e.results[0][0].transcript;voiceHeard(t)};
+ r.onerror=e=>{const m={network:'Voice recognition needs an internet connection on this device. Use the buttons while offline.','not-allowed':'Microphone access is blocked. Allow the microphone for this site in Chrome settings.','service-not-allowed':'Voice recognition is turned off or unavailable on this device.','no-speech':'Didn\u2019t hear anything. Tap 🎤 and speak again.','audio-capture':'No microphone was found.','language-not-supported':'Voice recognition does not support this language here.'}[e.error]||('Voice error: '+e.error);if(e.error!=='aborted')toast(m)};
+ r.onend=()=>{srec=null;on(false)};try{r.start()}catch(e){srec=null;on(false);toast('Could not start voice: '+e.message)}}
+function voiceHeard(t){if(walk){walk.heard=t;const h=$('#wHeard');if(h){h.hidden=false;h.textContent='🎤 “'+t+'”'}}runVoice(t)}
+const normA=s=>String(s||'').toUpperCase().replace(/\bDASH\b/g,'-').replace(/[\s.]+/g,'');
+const NUMW={zero:0,one:1,two:2,to:2,too:2,three:3,four:4,for:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
+const numW=s=>s.split(/\s+/).map(w=>w in NUMW?NUMW[w]:w).join(' ');
+function reasonOf(r){r=r||'';return /no alarm|not alarm|no signal|didn.?t alarm/.test(r)?'No alarm':/trouble/.test(r)?'Trouble':/damage/.test(r)?'Damaged':/missing/.test(r)?'Missing':/obstruct|blocked/.test(r)?'Obstructed':/dirt|clean|dust/.test(r)?'Dirty/needs cleaning':/wrong|location/.test(r)?'Wrong location':'Other'}
+const TYPEW=/\b(smoke|heat|pull|station|horn|strobe|speaker|module|monitor|control|relay|duct|detector|flow|water|tamper|switch|panel|door|holder|junction|box|line|array|device)\b/g;
+function parseVoice(text){const raw=String(text||'').trim(),t=raw.toLowerCase().replace(/[,!?]/g,'').replace(/\.$/,'').replace(/\s+/g,' ').trim();let m;
+ if(/^(skip|next)\b/.test(t))return{cmd:'skip'};
+ if(/^(pass|passed|passes|good)$/.test(t))return{cmd:'pass'};
+ if((m=t.match(/^(fail|failed|fails)\b ?(.*)$/)))return{cmd:'fail',reason:reasonOf(m[2]),crit:/\bcritical\b/.test(m[2])&&!/non.?critical/.test(m[2])};
+ if((m=t.match(/^address (.+)$/)))return{cmd:'address',v:normA(numW(m[1]))};
+ if((m=t.match(/^loop (.+)$/)))return{cmd:'loop',v:normA(numW(m[1]))};
+ if((m=raw.match(/^notes? (.+)$/i)))return{cmd:'note',v:m[1].trim()};
+ if((m=t.match(/^(.+?) (pass|passed|passes|fail|failed|fails)\b ?(.*)$/))){const addr=normA(numW(m[1].replace(TYPEW,' ')));if(addr){const f=/^fail/.test(m[2]);return{cmd:f?'fail':'pass',addr,reason:f?reasonOf(m[3]):'',crit:f&&/\bcritical\b/.test(m[3])&&!/non.?critical/.test(m[3])}}}
+ return{cmd:'?'}}
+async function runVoice(text){const c=parseVoice(text);window.__lastVoice={text,c};if(c.cmd==='?'){toast(`Heard “${text}” but didn't understand. Try “pass”, “fail damaged”, “skip”, “address L1D012”.`);return c}
+ if(c.cmd==='skip'){if(walk&&walk.p){walk.skip.add(walk.p.id);walkNext();toast(`Heard “${text}”: skipped`)}else toast('“Skip” works in walk mode (🚶).');return c}
+ let p=null;if(c.addr){p=pins.find(x=>normA(x.address)===c.addr);if(!p){toast(`Heard “${text}”: no pin with address ${c.addr} in this plan`);return c}}else p=walk?.p?pins.find(x=>x.id===walk.p.id):sel?.kind==='p'?sel.o:null;
+ if(!p){toast(`Heard “${text}”: select a pin or start walk mode (🚶) first`);return c}
+ if(c.cmd==='pass'||c.cmd==='fail'){await testPin(p,c.cmd,c.reason,c.crit);return c}
+ const b=structuredClone(p),a={...b};if(c.cmd==='address')a.address=c.v;else if(c.cmd==='loop')a.loop=c.v;else if(c.cmd==='note')a.notes=(b.notes?b.notes+'\n':'')+c.v;
+ await change('pins',b,a);toast(`${TYPES[a.type]?.n||a.type}: ${c.cmd} → ${c.v}`,true);if(walk)renderWalk();return c}
+// ---------- v9: learned detection rules (global, IndexedDB 'learned') ----------
+let lrCache=null;async function learnedRules(){return lrCache||(lrCache=await all('learned'))}
+function fpDist(a,b){if(!a||!b||a.s!==b.s||a.gl!==b.gl)return 1e9;let d=0;for(let i=0;i<Math.max(a.v.length,b.v.length);i++){const x=(a.v[i]||0)-(b.v[i]||0);d+=x*x}return Math.sqrt(d)}
+const FP_TH=.75;function matchRule(rules,fp){let best=null,bd=FP_TH;for(const r of rules){const d=fpDist(r.fp,fp);if(d<bd){bd=d;best=r}}return best}
+async function learn(fp,g){if(!fp)return;const rules=await learnedRules(),m=matchRule(rules,fp);const r=m?{...m,g,updated:Date.now()}:{id:uid(),fp,g,created:Date.now()};await put('learned',r);lrCache=null;learnInfoUpd()}
+function groupFor(type,orig){if(DG[orig]?.t===type)return orig;const ks=Object.keys(DG);return ks.find(k=>DG[k].t===type&&!DG[k].x)||ks.find(k=>DG[k].t===type)||'oth'}
+async function learnInfoUpd(){const n=(await learnedRules()).length;$('#learnInfo').textContent=n?`🧠 Learned ${n} symbol${n>1?'s':''} from your corrections (used first).`:'🧠 No learned symbols yet. Rejecting or retyping a suggestion teaches the detector.';$('#learnReset').hidden=!n}
+$('#learnReset').onclick=async()=>{if(!confirm('Forget all learned symbols (in every project)?'))return;await tx('learned','readwrite',o=>o.clear());lrCache=null;learnInfoUpd()};

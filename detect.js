@@ -52,23 +52,23 @@ function detect(P,W,H,want){const TB=W>H?W*.825:W;let G=P.filter(g=>dark(g)&&g.x
   const glyph=ins.filter(h=>h.k!=='cccc'&&h.fill==null).map(h=>h.segs.length).sort((a,b)=>a-b);
   const filled=g.fill!=null||ins.some(h=>h.fill!=null&&Math.max(h.w,h.h)>4*k);
   const hasC=ins.some(h=>h.k==='cccc'&&h.w>4*k&&h.w<8*k);
-  const tnear=tris.filter(([t])=>dist(ctr(t),c)<15*k);let t=null;
+  const tnear=tris.filter(([t])=>dist(ctr(t),c)<15*k);let t=null,stem=false;
   if(sk==='square'){
    if(hasC||tnear.length){t=tnear.some(x=>x[1])?'SPK_BOH':'SPK_FOH';
     if(!hasC&&!glyph.length)t='LINE_ARRAY';
-    else{const tc=tnear.length?ctr(tnear[0][0]):null;let stem=false;
+    else{const tc=tnear.length?ctr(tnear[0][0]):null;
      for(const h of near(c,20*k)){if(h.k!=='l')continue;const[a,b]=h.segs[0].p,L=dist(a,b);if(!(L>2.5*k&&L<11*k))continue;
       for(const[e,o]of[[a,b],[b,a]])if(dist(e,c)>6*k&&dist(e,c)<10.5*k&&dist(o,c)>dist(e,c)+2*k&&(!tc||dist(o,tc)>dist(o,c)))stem=true}
      t+=stem?'_WALL':'_CEIL'}}
    else{const gs=glyph.join(',');if(['1,2','1,1,1','1,3','2,2'].includes(gs)||(glyph.length===2&&glyph.includes(1)&&Math.max(...glyph)<=3))t='PULL';else if(glyph.length===1&&glyph[0]>=4)t='JBOX';else if(glyph.length===2)t='SURGE';else t=null}}
   else if(sk==='hex'){if(filled||!glyph.length||(glyph.length>=6&&Math.max(...glyph)===1))t='RELAY';else if(glyph.length===1)t='SMOKE';else t='MODULE'}
   else if(sk==='diamond')t='FLOW_TAMPER';else if(sk==='rect_small')t=ins.length>=2?'DOOR_HOLDER':null;
-  if(t)out.push({type:t,c})}
- for(const g of circles)if(g.w>11.5*k&&g.w<14.5*k){const c=ctr(g);if(near(c,5*k).some(h=>h!==g&&Math.max(h.w,h.h)<9*k))out.push({type:'JBOX_CEIL',c})}
+  if(t){const pp=poly(g,.6*k),sz=pp?Math.sqrt(area(pp))/k:Math.max(g.w,g.h)/k;out.push({type:t,c,fp:{s:sk,gl:glyph.join(','),v:[sz,hasC?1:0,tnear.length,tnear.some(x=>x[1])?1:0,stem?1:0,filled?1:0,ins.length/10]}})}}
+ for(const g of circles)if(g.w>11.5*k&&g.w<14.5*k){const c=ctr(g);if(near(c,5*k).some(h=>h!==g&&Math.max(h.w,h.h)<9*k))out.push({type:'JBOX_CEIL',c,fp:{s:'circle',gl:String(near(c,5*k).filter(h=>h!==g&&Math.max(h.w,h.h)<9*k).length),v:[g.w/k,0,0,0,0,g.fill!=null?1:0,0]}})}
  const sq=out.filter(o=>o.type.startsWith('SPK'));
  for(const g of circles){const w=g.w;if(!(w>5*k&&w<11*k))continue;const c=ctr(g);if(sq.some(o=>dist(c,o.c)<8*k))continue;
   const rad=near(c,w*.5+6*k).filter(h=>h.k==='l'&&dist(ctr(h),c)>2*k&&Math.max(h.w,h.h)<7*k);
-  if(rad.length>=3){const f=g.fill!=null||near(c,2*k).some(h=>h!==g&&h.fill!=null);out.push({type:f?'STROBE_BOH':'STROBE_FOH',c})}}
+  if(rad.length>=3){const f=g.fill!=null||near(c,2*k).some(h=>h!==g&&h.fill!=null);out.push({type:f?'STROBE_BOH':'STROBE_FOH',c,fp:{s:'strobe',gl:'',v:[w/k,0,Math.min(rad.length,8)/4,0,0,f?1:0,0]}})}}
  const res=[];for(const o of out){if(res.some(r=>r.type===o.type&&dist(o.c,r.c)<4*k))continue;res.push(o)}
- return{k,items:res.filter(o=>!want||want.includes(o.type)).map(o=>({type:o.type,x:o.c[0],y:o.c[1]}))}}
+ return{k,items:res.filter(o=>!want||want.includes(o.type)).map(o=>({type:o.type,x:o.c[0],y:o.c[1],fp:o.fp}))}}
 self.onmessage=e=>{const{id,fn,args,O,vt,W,H,want}=e.data;const t0=performance.now();try{const P=walk(fn,args,O,vt);const r=detect(P,W,H,want);self.postMessage({id,ok:1,...r,paths:P.length,ms:performance.now()-t0})}catch(err){self.postMessage({id,ok:0,err:String(err&&err.message||err)})}};
