@@ -1,7 +1,7 @@
 'use strict';
 pdfjsLib.GlobalWorkerOptions.workerSrc='vendor/pdf.worker.min.js';
 const $=s=>document.querySelector(s);
-const TYPES={smoke:{c:'#dc2626',l:'S',n:'Smoke'},heat:{c:'#ea580c',l:'H',n:'Heat'},pull:{c:'#be185d',l:'P',n:'Pull station'},horn:{c:'#7c3aed',l:'HS',n:'Horn/strobe'},panel:{c:'#0f766e',l:'FACP',n:'Panel',sq:1},fatc:{c:'#0d9488',l:'FATC',n:'Fire alarm terminal cabinet',sq:1},module:{c:'#2563eb',l:'M',n:'Monitor/control module',sq:1},duct:{c:'#b45309',l:'D',n:'Duct detector'},flow:{c:'#0369a1',l:'WF',n:'Waterflow switch'},tamper:{c:'#4d7c0f',l:'TS',n:'Tamper switch'},spkstrobe:{c:'#9333ea',l:'SS',n:'Speaker/strobe'},strobe:{c:'#c026d3',l:'ST',n:'Strobe'},linearray:{c:'#4f46e5',l:'LA',n:'Line array speaker'},relay:{c:'#78350f',l:'R',n:'Relay',sq:1},doorholder:{c:'#db2777',l:'DH',n:'Door holder'},jbox:{c:'#64748b',l:'J',n:'Junction box',sq:1},other:{c:'#475569',l:'?',n:'Other'}};
+const TYPES={smoke:{c:'#dc2626',l:'S',n:'Smoke'},heat:{c:'#ea580c',l:'H',n:'Heat'},pull:{c:'#be185d',l:'P',n:'Pull station'},horn:{c:'#7c3aed',l:'HS',n:'Horn/strobe'},panel:{c:'#991b1b',l:'FACP',n:'FACP – Fire Alarm Control Panel',sq:1},dact:{c:'#ca8a04',l:'DACT',n:'DACT – Digital Alarm Communicator Transmitter',sq:1},fatc:{c:'#0e7490',l:'FATC',n:'FATC – Fire Alarm Terminal Cabinet',sq:1},panelbox:{c:'#0f766e',l:'PNL',n:'Other panel / amp / annunciator',sq:1},module:{c:'#2563eb',l:'M',n:'Monitor/control module',sq:1},duct:{c:'#b45309',l:'D',n:'Duct detector'},flow:{c:'#0369a1',l:'WF',n:'Waterflow switch'},tamper:{c:'#4d7c0f',l:'TS',n:'Tamper switch'},spkstrobe:{c:'#9333ea',l:'SS',n:'Speaker/strobe'},strobe:{c:'#c026d3',l:'ST',n:'Strobe'},linearray:{c:'#4f46e5',l:'LA',n:'Line array speaker'},relay:{c:'#78350f',l:'R',n:'Relay',sq:1},doorholder:{c:'#db2777',l:'DH',n:'Door holder'},jbox:{c:'#64748b',l:'J',n:'Junction box',sq:1},other:{c:'#475569',l:'?',n:'Other'}};
 const ST={passed:'#16a34a',failed:'#dc2626','in progress':'#f59e0b','not tested':'#94a3b8'},STATUSES=['passed','failed','in progress','not tested'];
 // NFPA 72-style default inspection/test items per device type (snapshotted onto each pin when first answered)
 const CHECKS={smoke:['Alarm received at panel','Correct address/label at panel','LED/base condition OK','Sensitivity within range','Clean/unobstructed'],
@@ -12,7 +12,9 @@ const CHECKS={smoke:['Alarm received at panel','Correct address/label at panel',
  module:['Signal received at panel','Correct address/label at panel','Controlled/monitored circuit operates','Wiring/supervision (trouble on open)','Physical condition OK'],
  flow:['Waterflow alarm received at panel','Correct address/label at panel','Retard/delay within limits','Physical condition OK'],
  tamper:['Supervisory received at panel','Correct address/label at panel','Restores on valve open','Physical condition OK'],
- panel:['Normal/AC power OK','Batteries tested/charged','No trouble/supervisory conditions','Communicator/monitoring signal received','Event log/time correct'],
+ panel:['Normal/AC power OK, power-on LED','Batteries tested (load/voltage) and dated','No trouble/supervisory/alarm conditions','Alarm, supervisory and trouble signals received at panel','Lamp/LED/display test OK','Event log/time correct','Zone/device labeling and as-builts on site'],
+ dact:['Primary and secondary line/path connected','Test signal received by supervising station','Communication-failure trouble on line loss','Account/zone codes match central station','24-hr test timer set','Physical condition OK'],
+ panelbox:['Power/battery OK','No trouble conditions','Physical condition OK'],
  fatc:['Cabinet accessible and identified','Terminals landed/labeled per drawings','Wiring secured, no damage','Cover in place','No unauthorized splices'],
  spkstrobe:['Audible/voice message intelligible','Strobe flashes','Synchronized with other strobes','Candela/tap setting matches plan','Mounted/condition OK'],
  strobe:['Strobe flashes','Synchronized with other strobes','Candela setting matches plan','Mounted/condition OK'],
@@ -366,7 +368,7 @@ $('#projDel').onclick=async()=>{if(!project)return;const mine=(await all('plans'
  await del('projects',project.id);await del('meta','last:'+project.id);project=null;await loadProject(null)};
 // ---------- boot ----------
 if('serviceWorker'in navigator&&location.protocol.startsWith('http')){const had=!!navigator.serviceWorker.controller;let done=0;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!done){done=1;location.reload()}});navigator.serviceWorker.register('sw.js')}
-(async()=>{resize();await loadProject(await get('meta','project'))})();
+(async()=>{resize();try{await migratePanels()}catch(e){console.info('panel migration skipped',e)}await loadProject(await get('meta','project'))})();
 
 // ---------- photo annotation (original kept; annotated copy saved on the media record) ----------
 const ann={m:null,img:null,shapes:[],tool:'arrow',drag:null};const acv=$('#annCv'),actx=acv.getContext('2d');
@@ -427,8 +429,8 @@ const DG={spkw:{n:'Speaker/strobe – wall',t:'spkstrobe',d:['SPK_FOH_WALL','SPK
  strobe:{n:'Strobe only',t:'strobe',d:['STROBE_FOH','STROBE_BOH']},horn:{n:'Horn/strobe',t:'horn',d:['HORN_FOH','HORN_BOH','HORN_WALL','HORN_CEIL'],note:'horn/strobe'},la:{n:'Line array speaker',t:'linearray',d:['LINE_ARRAY']},smoke:{n:'Smoke detector',t:'smoke',d:['SMOKE']},module:{n:'Module (monitor/control)',t:'module',d:['MODULE']},
  relay:{n:'Relay',t:'relay',d:['RELAY']},pull:{n:'Pull station',t:'pull',d:['PULL']},dh:{n:'Door holder',t:'doorholder',d:['DOOR_HOLDER']},flow:{n:'Waterflow switch',t:'flow',d:['FLOW','FLOW_TAMPER'],note:'waterflow'},tamper:{n:'Tamper switch',t:'tamper',d:['TAMPER'],note:'valve tamper'},
  jbox:{n:'Junction box',t:'jbox',d:['JBOX','JBOX_CEIL']},surge:{n:'Surge suppressor',t:'other',d:['SURGE'],note:'surge suppressor'},
- facp:{n:'FACP (fire alarm control panel)',t:'panel',d:['FACP'],note:'FACP'},dact:{n:'DACT (communicator)',t:'panel',d:['DACT'],note:'DACT'},fatc:{n:'FATC (terminal cabinet)',t:'fatc',d:['FATC'],note:'FATC'},panelbox:{n:'Panel / amp / annunciator box',t:'panel',d:['PANEL_BOX'],note:'equipment box'}};
-for(const[k,n,t]of[['heat','Heat detector','heat'],['duct','Duct detector','duct'],['panel','Panel','panel'],['oth','Other device','other']])DG[k]={n,t,d:[],x:1};
+ facp:{n:'FACP (fire alarm control panel)',t:'panel',d:['FACP'],note:'FACP'},dact:{n:'DACT (communicator)',t:'dact',d:['DACT'],note:'DACT'},fatc:{n:'FATC (terminal cabinet)',t:'fatc',d:['FATC'],note:'FATC'},panelbox:{n:'Panel / amp / annunciator box',t:'panelbox',d:['PANEL_BOX'],note:'equipment box'}};
+for(const[k,n,t]of[['heat','Heat detector','heat'],['duct','Duct detector','duct'],['panel','FACP (manual)','panel'],['oth','Other device','other']])DG[k]={n,t,d:[],x:1};
 const D2G={};for(const[k,g]of Object.entries(DG))for(const d of g.d)D2G[d]=k;
 const DEF_SEL=Object.keys(DG).filter(k=>k!=='jbox'&&k!=='surge');
 const gT=g=>TYPES[DG[g.g].t]||TYPES.other;
@@ -590,7 +592,7 @@ const normA=s=>String(s||'').toUpperCase().replace(/\bDASH\b/g,'-').replace(/[\s
 const NUMW={zero:0,one:1,two:2,to:2,too:2,three:3,four:4,for:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
 const numW=s=>s.split(/\s+/).map(w=>w in NUMW?NUMW[w]:w).join(' ');
 function reasonOf(r){r=r||'';return /no alarm|not alarm|no signal|didn.?t alarm/.test(r)?'No alarm':/trouble/.test(r)?'Trouble':/damage/.test(r)?'Damaged':/missing/.test(r)?'Missing':/obstruct|blocked/.test(r)?'Obstructed':/dirt|clean|dust/.test(r)?'Dirty/needs cleaning':/wrong|location/.test(r)?'Wrong location':'Other'}
-const TYPEW=/\b(smoke|heat|pull|station|horn|strobe|speaker|module|monitor|control|relay|duct|detector|flow|water|tamper|switch|panel|fatc|terminal|cabinet|door|holder|junction|box|line|array|device)\b/g;
+const TYPEW=/\b(smoke|heat|pull|station|horn|strobe|speaker|module|monitor|control|relay|duct|detector|flow|water|tamper|switch|panel|fatc|facp|dact|communicator|terminal|cabinet|door|holder|junction|box|line|array|device)\b/g;
 function parseVoice(text){const raw=String(text||'').trim(),t=raw.toLowerCase().replace(/[,!?]/g,'').replace(/\.$/,'').replace(/\s+/g,' ').trim();let m;
  if(/^(skip|next)\b/.test(t))return{cmd:'skip'};
  if(/^(pass|passed|passes|good)$/.test(t))return{cmd:'pass'};
@@ -654,7 +656,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v12',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v13',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -671,7 +673,7 @@ async function importBpm(file,replaceId,onP){const{z,man}=await readBpm(file);
  // 1) read + verify every blob before touching the database
  const plans=[],media=[],N=man.plans.length+man.media.length;let k=0;const tick=()=>onP&&onP(++k/Math.max(1,N));
  for(const m of man.plans){const{file:f,type,size,...r}=m;plans.push({...r,id:nid(m.id),projectId:pid,blob:f?await ent(f,type):new Blob([])});tick()}
- const planIds=new Set(man.plans.map(p=>p.id)),pinsIn=man.pins.filter(p=>planIds.has(p.planId)),pinIds=new Set(pinsIn.map(p=>p.id));
+ const planIds=new Set(man.plans.map(p=>p.id)),pinsIn=man.pins.filter(p=>planIds.has(p.planId)).map(p=>{const t=typeof migPanelType==='function'&&migPanelType(p);return t?{...p,type:t}:p}),pinIds=new Set(pinsIn.map(p=>p.id));
  for(const m of man.media){if(!pinIds.has(m.pinId))continue;const{file:f,type,size,annotFile,annotType,...r}=m,o={...r,id:nid(m.id),pinId:nid(m.pinId)};if(f)o.blob=await ent(f,type);if(annotFile)o.annot=await ent(annotFile,annotType);media.push(o);tick()}
  const mk=man.markups.filter(m=>planIds.has(m.planId)).map(m=>({...m,id:nid(m.id),planId:nid(m.planId)})),pn=pinsIn.map(p=>({...p,id:nid(p.id),planId:nid(p.planId)}));
  // 2) write everything; on failure remove what was written
@@ -905,3 +907,8 @@ $('#clrGo').onclick=async()=>{const v=document.querySelector('#clrDlg [name=clr]
   sel=null;msel=[];if(L.length)await changeMulti(L);let other=0;
   if(v==='proj'){const ids=await planIdsOf();for(const p of await all('pins')){if(!ids.includes(p.planId)||p.planId===plan?.id)continue;for(const m of await byIdx('media','pinId',p.id))await del('media',m.id);await del('pins',p.id);other++}}
   draw();renderList();toast(`Cleared ${L.length+other} pin(s)`+(L.length?' — undo available for this plan':''),true)}catch(e){showErr('Clear failed: '+e.message)}finally{busy(0)}};
+
+// ---------- v13: split legacy generic Panel pins into FACP / DACT / FATC (best effort) ----------
+function migPanelType(p){if(p.type!=='panel'&&p.type!=='other')return null;const d=String(p.detected||'')+' '+String(p.detG||'')+' '+String(p.notes||'');
+ if(/\bDACT\b|communicator/i.test(d))return'dact';if(/\bFATC\b|terminal cabinet/i.test(d))return'fatc';if(/PANEL_BOX|panelbox|equipment box/i.test(d))return'panelbox';if(p.type==='other'&&/\bFACP\b/i.test(d))return'panel';return null}
+async function migratePanels(){if(await get('meta','mig:v13'))return 0;let n=0;for(const p of await all('pins')){const t=migPanelType(p);if(t&&t!==p.type){p.type=t;await put('pins',p);n++}}await put('meta',1,'mig:v13');return n}
