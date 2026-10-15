@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Blueprint Markup</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1e293b">
+<title>Marker</title><meta name="apple-mobile-web-app-title" content="Marker"><meta name="application-name" content="Marker"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1e293b">
 <link rel="icon" href="icon.svg"><link rel="apple-touch-icon" href="icon-192.png"><link rel="stylesheet" href="app.css"></head><body>
 <div id="proj"><span title="Project">🗂</span><select id="projSel" title="Project"></select><button class="btn" id="projNew" title="New project">＋</button><button class="btn" id="projRen" title="Rename project">✎</button><button class="btn" id="projDel" title="Delete project">🗑</button><button class="btn" id="projSave" title="Save project file (.bpm) / export plans">💾<span class="lbl"> Save</span></button><label class="btn" id="projOpen" title="Open project file (.bpm)">📥<span class="lbl"> Open</span><input id="bpmFile" type="file" accept=".bpm,application/zip,application/octet-stream" hidden></label></div>
 <header id="top">
@@ -86,7 +86,7 @@
  <div class="lay"><label><input type="radio" name="exMode" value="one" checked> One combined PDF</label><label><input type="radio" name="exMode" value="zip"> ZIP: one PDF per plan</label><label><input type="checkbox" id="exOrig"> Include the original clean PDFs (gives a ZIP)</label></div>
  <div class="row"><small id="exInfo" style="color:#94a3b8"></small><span class="sp"></span><button type="button" class="btn pri" id="exGo">📑 Export plans</button></div>
  <hr style="border-color:#334155"><b>NFPA 72 documents</b>
- <small style="display:block;color:#94a3b8">Blueprint Markup reports that map to NFPA 72 Ch. 14 ITM and Ch. 7 documentation requirements. <b>Not official NFPA forms.</b></small>
+ <small style="display:block;color:#94a3b8">Marker reports that map to NFPA 72 Ch. 14 ITM and Ch. 7 documentation requirements. <b>Not official NFPA forms.</b></small>
  <div class="row" style="flex-wrap:wrap;gap:6px;margin-top:6px"><button type="button" class="btn" id="jobBtn">🏛 Job info</button>
  <button type="button" class="btn pri" id="nfpaItm">Inspection &amp; Testing Record</button>
  <button type="button" class="btn pri" id="nfpaComp">Record of Completion</button>
