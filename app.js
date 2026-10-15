@@ -548,8 +548,8 @@ async function runDetect(groups,all){const want=groups.flatMap(g=>DG[g].d),pl=pl
      else if(it.type==='FLOW_TAMPER')it.type='FLOW'}
    }catch{}
    const rules=await learnedRules();let nl=0;const items=[];for(const it of r.items){let g=D2G[it.type],lr=null;const m=matchRule(rules,it.fp);if(m){lr=m.g;nl++;if(m.g==='none')continue;g=m.g}if(groups.includes(g)||(lr&&DG[g]?.x))items.push({...it,g,learned:!!lr})}
-   // bpm-v29: backfill measured bw/bh onto existing pins of any matching type (DH/jbox/surge/panels/hex/dia) so outset uses print size
-   for(const it of items){if(!(it.bw||it.vert))continue;const want=DG[it.g]&&DG[it.g].t;const p=pins.find(p=>p.page===n&&(!p.bw||(p.ang==null&&it.ang))&&Math.hypot(p.x-it.x,p.y-it.y)<36&&(PANEL_S.has(p.type)||(want&&p.type===want)));if(p){if(it.bw){p.bw=it.bw;p.bh=it.bh;p.x=it.x;p.y=it.y;if(it.ang)p.ang=it.ang}else if(PANEL_S.has(p.type))p.vert=true;put('pins',p)}}
+   // bpm-v29/v46: backfill measured bw/bh/ang + true outline center onto existing pins so re-Detect recenters angled pins
+   for(const it of items){if(!(it.bw||it.vert))continue;const want=DG[it.g]&&DG[it.g].t;const p=pins.find(p=>p.page===n&&(!p.bw||(p.ang==null&&it.ang)||(it.ang&&Math.hypot(p.x-it.x,p.y-it.y)<8))&&Math.hypot(p.x-it.x,p.y-it.y)<36&&(PANEL_S.has(p.type)||(want&&p.type===want)));if(p){if(it.bw){p.bw=it.bw;p.bh=it.bh;p.x=it.x;p.y=it.y;if(it.ang)p.ang=it.ang;else if(it.ang===0)delete p.ang}else if(PANEL_S.has(p.type))p.vert=true;put('pins',p)}}
    const add=items.filter(it=>!near(it.x,it.y)).map(it=>({id:uid(),page:n,x:it.x,y:it.y,bw:it.bw,bh:it.bh,ang:it.ang,vert:it.vert,det:it.type,g:it.g,fp:it.fp,learned:it.learned}));ghosts.push(...add);found+=add.length;
    R.stats.push({page:n,ops:ol.fnArray.length,paths:r.paths,found:items.length,kept:add.length,skipped:items.length-add.length,learnedHits:nl,opsMs:Math.round(t1-t0),workerMs:Math.round(r.ms),totalMs:Math.round(performance.now()-t0),k:r.k});
    prog((i+1)/pages.length);if(n===page)draw();renderGhostBar()}
@@ -739,7 +739,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v45',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v46',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -1186,15 +1186,21 @@ var OFFMAP=null,SCRNOFF=null;
 const PANEL_T=new Set(['panel','dact','fatc','panelbox']),PANEL_G=new Set(['facp','dact','fatc','panelbox']);
 function isPanelO(o){return PANEL_T.has(o.type)||PANEL_G.has(o.g)}
 function pinFoot(o){const hw=pinLW(o.g!=null?gPin(o):o)/2;if(o.g!=null)return pinHalf(gPin(o))+hw;return pinHalf(o)+hw}
-function pinExt(o){const p=o.g!=null?gPin(o):o;let[,w,h]=pshOf(p);if(p.ang){const C=Math.abs(Math.cos(p.ang)),S=Math.abs(Math.sin(p.ang));[w,h]=[w*C+h*S,w*S+h*C]}const pad=pinLW(p)/2+OUT(p);return[w/2+pad,h/2+pad]}
-// bpm-v43: shape-aware AABB de-overlap. Old circular foot used hypot(w,h)/2 so adjacent squares that only
-// touched were pushed off the print. Now only true box overlaps (both axes) are separated, on the min-penetration axis.
+// bpm-v46: upright foot keeps status pad (v43). Angled OBB foot = print outer only — edge-touching
+ // tilted symbols must not be AABB-inflated (v45) or status-padded into a false nudge off the print.
+function pinExt(o){const p=o.g!=null?gPin(o):o;const[,w,h]=pshOf(p),pad=pinLW(p)/2+OUT(p);return[w/2+pad,h/2+pad]}
+function pinObb(o,x,y){const p=o.g!=null?gPin(o):o,[,w,h]=pshOf(p),a=isFinite(p.ang)&&p.ang?p.ang:0;return{x,y,hw:w/2,hh:h/2,c:Math.cos(a),s:Math.sin(a)}}
+function obbPen(A,B){const dx=B.x-A.x,dy=B.y-A.y,axes=[[A.c,A.s],[-A.s,A.c],[B.c,B.s],[-B.s,B.c]];let best=1e9,bx=1,by=0;
+ for(const[ax,ay]of axes){const pA=A.hw*Math.abs(ax*A.c+ay*A.s)+A.hh*Math.abs(ax*(-A.s)+ay*A.c),pB=B.hw*Math.abs(ax*B.c+ay*B.s)+B.hh*Math.abs(ax*(-B.s)+ay*B.c),d=Math.abs(dx*ax+dy*ay),pen=pA+pB-d;if(pen<=.05)return null;if(pen<best){best=pen;bx=ax;by=ay;if(dx*ax+dy*ay<0){bx=-ax;by=-ay}}}
+ return{pen:best,ax:bx,ay:by}}
 function pinOffsets(list){list=list.filter(o=>!['flow','tamper'].includes(o.type)&&!/FLOW|TAMPER/.test(o.det||''));const M=new Map(),n=list.length;if(n<2)return M;const key=o=>o.id||o;
- const E=list.map(pinExt),gap=.2,Dmax=Math.max(...E.map(e=>Math.max(e[0],e[1])))*2+gap,X=list.map(o=>o.x),Y=list.map(o=>o.y),C=Math.max(Dmax,1)*3,G=new Map();
+ const E=list.map(pinExt),Ang=list.map(o=>{const p=o.g!=null?gPin(o):o;return isFinite(p.ang)&&p.ang?1:0}),gap=.2,Dmax=Math.max(...E.map(e=>Math.max(e[0],e[1])))*2+gap,X=list.map(o=>o.x),Y=list.map(o=>o.y),C=Math.max(Dmax,1)*3,G=new Map();
  list.forEach((o,i)=>{const k=Math.floor(o.x/C)+','+Math.floor(o.y/C);(G.get(k)||G.set(k,[]).get(k)).push(i)});
  const nb=list.map((o,i)=>{const a=[],gx=Math.floor(o.x/C),gy=Math.floor(o.y/C);for(let u=-1;u<=1;u++)for(let v=-1;v<=1;v++)for(const j of G.get((gx+u)+','+(gy+v))||[])if(j>i)a.push(j);return a});
  let moved=false;for(let it=0;it<90;it++){let any=false;
-  for(let i=0;i<n;i++)for(const j of nb[i]){const dx=X[j]-X[i],dy=Y[j]-Y[i],px=E[i][0]+E[j][0]-Math.abs(dx),py=E[i][1]+E[j][1]-Math.abs(dy);if(px<=.05||py<=.05)continue;any=true;
+  for(let i=0;i<n;i++)for(const j of nb[i]){
+   if(Ang[i]||Ang[j]){const hit=obbPen(pinObb(list[i],X[i],Y[i]),pinObb(list[j],X[j],Y[j]));if(!hit)continue;any=true;const push=(hit.pen+gap)/2;X[i]-=hit.ax*push;Y[i]-=hit.ay*push;X[j]+=hit.ax*push;Y[j]+=hit.ay*push;continue}
+   const dx=X[j]-X[i],dy=Y[j]-Y[i],px=E[i][0]+E[j][0]-Math.abs(dx),py=E[i][1]+E[j][1]-Math.abs(dy);if(px<=.05||py<=.05)continue;any=true;
    if(px<py){const sx=dx>=0?(dx||((i+j)%2?1:-1))>0?1:-1:-1,push=(px+gap)/2;X[i]-=sx*push;X[j]+=sx*push}else{const sy=dy>0||(dy===0&&(i+j)%2)?1:-1,push=(py+gap)/2;Y[i]-=sy*push;Y[j]+=sy*push}}
   if(!any)break;moved=true}
  if(!moved)return M;
