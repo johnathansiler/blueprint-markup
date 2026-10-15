@@ -68,7 +68,12 @@ function detect(P,W,H,want){const TB=W>H?W*.825:W;let G=P.filter(g=>dark(g)&&g.x
       for(const[e,o]of[[a,b],[b,a]])if(dist(e,c)>6*k&&dist(e,c)<10.5*k&&dist(o,c)>dist(e,c)+2*k&&(!tc||dist(o,tc)>dist(o,c)))stem=true}
      t+=stem?'_WALL':'_CEIL'}}
    }else{const gs=glyph.join(',');if(glyph.length===2&&glyph[0]>=4)t='SURGE';else if(['1,2','1,1,1','1,3','2,2'].includes(gs)||(glyph.length===2&&glyph.includes(1)&&Math.max(...glyph)<=3))t='PULL';else if(glyph.length===1&&glyph[0]>=4)t='JBOX';else if(glyph.length===2)t='SURGE';else t=null}}
-  else if(sk==='hex'){if(filled||!glyph.length||(glyph.length>=6&&Math.max(...glyph)===1))t='RELAY';else if(glyph.length===1)t='SMOKE';else t='MODULE'}
+  else if(sk==='hex'){if(filled||!glyph.length||(glyph.length>=6&&Math.max(...glyph)===1))t='RELAY';else if(glyph.length===1){t='SMOKE';
+    // v22 duct detector (legend: "SMOKE DETECTOR w/ AIR DUCT HOUSING"): hex+S with a short radial stem off the hex edge ending in >=2 tiny tick strokes (the duct housing)
+    const ls=near(c,18*k).filter(h=>h.k==='l'&&!ins.includes(h)),L=h=>dist(h.segs[0].p[0],h.segs[0].p[1]);
+    const ds=ls.find(h=>{const[a,b]=h.segs[0].p,l=L(h);if(l<2.5*k||l>6.5*k)return false;const[e,o]=dist(a,c)<dist(b,c)?[a,b]:[b,a];return dist(e,c)>5.5*k&&dist(e,c)<9*k&&dist(o,c)>dist(e,c)+2*k});
+    if(ds){const tip=dist(ds.segs[0].p[0],c)>dist(ds.segs[0].p[1],c)?ds.segs[0].p[0]:ds.segs[0].p[1];
+     const ticks=ls.filter(h=>h!==ds&&L(h)>1*k&&L(h)<3.5*k&&dist([h.cx,h.cy],tip)<7*k&&dist([h.cx,h.cy],c)>dist(tip,c)-2*k).length;if(ticks>=2)t='DUCT'}}else t='MODULE'}
   else if(sk==='diamond'){
    // Legend: FS (waterflow) vs TS (tamper). Glyph bags from this plan family often look like 1,2,19 (FS) vs 1,1,19 (TS).
    const gs=glyph.join(',');
