@@ -46,6 +46,7 @@ const pshOf=o=>{const t=typeof o==='string'?o:o&&o.type,v=PSH[t]||PSH.other;if(P
 const PRINT_LW=.7;const OUT=t=>pinLW(t)/2+.15;
 function pinPath(c,t,d=0){const[k,w,h]=pshOf(t);let a=w/2-PRINT_LW/2,b=h/2-PRINT_LW/2;if(k==='rect'){a+=d;b+=d;c.rect(-a,-b,2*a,2*b)}else if(k==='dia'){const L=Math.hypot(a,b),A=a+d*L/b,B=b+d*L/a;c.moveTo(-A,0);c.lineTo(0,-B);c.lineTo(A,0);c.lineTo(0,B);c.closePath()}
  else if(k==='hex'){const s=Math.hypot(a/2,b),A=a+d*s/b,B=b+d,X=a/2+(d*s-a*d/2)/b;c.moveTo(-A,0);c.lineTo(-X,-B);c.lineTo(X,-B);c.lineTo(A,0);c.lineTo(X,B);c.lineTo(-X,B);c.closePath()}else c.arc(0,0,Math.max(.1,a+d),0,7)}
+// bpm-v43: AABB de-overlap; selection follows nudged pin
 // bpm-v42: sandwich — fill to black centerline (black covers its edge → no white gap), crisp black print ring, status ring fully outside black
 function pinFS(c,t,ghost){c.beginPath();pinPath(c,t,0);c.fill();if(!ghost){const ss=c.strokeStyle,lw=c.lineWidth,ld=c.getLineDash();c.setLineDash([]);c.strokeStyle='#000';c.lineWidth=PRINT_LW;c.lineJoin='miter';c.beginPath();pinPath(c,t,0);c.stroke();c.strokeStyle=ss;c.lineWidth=lw;c.setLineDash(ld)}c.beginPath();pinPath(c,t,PRINT_LW/2+OUT(t));c.stroke()}
 const pinHalf=t=>{const[k,w,h]=pshOf(t),r=k==='circ'?w/2:k==='rect'?Math.hypot(w,h)/2:Math.max(w,h)/2;return r+OUT(t)+pinLW(t)/2-PRINT_LW/2}; // print half + half stroke (outer edge)
@@ -576,7 +577,7 @@ $('#layReset').onclick=()=>{lay={...LAY0,exp:lay.exp};layToForm();laySave()};
 const isPinO=o=>pins.includes(o);
 function selItems(){return msel.length?msel:sel?[sel.o]:[]}
 function toggleMsel(o){if(sel&&sel.o!==o&&!msel.includes(sel.o))msel.push(sel.o);const i=msel.indexOf(o);if(i>=0)msel.splice(i,1);else msel.push(o);sel=null;renderSelBar();requestDraw(false)}
-function bb(o){if(isPinO(o)){const[,w,h]=pshOf(o),pad=pinLW(o)/2+OUT(o);return{x:o.x-w/2-pad,y:o.y-h/2-pad,X:o.x+w/2+pad,Y:o.y+h/2+pad}}return isPinO(o)?0:{x:Math.min(o.x1,o.x2),y:Math.min(o.y1,o.y2),X:Math.max(o.x1,o.x2),Y:Math.max(o.y1,o.y2)}}
+function bb(o){if(isPinO(o)){const[,w,h]=pshOf(o),pad=pinLW(o)/2+OUT(o),f=(OFFMAP||SCRNOFF)&&(OFFMAP||SCRNOFF).get(o.id),x=o.x+(f?f.dx:0),y=o.y+(f?f.dy:0);return{x:x-w/2-pad,y:y-h/2-pad,X:x+w/2+pad,Y:y+h/2+pad}}return isPinO(o)?0:{x:Math.min(o.x1,o.x2),y:Math.min(o.y1,o.y2),X:Math.max(o.x1,o.x2),Y:Math.max(o.y1,o.y2)}}
 function drawMsel(c){if(!msel.length)return;c.save();c.setLineDash([5,4]);c.strokeStyle='#38bdf8';c.lineWidth=1.5;const p=pinR()*.6;for(const o of msel){if(o.page!==page)continue;const b=bb(o);c.strokeRect(b.x-p,b.y-p,b.X-b.x+2*p,b.Y-b.y+2*p)}c.restore()}
 function showBox(){let d=$('#selBox');if(!d){d=document.createElement('div');d.id='selBox';stage.append(d)}const g=gesture;if(!g||g.type!=='box'){d.remove();return}
  const a=toS(g.w0.x,g.w0.y),b=toS(g.w1.x,g.w1.y);Object.assign(d.style,{left:Math.min(a.x,b.x)+'px',top:Math.min(a.y,b.y)+'px',width:Math.abs(b.x-a.x)+'px',height:Math.abs(b.y-a.y)+'px'})}
@@ -722,7 +723,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v42',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v43',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -1169,20 +1170,19 @@ var OFFMAP=null,SCRNOFF=null;
 const PANEL_T=new Set(['panel','dact','fatc','panelbox']),PANEL_G=new Set(['facp','dact','fatc','panelbox']);
 function isPanelO(o){return PANEL_T.has(o.type)||PANEL_G.has(o.g)}
 function pinFoot(o){const hw=pinLW(o.g!=null?gPin(o):o)/2;if(o.g!=null)return pinHalf(gPin(o))+hw;return pinHalf(o)+hw}
+function pinExt(o){const p=o.g!=null?gPin(o):o;const[,w,h]=pshOf(p),pad=pinLW(p)/2+OUT(p);return[w/2+pad,h/2+pad]}
+// bpm-v43: shape-aware AABB de-overlap. Old circular foot used hypot(w,h)/2 so adjacent squares that only
+// touched were pushed off the print. Now only true box overlaps (both axes) are separated, on the min-penetration axis.
 function pinOffsets(list){list=list.filter(o=>!['flow','tamper'].includes(o.type)&&!/FLOW|TAMPER/.test(o.det||''));const M=new Map(),n=list.length;if(n<2)return M;const key=o=>o.id||o;
- // v20: min center distance = sum of outer radii (fill r + half stroke). Canvas strokes are centered on the
- // path, so D≈r*2 left borders overlapping. Status dots ignored (may touch neighbors). Tiny gap for AA.
- const R=list.map(pinFoot),gap=.4,Dmax=Math.max(...R)*2+gap,X=list.map(o=>o.x),Y=list.map(o=>o.y),C=Math.max(Dmax,1)*3,G=new Map();
+ const E=list.map(pinExt),gap=.2,Dmax=Math.max(...E.map(e=>Math.max(e[0],e[1])))*2+gap,X=list.map(o=>o.x),Y=list.map(o=>o.y),C=Math.max(Dmax,1)*3,G=new Map();
  list.forEach((o,i)=>{const k=Math.floor(o.x/C)+','+Math.floor(o.y/C);(G.get(k)||G.set(k,[]).get(k)).push(i)});
  const nb=list.map((o,i)=>{const a=[],gx=Math.floor(o.x/C),gy=Math.floor(o.y/C);for(let u=-1;u<=1;u++)for(let v=-1;v<=1;v++)for(const j of G.get((gx+u)+','+(gy+v))||[])if(j>i)a.push(j);return a});
  let moved=false;for(let it=0;it<90;it++){let any=false;
-  for(let i=0;i<n;i++)for(const j of nb[i]){let dx=X[j]-X[i],dy=Y[j]-Y[i],d=Math.hypot(dx,dy),need=R[i]+R[j]+gap;if(d>=need)continue;any=true;
-   if(d<1e-3){const t=(i*2.399+j*.7);dx=Math.cos(t);dy=Math.sin(t);d=1}const ux=dx/d,uy=dy/d,push=(need-d)/2*1.02;X[i]-=ux*push;Y[i]-=uy*push;X[j]+=ux*push;Y[j]+=uy*push}
-  if(!any)break;moved=true;
-  if(it<50)for(let i=0;i<n;i++){X[i]+=(list[i].x-X[i])*.04;Y[i]+=(list[i].y-Y[i])*.04}}
+  for(let i=0;i<n;i++)for(const j of nb[i]){const dx=X[j]-X[i],dy=Y[j]-Y[i],px=E[i][0]+E[j][0]-Math.abs(dx),py=E[i][1]+E[j][1]-Math.abs(dy);if(px<=.05||py<=.05)continue;any=true;
+   if(px<py){const sx=dx>=0?(dx||((i+j)%2?1:-1))>0?1:-1:-1,push=(px+gap)/2;X[i]-=sx*push;X[j]+=sx*push}else{const sy=dy>0||(dy===0&&(i+j)%2)?1:-1,push=(py+gap)/2;Y[i]-=sy*push;Y[j]+=sy*push}}
+  if(!any)break;moved=true}
  if(!moved)return M;
- // Record any real nudge — old r*.25 threshold dropped sub-stroke moves and left borders overlapped
- list.forEach((o,i)=>{const dx=X[i]-o.x,dy=Y[i]-o.y;if(Math.hypot(dx,dy)>.35)M.set(key(o),{dx,dy,cl:1})});
+ list.forEach((o,i)=>{const dx=X[i]-o.x,dy=Y[i]-o.y;if(Math.hypot(dx,dy)>.5)M.set(key(o),{dx,dy,cl:1})});
  return M}
 function drawLeader(c,x,y,X,Y,col){c.save();c.globalAlpha=Math.max(.7,c.globalAlpha);c.strokeStyle=col;c.lineWidth=1.2;c.beginPath();c.moveTo(x,y);c.lineTo(X,Y);c.stroke();c.fillStyle=col;c.strokeStyle='#fff';c.lineWidth=.8;c.beginPath();c.arc(x,y,2.4,0,7);c.fill();c.stroke();c.restore()}
 
