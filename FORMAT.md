@@ -36,3 +36,9 @@ Personal `mycodes` are merged on open (existing ids kept). Built-in `codes.json`
 ## v14 measurement
 - `scales`: optional `{ [planId]: {def: ppf|null, pages: {[page]: ppf}} }` — ppf = plan points per real foot. Stored locally in `meta` as `scale:<planId>`.
 - Markup types `dim` (x1,y1→x2,y2), `darea` (rect), `dpath` (bbox x1..y2 + `rp`: points relative to x1,y1). Labels are computed from the plan's scale at draw/export time. Older apps ignore these types.
+
+## v15/v16 additions
+- `man.rots`: `{ "<page>": 0|90|180|270 }` per-plan display rotation (view only; exports stay native orientation). Stored in IndexedDB meta `rot:<planId>`.
+- `man.cktpl`: custom checklist templates `{ "<type>": ["item", ...] }` (meta `cktpl`). Missing types fall back to built-in defaults.
+- Pin type `surge` (surge protector/suppressor, short code SS).
+- v16: no format changes; pin overlap offsets are display-only (stored x,y are the true device location).

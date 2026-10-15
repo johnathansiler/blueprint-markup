@@ -35,7 +35,7 @@
  <button id="detBtn" class="tool" title="Detect devices (suggest pins from the plan's symbols)">🔍</button>
 </div>
 <main id="stage"><canvas id="cv"></canvas><canvas id="ov"></canvas><div id="empty">Open a PDF plan set (or image) with 📂</div><div id="busy" hidden><span id="busyTxt">Rendering</span> <b id="busyPct">…</b><div id="busyTrack"><div id="busyBar"></div></div><button type="button" class="btn" id="stop">Stop</button></div><div id="ghBar" hidden></div><div id="selBar" hidden></div><div id="mBar" hidden></div><div id="thumbs" hidden></div><div id="walk" hidden></div><div id="toast" hidden><span id="toastTxt"></span><button type="button" class="btn" id="toastUndo">↶ Undo</button></div><div id="err" hidden><span id="errTxt"></span><button type="button" class="btn" id="errX" title="Dismiss">✕</button></div></main>
-<aside id="panel" hidden><div class="ph"><button class="btn tab on" id="modePins">Pins</button><button class="btn tab" id="modeDefs">⚠ Deficiencies <b id="defCount"></b></button><span class="sp"></span><button class="btn" id="csvBtn" title="Export device list (CSV, whole project)">CSV</button><button class="btn" id="testerBtn" title="Tester name">👤</button><button class="btn danger" id="clrBtn" title="Clear pins">🗑 Clear</button><button class="btn" id="closeList">✕</button></div>
+<aside id="panel" hidden><div class="ph"><button class="btn tab on" id="modePins">Pins</button><button class="btn tab" id="modeDefs">⚠ Deficiencies <b id="defCount"></b></button><span class="sp"></span><button class="btn" id="csvBtn" title="Export device list (CSV, whole project)">CSV</button><button class="btn" id="testerBtn" title="Tester name">👤</button><button class="btn danger" id="clrBtn" title="Clear pins">🗑 Pins</button><button class="btn danger" id="clrMBtn" title="Clear markups (shapes, text, measurements)">🗑 Markups</button><button class="btn" id="closeList">✕</button></div>
  <input id="q" placeholder="Search address, type, loop, notes…">
  <div class="row"><select id="fType"><option value="">All types</option></select>
  <select id="fStat"><option value="">All status</option><option>passed</option><option>failed</option><option>in progress</option><option>not tested</option></select>
@@ -101,7 +101,7 @@
  <div id="bkP"><b>Pins</b><label>Status <select id="bkStatus"><option value="">unchanged</option><option>passed</option><option>failed</option><option>in progress</option><option>not tested</option></select></label>
  <label>Type <select id="bkType"><option value="">unchanged</option></select></label><label>Loop <input id="bkLoop" placeholder="unchanged"></label></div>
  <div class="row"><span class="sp"></span><button class="btn" value="cancel">Cancel</button><button type="button" class="btn pri" id="bkGo">Apply</button></div></form></dialog>
-<dialog id="clrDlg"><form method="dialog"><h3 style="margin:4px 0">🗑 Clear pins</h3>
+<dialog id="clrDlg"><form method="dialog"><h3 style="margin:4px 0" id="clrH">🗑 Clear pins</h3>
  <div class="lay"><label><input type="radio" name="clr" value="page" checked> This page <b id="clrNpage"></b></label><label><input type="radio" name="clr" value="plan"> This plan (all pages) <b id="clrNplan"></b></label><label><input type="radio" name="clr" value="proj"> Whole project (all plans) <b id="clrNproj"></b></label></div>
  <small id="clrInfo" style="display:block;color:#94a3b8"></small>
  <div class="row"><span class="sp"></span><button class="btn" value="cancel">Cancel</button><button type="button" class="btn danger" id="clrGo">Delete</button></div></form></dialog>

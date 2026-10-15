@@ -84,10 +84,10 @@ async function buildPageSel(){fillPageSel(null);let labels=null;try{labels=pdf&&
 function fillPageSel(labels){if(!plan)return;const sel=$('#pageSel');sel.innerHTML='';for(let i=1;i<=plan.pages;i++){const n=pins.filter(x=>x.page===i).length;sel.add(new Option(`${labels?.[i-1]||'Pg '+i} / ${plan.pages}${n?` (${n}📍)`:''}`,i))}sel.value=page}
 $('#pageSel').onchange=e=>gotoPage(+e.target.value).then(()=>{MS.pts=[];renderMBar()});$('#prev').onclick=()=>plan&&page>1&&gotoPage(page-1);$('#next').onclick=()=>plan&&page<plan.pages&&gotoPage(page+1);
 async function gotoPage(n,seq){if(!plan)return;const own=seq===undefined;if(own){if(renderTask){try{renderTask.cancel()}catch{}renderTask=null}seq=++opSeq;hideErr()}
- page=n;sel=null;msel=[];updUR();renderGhostBar();renderSelBar();bmp=null;bmpScale=0;baseBm=tile=null;busy(1,'Rendering');prog(.3);
+ page=n;sel=null;msel=[];updUR();renderGhostBar();renderSelBar();bmp=null;bmpScale=0;baseBm=tile=null;const pcHit=pcGet(n);if(!pcHit)busy(1,'Rendering');prog(.3);
  try{if(pdf){const pg=await withTimeout(pdf.getPage(n),30000,'reading page '+n+' timed out');if(seq!==opSeq)return;const vp=pg.getViewport({scale:1});pageW=vp.width;pageH=vp.height}
   else{const im=await createImageBitmap(plan.blob);pageW=im.width;pageH=im.height;bmp=im;bmpScale=1}
-  VR=+(ROTS[n]||0);updRotBtn();
+  VR=+(ROTS[n]||0);updRotBtn();if(pcHit){baseBm=pcHit;bmpScale=pcHit.s}
   put('meta',{plan:plan.id,page:n},'lastPage');fit();prog(.35);await buildPageSel();if(seq!==opSeq)return;prog(.4);
   const ok=await renderPage(true);if(seq!==opSeq)return;if(ok===false)showErr('Could not render this page, even at low resolution. Try ⤢ or reopen the plan.');renderList()}
  catch(e){if(seq===opSeq)showErr('Could not show page '+n+': '+(e&&e.message||e))}
@@ -97,12 +97,12 @@ $('#fit').onclick=fit;
 // crisp re-render: render the page at current zoom*dpr, capped by pixel budget
 // Perf: a small full-page base bitmap is rendered once per page; zoomed-in views render only the visible
 // region (plus margin) at screen resolution, capped by a pixel budget. Markups live on a separate overlay canvas.
-const MAXPX=matchMedia('(pointer:coarse)').matches?16e6:24e6,BASEPX=4e6;
+const MAXPX=matchMedia('(pointer:coarse)').matches?16e6:24e6,BASEPX=4e6,FIRSTPX=1.2e6;
 function wantScale(){return Math.min(view.s*dpr(),10)}
 function visRect(){const W=stage.clientWidth,H=stage.clientHeight,P=[toW(0,0),toW(W,0),toW(0,H),toW(W,H)],xs=P.map(p=>p.x),ys=P.map(p=>p.y),x=Math.min(...xs),y=Math.min(...ys);return{x,y,w:Math.max(...xs)-x,h:Math.max(...ys)-y}}
 function covered(t){const v=visRect();return Math.max(0,v.x)>=t.x-1&&Math.max(0,v.y)>=t.y-1&&Math.min(pageW,v.x+v.w)<=t.x+t.w+1&&Math.min(pageH,v.y+v.h)<=t.y+t.h+1}
 function baseOK(w){return baseBm&&baseBm.s>=w*.87}
-function scheduleRender(){if(!pdf)return;clearTimeout(renderTimer);const w=wantScale();if(!baseBm){renderTimer=setTimeout(renderPage,0);return}
+function scheduleRender(){if(!pdf||SLIDING)return;clearTimeout(renderTimer);const w=wantScale();if(!baseBm){renderTimer=setTimeout(renderPage,0);return}
  if(baseOK(w)){if(tile){tile=null;requestDraw()}return}
  if(tile&&w<=tile.s*1.15&&w>=tile.s/2.5&&covered(tile))return;renderTimer=setTimeout(renderPage,180)}
 function wantRect(s){const v=visRect();let m=.5,w,h;for(;;){w=v.w*(1+2*m);h=v.h*(1+2*m);if(w*h*s*s<=MAXPX||m<=0)break;m=Math.max(0,m-.1)}
@@ -119,7 +119,9 @@ async function raster(pg,s,r,showProg){s=Math.max(s,.02);const k=Math.min(1,Math
  try{await t.promise}catch(e){if(!/cancel/i.test(e?.name+e?.message))console.warn('render failed',e);return null}finally{clearTimeout(to)}if(renderTask!==t)return null;renderTask=null;if(showProg)prog(1);c._s=s;return c}
 async function renderPage(first){if(!pdf){draw();return}const pn=page,seq=opSeq;if(renderTask){renderTask.cancel();renderTask=null}
  const pg=await pdf.getPage(pn);if(pn!==page||seq!==opSeq)return;
- if(!baseBm){let s=Math.min(wantScale(),Math.sqrt(BASEPX/(pageW*pageH))),c=null;for(let i=0;i<3&&!c;i++,s/=2){c=await raster(pg,s,{x:0,y:0,w:pageW,h:pageH},first);if(pn!==page||seq!==opSeq)return}if(!c)return false;baseBm={c,s:c._s};bmpScale=c._s;draw()}
+ if(!baseBm){const full=Math.min(wantScale(),Math.sqrt(BASEPX/(pageW*pageH)));let s=first?Math.min(full,Math.sqrt(FIRSTPX/(pageW*pageH))):full,c=null;for(let i=0;i<3&&!c;i++,s/=2){c=await raster(pg,s,{x:0,y:0,w:pageW,h:pageH},first);if(pn!==page||seq!==opSeq)return}if(!c)return false;baseBm={c,s:c._s};bmpScale=c._s;pcPut(pn,baseBm);draw();
+  // progressive: sharpen the full-page base in the background once the first paint is up
+  if(c._s<full*.87){setTimeout(()=>upgradeBase(pn,seq,full),60);return}}
  const want=wantScale();if(baseOK(want)){tile=null;draw();return}
  const r=wantRect(want),c=await raster(pg,want,r);if(!c||pn!==page)return;tile={c,s:c._s,...r};bmpScale=c._s;draw()}
 function busy(b,txt){$('#busy').hidden=!b;if(b){$('#busyTxt').textContent=txt||'Working';prog(null)}}
@@ -148,7 +150,7 @@ function resizeTo(m,o,h,w){if(isLine(m)){if(h===0){m.x1=w.x;m.y1=w.y}else{m.x2=w
  const x0=Math.min(o.x1,o.x2),y0=Math.min(o.y1,o.y2),X0=Math.max(o.x1,o.x2),Y0=Math.max(o.y1,o.y2),L=h===0||h===3,T=h===0||h===1;
  if(m.type==='text'){const nh=Math.max(6/view.s,T?Y0-w.y:w.y-y0);m.fs=o.fs*nh/((Y0-y0)||1);const tw=textBox({...m,x1:0,y1:0}).x2;Object.assign(m,{x1:L?X0-tw:x0,y1:T?Y0-m.fs*1.15:y0});textBox(m);return}
  let x=L?w.x:x0,X=L?X0:w.x,y=T?w.y:y0,Y=T?Y0:w.y;m.x1=Math.min(x,X);m.x2=Math.max(x,X);m.y1=Math.min(y,Y);m.y2=Math.max(y,Y)}
-let CR=0;function drawPin(c,p,s,hl,bare,nolab){const T=TYPES[p.type]||TYPES.other,r=pinR();c.save();if(!bare)c.globalAlpha=opOf(p,true);c.translate(p.x,p.y);if(CR)c.rotate(-CR);
+let CR=0;function drawPin(c,p,s,hl,bare,nolab){const T=TYPES[p.type]||TYPES.other,r=pinR();c.save();if(!bare)c.globalAlpha=opOf(p,true);const oo=!bare&&OFFMAP&&OFFMAP.get(p.id);if(oo)drawLeader(c,p.x,p.y,p.x+oo.dx,p.y+oo.dy,T.c);c.translate(p.x+(oo?oo.dx:0),p.y+(oo?oo.dy:0));if(CR)c.rotate(-CR);
  // s is kept for call-site compat; pin geometry is in plan points so it scales with view
  const sc=ST[p.status]||ST['not tested'];if(hl&&!bare){c.beginPath();c.arc(0,0,r*1.75,0,7);c.fillStyle='rgba(56,189,248,.35)';c.fill()}
  c.fillStyle=T.c;c.strokeStyle=bare?'#fff':sc;c.lineWidth=bare?2:pinLW();c.beginPath();
@@ -160,18 +162,19 @@ function setT(c){const d=dpr(),s=view.s*d,e=view.x*d,f=view.y*d;
  if(VR===90)c.setTransform(0,s,-s,0,s*pageH+e,f);else if(VR===180)c.setTransform(-s,0,0,-s,s*pageW+e,s*pageH+f);else if(VR===270)c.setTransform(0,-s,s,0,e,s*pageW+f);else c.setTransform(s,0,0,s,e,f)}
 function drawBase(){drawn={...view};cv.style.transform=ov.style.transform='';ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);if(!plan||!pageW)return;setT(ctx);
  ctx.fillStyle='#fff';ctx.fillRect(0,0,pageW,pageH);ctx.imageSmoothingQuality='high';if(bmp)ctx.drawImage(bmp,0,0,pageW,pageH);if(baseBm)ctx.drawImage(baseBm.c,0,0,pageW,pageH);if(tile)ctx.drawImage(tile.c,tile.x,tile.y,tile.c.width/tile.s,tile.c.height/tile.s)}
-function drawOverlay(){CR=VR*Math.PI/180;try{drawOverlay0()}finally{CR=0}}
+function drawOverlay(){CR=VR*Math.PI/180;try{drawOverlay0()}finally{CR=0}tedPos()}
 function drawOverlay0(){const ctx=octx;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,ov.width,ov.height);if(!plan||!pageW)return;setT(ctx);
- for(const m of markups)if(m.page===page&&mVis(m))drawMarkup(ctx,m,view.s);if(draft)drawMarkup(ctx,draft,view.s);
+ for(const m of markups)if(m.page===page&&mVis(m)&&m.id!==ted?.id)drawMarkup(ctx,m,view.s);if(draft)drawMarkup(ctx,draft,view.s);
  if(sel&&sel.kind==='m'){const m=sel.o;ctx.save();ctx.setLineDash([6/view.s,4/view.s]);ctx.strokeStyle='#2563eb';ctx.lineWidth=1.5/view.s;const p=8/view.s;if(!isLine(m))ctx.strokeRect(Math.min(m.x1,m.x2)-p,Math.min(m.y1,m.y2)-p,Math.abs(m.x2-m.x1)+2*p,Math.abs(m.y2-m.y1)+2*p);
   ctx.setLineDash([]);ctx.fillStyle='#fff';ctx.lineWidth=2;for(const[hx,hy]of handles(m)){ctx.beginPath();ctx.arc(hx,hy,6,0,7);ctx.fill();ctx.stroke()}ctx.restore()}
- for(const p of pins)if(p.page===page&&pVis(p))drawPinL(ctx,p,view.s,sel&&sel.o===p||msel.includes(p));drawMsel(ctx);if(lay.ghosts)drawGhosts(ctx);if(walk?.p&&walk.p.page===page){ctx.save();ctx.strokeStyle='#38bdf8';ctx.lineWidth=3;ctx.beginPath();ctx.arc(walk.p.x,walk.p.y,pinR()*2.1,0,7);ctx.stroke();ctx.restore()}}
+ OFFMAP=SCRNOFF=pinOffsets([...pins.filter(p=>p.page===page&&pVis(p)),...(lay.ghosts?ghosts.filter(g=>g.page===page):[])]);for(const p of pins)if(p.page===page&&pVis(p))drawPinL(ctx,p,view.s,sel&&sel.o===p||msel.includes(p));drawMsel(ctx);if(lay.ghosts)drawGhosts(ctx);OFFMAP=null;if(walk?.p&&walk.p.page===page){ctx.save();ctx.strokeStyle='#38bdf8';ctx.lineWidth=3;ctx.beginPath();ctx.arc(walk.p.x,walk.p.y,pinR()*2.1,0,7);ctx.stroke();ctx.restore()}}
 function draw(){drawBase();drawOverlay()}
 // during pan/pinch/wheel move the already-drawn canvases with a cheap CSS transform; repaint once the gesture pauses (150ms) or on release
 let drawn=null,gTimer=0;function fastView(){if(drawn){const k=view.s/drawn.s,t=`translate(${view.x-drawn.x*k}px,${view.y-drawn.y*k}px) scale(${k})`;cv.style.transform=ov.style.transform=t}clearTimeout(gTimer);gTimer=setTimeout(()=>{gTimer=0;requestDraw()},150);scheduleRender()}
 let raf=0,rafB=0;function requestDraw(b=true){if(b)rafB=1;if(!raf)raf=requestAnimationFrame(()=>{raf=0;if(rafB)drawBase();drawOverlay();rafB=0})}
 // ---------- hit testing ----------
-function hit(w){const tol=10/view.s,pr=Math.max(pinR()*1.4,16/view.s);for(const p of[...pins].reverse())if(p.page===page&&pVis(p)&&Math.hypot(p.x-w.x,p.y-w.y)<pr)return{kind:'p',o:p};
+function hit(w){const tol=10/view.s,pr=Math.max(pinR()*1.4,16/view.s);for(const p of[...pins].reverse()){if(p.page!==page||!pVis(p))continue;const o=SCRNOFF&&SCRNOFF.get(p.id);if(o&&Math.hypot(p.x+o.dx-w.x,p.y+o.dy-w.y)<pr)return{kind:'p',o:p}}
+ for(const p of[...pins].reverse())if(p.page===page&&pVis(p)&&Math.hypot(p.x-w.x,p.y-w.y)<pr*(SCRNOFF&&SCRNOFF.get(p.id)?.6:1))return{kind:'p',o:p};
  for(const m of[...markups].reverse()){if(m.page!==page||!mVis(m))continue;if(isLine(m)){const dx=m.x2-m.x1,dy=m.y2-m.y1,t=Math.max(0,Math.min(1,((w.x-m.x1)*dx+(w.y-m.y1)*dy)/((dx*dx+dy*dy)||1)));if(Math.hypot(m.x1+t*dx-w.x,m.y1+t*dy-w.y)<tol*1.4)return{kind:'m',o:m};continue}const x=Math.min(m.x1,m.x2),y=Math.min(m.y1,m.y2),X=Math.max(m.x1,m.x2),Y=Math.max(m.y1,m.y2);if(w.x>x-tol&&w.x<X+tol&&w.y>y-tol&&w.y<Y+tol)return{kind:'m',o:m}}return null}
 // ---------- input ----------
 const ptrs=new Map();let gesture=null;
@@ -208,9 +211,9 @@ async function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);c
  if(pasteArm&&!g.moved&&g.type!=='pinch'){pasteArm=false;draft=null;await doPaste(w);return}
  if(tool==='select'&&!g.moved&&g.type==='pan'&&msel.length&&!multiOn){msel=[];renderSelBar();requestDraw(false)}
  if(!g.moved&&(g.type==='pan'||g.type==='move')){const gh=ghostHit(w);if(gh&&!(g.type==='move'&&g.wasSel)){sel=null;openGhost(gh);return}const h=hit(w);if(h&&h.kind==='p'){openPin(h.o);return}}
- if(!g.moved&&(g.type==='resize'||g.type==='move'&&g.wasSel)&&sel?.o.type==='text'){const t=await askText('Edit text',sel.o.text);if(t!==null&&t.trim()&&t!==sel.o.text){const b=structuredClone(sel.o);await change('markups',b,textBox({...b,text:t.trim()}))}return}
+ if(!g.moved&&(g.type==='resize'||g.type==='move'&&g.wasSel)&&sel?.o.type==='text'){inlineText(sel.o);return}
  if((g.type==='move'||g.type==='resize')&&g.moved&&sel)await change(sel.kind==='p'?'pins':'markups',g.orig,sel.o);
- if(g.type==='text'&&!g.moved){const t=await askText('Text label','');if(t&&t.trim())await change('markups',null,textBox({id:uid(),planId:plan.id,page,type:'text',text:t.trim(),x1:g.w.x,y1:g.w.y,fs:(SZT[$('#size').value]||18)/view.s,color:$('#color').value,w:3,opacity:toolOp(false)}))}
+ if(g.type==='text'&&!g.moved){inlineText(null,g.w)}
  if(g.type==='pin'){const p={id:uid(),planId:plan.id,page,x:g.w.x,y:g.w.y,type:$('#pinType').value,address:'',loop:'',status:'not tested',notes:'',created:Date.now(),opacity:toolOp(true)};await change('pins',null,p);openPin(pins.find(x=>x.id===p.id))}
  if(g.type==='mpath'){if(g.moved){requestDraw();return}await mPathTap(mSnap(w));return}
  if(g.type==='draw'&&draft?.type==='cal'){const d=draft;draft=null;drawOverlay();await mCalibrate(d);return}
@@ -347,7 +350,7 @@ function drawLegend(x,ps,PP,PH){const pp=PP||pins.filter(p=>p.page===page&&(!lay
  for(const s of sts){x.fillStyle=ST[s];x.strokeStyle='#fff';x.lineWidth=2*u;x.beginPath();x.arc(X+pad+14*u,y,6*u,0,7);x.fill();x.stroke();x.fillStyle='#111';x.font=`${12*u}px sans-serif`;x.textAlign='left';x.fillText('Status: '+s,X+pad+34*u,y);y+=row}x.restore()}
 async function composite(){const sc=Math.min(3,Math.sqrt(30e6/(pageW*pageH)));const c=document.createElement('canvas');c.width=Math.round(pageW*sc);c.height=Math.round(pageH*sc);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
  if(pdf){const pg=await pdf.getPage(page);await pg.render({canvasContext:x,viewport:pg.getViewport({scale:sc})}).promise}else x.drawImage(bmp,0,0,c.width,c.height);
- x.setTransform(sc,0,0,sc,0,0);const ps=1/Math.max(1,Math.max(pageW,pageH)/1200);const E=lay.exp;for(const m of markups)if(m.page===page&&(!E||mVis(m)))drawMarkup(x,m,1/1.5);for(const p of pins)if(p.page===page&&(!E||pVis(p)))(E?drawPinL:drawPin)(x,p,ps,false);drawLegend(x,ps);return c}
+ x.setTransform(sc,0,0,sc,0,0);const ps=1/Math.max(1,Math.max(pageW,pageH)/1200);const E=lay.exp;for(const m of markups)if(m.page===page&&(!E||mVis(m)))drawMarkup(x,m,1/1.5);OFFMAP=pinOffsets(pins.filter(p=>p.page===page&&(!E||pVis(p))));for(const p of pins)if(p.page===page&&(!E||pVis(p)))(E?drawPinL:drawPin)(x,p,ps,false);OFFMAP=null;drawLegend(x,ps);return c}
 const base=()=>`${plan.name.replace(/\.[^.]+$/,'')}-p${page}`;
 function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
 $('#exPng').onclick=async()=>{if(!plan)return;busy(1,'Exporting');try{const c=await composite();await new Promise(r=>c.toBlob(b=>{dl(b,base()+'.png');r()},'image/png'))}catch(e){showErr('PNG export failed: '+e.message)}finally{busy(0)}};
@@ -364,7 +367,7 @@ $('#exPdf').onclick=async()=>{if(!plan)return;busy(1,'Exporting');prog(0);try{
 
 // ---------- projects ----------
 async function refreshProjects(){const ps=(await all('projects')).sort((a,b)=>a.created-b.created);$('#projSel').innerHTML=ps.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');if(project)$('#projSel').value=project.id;return ps}
-function closePlan(){if(det)cancelDetect();ghosts=[];renderGhostBar();stopAll();if(pdf){pdf.destroy();pdf=null}plan=null;markups=[];pins=[];updUR();pageW=pageH=0;bmp=baseBm=tile=null;bmpScale=0;sel=null;$('#pageSel').innerHTML='';$('#empty').hidden=false;draw();renderList()}
+function closePlan(){PCACHE.clear();if(det)cancelDetect();ghosts=[];renderGhostBar();stopAll();if(pdf){pdf.destroy();pdf=null}plan=null;markups=[];pins=[];updUR();pageW=pageH=0;bmp=baseBm=tile=null;bmpScale=0;sel=null;$('#pageSel').innerHTML='';$('#empty').hidden=false;draw();renderList()}
 async function loadProject(id){let ps=await refreshProjects();project=ps.find(p=>p.id===id)||ps[0];
  if(!project){project={id:'p'+uid(),name:'My project',created:Date.now()};await put('projects',project);ps=await refreshProjects()}
  await put('meta',project.id,'project');$('#projSel').value=project.id;closePlan();await refreshPlans();
@@ -492,9 +495,9 @@ async function runDetect(groups,all){const want=groups.flatMap(g=>DG[g].d),pl=pl
   window.__detStats=R.stats;if(!found)showErr(`No ${groups.length===Object.keys(DG).length?'':'matching '}device symbols found${all?'':' on this page'}. Detection works on CAD-exported vector plans with standard symbols.`)}
  catch(e){if(!R.cancel)showErr('Detect devices failed: '+(e&&e.message||e))}
  finally{if(det===R){det=null;busy(0)}draw();renderGhostBar()}}
-function drawGhosts(c){const r=pinR()*1.15;for(const g of ghosts){if(g.page!==page)continue;const T=gT(g);c.save();c.translate(g.x,g.y);c.setLineDash([4,3]);c.lineWidth=2.5;c.strokeStyle=T.c;c.fillStyle='rgba(255,255,255,.55)';c.beginPath();c.arc(0,0,r,0,7);c.fill();c.stroke();c.setLineDash([]);
+function drawGhosts(c){const r=pinR()*1.15;for(const g of ghosts){if(g.page!==page)continue;const T=gT(g);c.save();const oo=OFFMAP&&OFFMAP.get(g.id||g);if(oo)drawLeader(c,g.x,g.y,g.x+oo.dx,g.y+oo.dy,T.c);c.translate(g.x+(oo?oo.dx:0),g.y+(oo?oo.dy:0));c.setLineDash([4,3]);c.lineWidth=2.5;c.strokeStyle=T.c;c.fillStyle='rgba(255,255,255,.55)';c.beginPath();c.arc(0,0,r,0,7);c.fill();c.stroke();c.setLineDash([]);
  c.fillStyle=T.c;c.font=`bold ${T.l.length>2?7:10}px sans-serif`;c.textAlign='center';c.textBaseline='middle';c.fillText(T.l,0,0);c.fillStyle='#111';c.font=`bold 8px sans-serif`;c.fillText('?',r*.95,-r*.95);c.restore()}}
-function ghostHit(w){if(!lay.ghosts)return null;let best=null,bd=Math.max(pinR()*1.8,18/view.s);for(const g of ghosts){if(g.page!==page)continue;const d=Math.hypot(g.x-w.x,g.y-w.y);if(d<bd){bd=d;best=g}}return best}
+function ghostHit(w){if(!lay.ghosts)return null;let best=null,bd=Math.max(pinR()*1.8,18/view.s);for(const g of ghosts){if(g.page!==page)continue;const o=SCRNOFF&&SCRNOFF.get(g.id||g),d=Math.min(Math.hypot(g.x-w.x,g.y-w.y),o?Math.hypot(g.x+o.dx-w.x,g.y+o.dy-w.y):1e9);if(d<bd){bd=d;best=g}}return best}
 let curG=null;function openGhost(g){curG=g;$('#ghType').value=g.g;ghInfoUpd();$('#ghDlg').showModal()}
 function ghInfoUpd(){const g=curG;if(!g)return;const n=ghosts.filter(x=>x.g===$('#ghType').value).length;$('#ghHead').textContent='Suggested: '+DG[$('#ghType').value].n;$('#ghInfo').textContent=`Becomes a "${TYPES[DG[$('#ghType').value].t].n}" pin (blank address/loop, not tested). Detected as ${g.det.replace(/_/g,' ').toLowerCase()}, page ${g.page}.`;$('#ghAllType').textContent=`Accept all ${n} of this type`}
 $('#ghType').onchange=()=>{if(curG){curG.g=$('#ghType').value;if(curG.fp)learn(curG.fp,curG.g);ghInfoUpd();draw();renderGhostBar()}};
@@ -570,22 +573,22 @@ function startWalk(type=''){if(!plan)return alert('Open a plan first.');if(!pins
  const c=toW(stage.clientWidth/2,stage.clientHeight/2),L=walkLeft(),here=L.filter(p=>p.page===page);
  const first=sel?.kind==='p'&&untested(sel.o)?sel.o:nearestFrom(here.length?here:L,here.length?{page,...c}:null);walkGo(first)}
 function exitWalk(){walk=null;$('#walk').hidden=true;$('#walkBtn').classList.remove('pri');renderGhostBar();renderSelBar();draw()}
-async function walkGo(p){if(!walk)return;walk.p=p;walk.fail=false;renderWalk();if(!p){draw();return}if(p.page!==page)await gotoPage(p.page);
- const W=stage.clientWidth,Hh=stage.clientHeight-$('#walk').offsetHeight,s=Math.max(view.s,Math.min(W,stage.clientHeight)/320),v0={...view};centerOn(p.x,p.y,s,W/2,Math.max(60,Hh/2));const v1={...view};view=v0;sel={kind:'p',o:p};await slideTo(v1)}
+async function walkGo(p,back){if(!walk)return;walk.hist??=[];if(!back&&walk.p&&p&&walk.p.id!==p.id){walk.hist.push(walk.p.id);if(walk.hist.length>200)walk.hist.shift()}walk.p=p;walk.fail=false;renderWalk();if(!p){draw();return}if(p.page!==page)await gotoPage(p.page);
+ const W=stage.clientWidth,Hh=stage.clientHeight-$('#walk').offsetHeight,s=walk.zoomed?view.s:Math.max(view.s,Math.min(W,stage.clientHeight)/320),v0={...view};walk.zoomed=true;centerOn(p.x,p.y,s,W/2,Math.max(60,Hh/2));const v1={...view};view=v0;sel={kind:'p',o:p};await prefetchPath(v0,v1);if(walk?.p!==p)return;await slideTo(v1)}
 function walkNext(){if(!walk)return;const cur=walk.p;walkGo(nearestFrom(walkLeft().filter(p=>p!==cur),cur))}
 function walkAfterDialog(){if(!walk||!walk.p)return;const p=pins.find(x=>x.id===walk.p.id);if(!p){walkNext();return}walk.p=p;if(!untested(p))walkNext();else renderWalk()}
 function renderWalk(){const w=$('#walk');if(!walk){w.hidden=true;return}const S=walkSet(),N=S.length,done=S.filter(p=>!untested(p)).length,p=walk.p&&pins.find(x=>x.id===walk.p.id)||walk.p;
  const types=[...new Set(pins.map(x=>x.type))];const head=`<div class="wh"><b>🚶 ${p?`${Math.min(done+1,N)} of ${N}`:`${done} of ${N} tested`}</b><select id="wType" title="Only this type"><option value="">All types</option>${types.map(t=>`<option value="${t}"${walk.type===t?' selected':''}>${esc(TYPES[t]?.n||t)}</option>`).join('')}</select><span class="sp"></span>${SR?'<button type="button" class="btn" id="wMic" title="Voice command">🎤</button>':''}<button type="button" class="btn" id="wExit">✕ Exit</button></div>`;
- if(!p){w.innerHTML=head+`<div class="wt">${walk.skip.size?`No untested devices left (${walk.skip.size} skipped).`:'All devices in this set are tested. 🎉'}</div>${walk.skip.size?'<div class="row"><button type="button" class="btn" id="wRe">Revisit skipped</button></div>':''}`}
+ if(!p){w.innerHTML=head+`<div class="wt">${walk.skip.size?`No untested devices left (${walk.skip.size} skipped).`:'All devices in this set are tested. 🎉'}</div>${walk.hist?.length?'<div class="row"><button type="button" class="btn" id="wPrev">⏮ Previous device</button></div>':''}${walk.skip.size?'<div class="row"><button type="button" class="btn" id="wRe">Revisit skipped</button></div>':''}`}
  else w.innerHTML=head+`<div class="wt"><span class="dot" style="display:inline-block;background:${(TYPES[p.type]||TYPES.other).c}"></span> ${esc(TYPES[p.type]?.n||p.type)} ${p.address?esc(p.address):'<small style="color:#94a3b8">(no address)</small>'}${p.loop?' · Loop '+esc(p.loop):''} <small style="color:#94a3b8">pg ${p.page}${p.status==='in progress'?' · in progress':''}</small></div>
  <div id="wHeard" style="color:#93c5fd;font-size:13px"${walk.heard?'':' hidden'}>🎤 “${esc(walk.heard||'')}”</div>
  ${walk.fail?`<div><b>Fail reason</b> <label style="display:inline-flex;gap:4px;align-items:center;margin-left:8px"><input type="checkbox" id="wCrit" style="width:20px;height:20px;min-height:20px"> Critical</label></div><div class="reasons">${REASONS.map(r=>`<button type="button" class="btn danger" data-r="${r}">${r}</button>`).join('')}<button type="button" class="btn" id="wFailX">Cancel</button></div>`
-  :`<div class="wb"><button type="button" class="btn ok" id="wPass">✔ Pass</button><button type="button" class="btn danger" id="wFail">✖ Fail</button><button type="button" class="btn" id="wSkip">⏭ Skip</button></div><div class="row"><button type="button" class="btn" id="wOpen">📋 Open checklist</button><span class="sp"></span><small style="color:#94a3b8">Pass = all checklist items pass</small></div>`}`;
+  :`<div class="wb"><button type="button" class="btn" id="wPrev" title="Back to the previous device"${walk.hist?.length?'':' disabled'}>⏮</button><button type="button" class="btn ok" id="wPass">✔ Pass</button><button type="button" class="btn danger" id="wFail">✖ Fail</button><button type="button" class="btn" id="wSkip">⏭ Skip</button></div><div class="row"><button type="button" class="btn" id="wOpen">📋 Open checklist</button><span class="sp"></span><small style="color:#94a3b8">Pass = all checklist items pass</small></div>`}`;
  w.hidden=false;const q=x=>w.querySelector(x);
  q('#wExit').onclick=exitWalk;q('#wType').onchange=e=>{walk.type=e.target.value;walk.skip.clear();const L=walkLeft();walkGo(nearestFrom(L,walk.p))};if(q('#wMic'))q('#wMic').onclick=startVoice;
  if(q('#wRe'))q('#wRe').onclick=()=>{walk.skip.clear();walkGo(nearestFrom(walkLeft(),null))};
  if(q('#wPass'))q('#wPass').onclick=()=>testPin(p,'pass');if(q('#wFail'))q('#wFail').onclick=()=>{walk.fail=true;renderWalk()};if(q('#wSkip'))q('#wSkip').onclick=()=>{walk.skip.add(p.id);walkNext()};
- if(q('#wOpen'))q('#wOpen').onclick=()=>openPin(p);if(q('#wFailX'))q('#wFailX').onclick=()=>{walk.fail=false;renderWalk()};
+ if(q('#wOpen'))q('#wOpen').onclick=()=>openPin(p);if(q('#wPrev'))q('#wPrev').onclick=walkPrev;if(q('#wFailX'))q('#wFailX').onclick=()=>{walk.fail=false;renderWalk()};
  w.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>testPin(p,'fail',b.dataset.r,q('#wCrit').checked))}
 async function testPin(p,res,reason,crit){p=pins.find(x=>x.id===p.id);if(!p)return;const b=structuredClone(p),a={...b,testedAt:Date.now(),tester:await getTester()};
  if(res==='pass'){a.checks=(b.checks||checkItems(b.type)).map(c=>({...c,v:'pass'}));a.status='passed';a.reason=a.reasonText=a.severity=''}
@@ -672,7 +675,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v15',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v16',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -755,12 +758,12 @@ async function exportPlanPdf(pl,mks,pns,L,onPage,outDoc=null){const{PDFDocument}
  if(pl.kind==='pdf'&&pl.blob?.size){const bytes=new Uint8Array(await pl.blob.arrayBuffer());const src=await PDFDocument.load(bytes,{ignoreEncryption:true});
   const js=await pdfjsLib.getDocument({data:bytes.slice()}).promise;
   try{for(let i=1;i<=js.numPages;i++){const jsp=await js.getPage(i),vp=jsp.getViewport({scale:1}),W=vp.width,H=vp.height,rot=jsp.rotate||0;
-   const drawFn=(x,ps)=>{const E=L.exp;for(const m of mks)if(m.page===i&&(!E||mVis(m)))drawMarkup(x,m,1/1.5);const pp=pns.filter(p=>p.page===i&&(!E||pVis(p)));for(const p of pp)(E?drawPinL:drawPin)(x,p,ps,false);drawLegend(x,ps,pp,H)};
+   const drawFn=(x,ps)=>{const E=L.exp;for(const m of mks)if(m.page===i&&(!E||mVis(m)))drawMarkup(x,m,1/1.5);const pp=pns.filter(p=>p.page===i&&(!E||pVis(p)));OFFMAP=pinOffsets(pp);for(const p of pp)(E?drawPinL:drawPin)(x,p,ps,false);OFFMAP=null;drawLegend(x,ps,pp,H)};
    const hasTxt=await pageHasText(jsp);
    if(hasTxt){const emb=await out.embedPage(src.getPage(i-1));const page=out.addPage([W,H]);drawEmbRotated(page,emb,rot,W,H);const ov=await rasterPageOverlay(W,H,drawFn);await overlayOnPage(out,page,W,H,ov)}
    else{const jpeg=await rasterFullPage(jsp,W,H,drawFn);const img=await out.embedJpg(await jpeg.arrayBuffer());const page=out.addPage([W,H]);page.drawImage(img,{x:0,y:0,width:W,height:H})}
    jsp.cleanup();pages++;onPage&&onPage(i,js.numPages)}}finally{js.destroy()}}
- else{const im=await createImageBitmap(pl.blob);const W=im.width,H=im.height;const drawFn=(x,ps)=>{const E=L.exp;for(const m of mks)if(m.page===1&&(!E||mVis(m)))drawMarkup(x,m,1/1.5);const pp=pns.filter(p=>p.page===1&&(!E||pVis(p)));for(const p of pp)(E?drawPinL:drawPin)(x,p,ps,false);drawLegend(x,ps,pp,H)};
+ else{const im=await createImageBitmap(pl.blob);const W=im.width,H=im.height;const drawFn=(x,ps)=>{const E=L.exp;for(const m of mks)if(m.page===1&&(!E||mVis(m)))drawMarkup(x,m,1/1.5);const pp=pns.filter(p=>p.page===1&&(!E||pVis(p)));OFFMAP=pinOffsets(pp);for(const p of pp)(E?drawPinL:drawPin)(x,p,ps,false);OFFMAP=null;drawLegend(x,ps,pp,H)};
   const jpeg=await rasterFullPage(null,W,H,(x,ps)=>{x.drawImage(im,0,0,W,H);drawFn(x,ps)});const img=await out.embedJpg(await jpeg.arrayBuffer());const page=out.addPage([W,H]);page.drawImage(img,{x:0,y:0,width:W,height:H});pages=1;onPage&&onPage(1,1)}
  }finally{lay=keep}
  if(!outDoc){try{out.setTitle((pl.name||'plan')+' (marked up)');out.setProducer('Blueprint Markup')}catch{}}
@@ -913,20 +916,21 @@ $('#nfpaDef').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1,
 
 
 
-// ---------- v12: clear pins (page / plan / project) ----------
-async function clrCounts(){const pr=(await all('pins')).filter(p=>(planIdsOf.cache||[]).includes(p.planId));return{page:pins.filter(p=>p.page===page).length,plan:pins.length,proj:pr.length}}
+// ---------- v12/v15: clear pins or markups (page / plan / project) ----------
+var clrWhat='pins';
 async function planIdsOf(){const ids=(await all('plans')).filter(p=>p.projectId===project.id).map(p=>p.id);planIdsOf.cache=ids;return ids}
-function clrInfoUpd(){const v=document.querySelector('#clrDlg [name=clr]:checked').value,n=clrInfoUpd.n||{};const c=n[v]||0;
- $('#clrInfo').textContent=c?`Deletes ${c} pin${c>1?'s':''} plus their photos, videos, voice notes and checklists. `+(v==='proj'?'Pins on other plans cannot be undone — save a .bpm first if unsure.':'Undo (↶) restores them in one step.'):'No pins in this scope.';$('#clrGo').disabled=!c}
-$('#clrBtn').onclick=async()=>{if(!project)return;await planIdsOf();const n=await clrCounts();clrInfoUpd.n=n;$('#clrNpage').textContent=`(${n.page})`;$('#clrNplan').textContent=`(${n.plan})`;$('#clrNproj').textContent=`(${n.proj})`;
- document.querySelectorAll('#clrDlg [name=clr]').forEach(r=>{r.disabled=r.value!=='proj'&&!plan;r.onchange=clrInfoUpd});if(!plan)document.querySelector('#clrDlg [value=proj]').checked=true;clrInfoUpd();$('#clrDlg').showModal()};
-$('#clrGo').onclick=async()=>{const v=document.querySelector('#clrDlg [name=clr]:checked').value,c=clrInfoUpd.n[v];
- if(!confirm(`Delete ${c} pin(s) and their media${v==='proj'?' across the whole project':v==='plan'?' on this plan':' on this page'}?`+(v==='proj'?' Pins on other plans cannot be undone.':'')))return;$('#clrDlg').close();busy(1,'Clearing pins');
- try{const L=[];const mine=v==='page'?pins.filter(p=>p.page===page):plan?pins.slice():[];for(const p of mine)L.push({store:'pins',id:p.id,before:p,after:null,media:await byIdx('media','pinId',p.id)});
+async function clrCounts(){const arr=clrWhat==='pins'?pins:markups,ids=await planIdsOf(),pr=(await all(clrWhat)).filter(p=>ids.includes(p.planId));return{page:arr.filter(p=>p.page===page).length,plan:arr.length,proj:pr.length}}
+function clrInfoUpd(){const v=document.querySelector('#clrDlg [name=clr]:checked').value,n=clrInfoUpd.n||{};const c=n[v]||0,P=clrWhat==='pins';
+ $('#clrInfo').textContent=c?`Deletes ${c} ${P?'pin':'markup'}${c>1?'s':''}${P?' plus their photos, videos, voice notes and checklists':' (shapes, text, lines, measurements)'}. `+(v==='proj'?`${P?'Pins':'Markups'} on other plans cannot be undone — save a .bpm first if unsure.`:'Undo (↶) restores them in one step.'):`No ${clrWhat} in this scope.`;$('#clrGo').disabled=!c}
+async function clrOpen(what){if(!project)return;clrWhat=what;$('#clrH').textContent=what==='pins'?'🗑 Clear pins':'🗑 Clear markups';const n=await clrCounts();clrInfoUpd.n=n;$('#clrNpage').textContent=`(${n.page})`;$('#clrNplan').textContent=`(${n.plan})`;$('#clrNproj').textContent=`(${n.proj})`;
+ document.querySelectorAll('#clrDlg [name=clr]').forEach(r=>{r.disabled=r.value!=='proj'&&!plan;r.onchange=clrInfoUpd});if(!plan)document.querySelector('#clrDlg [value=proj]').checked=true;clrInfoUpd();$('#clrDlg').showModal()}
+$('#clrBtn').onclick=()=>clrOpen('pins');$('#clrMBtn').onclick=()=>clrOpen('markups');
+$('#clrGo').onclick=async()=>{const v=document.querySelector('#clrDlg [name=clr]:checked').value,c=clrInfoUpd.n[v],P=clrWhat==='pins',st=clrWhat;
+ if(!confirm(`Delete ${c} ${P?'pin(s) and their media':'markup(s)'}${v==='proj'?' across the whole project':v==='plan'?' on this plan':' on this page'}?`+(v==='proj'?` ${P?'Pins':'Markups'} on other plans cannot be undone.`:'')))return;$('#clrDlg').close();if(ted)tedEnd(false);busy(1,P?'Clearing pins':'Clearing markups');
+ try{const arr=P?pins:markups,L=[];const mine=v==='page'?arr.filter(p=>p.page===page):plan?arr.slice():[];for(const p of mine)L.push(P?{store:'pins',id:p.id,before:p,after:null,media:await byIdx('media','pinId',p.id)}:{store:'markups',id:p.id,before:p,after:null});
   sel=null;msel=[];if(L.length)await changeMulti(L);let other=0;
-  if(v==='proj'){const ids=await planIdsOf();for(const p of await all('pins')){if(!ids.includes(p.planId)||p.planId===plan?.id)continue;for(const m of await byIdx('media','pinId',p.id))await del('media',m.id);await del('pins',p.id);other++}}
-  draw();renderList();toast(`Cleared ${L.length+other} pin(s)`+(L.length?' — undo available for this plan':''),true)}catch(e){showErr('Clear failed: '+e.message)}finally{busy(0)}};
-
+  if(v==='proj'){const ids=await planIdsOf();for(const p of await all(st)){if(!ids.includes(p.planId)||p.planId===plan?.id)continue;if(P)for(const m of await byIdx('media','pinId',p.id))await del('media',m.id);await del(st,p.id);other++}}
+  draw();renderList();toast(`Cleared ${L.length+other} ${P?'pin':'markup'}(s)`+(L.length?' — undo available for this plan':''),true)}catch(e){showErr('Clear failed: '+e.message)}finally{busy(0)}};
 // ---------- v13: split legacy generic Panel pins into FACP / DACT / FATC (best effort) ----------
 function migPanelType(p){if(p.type!=='panel'&&p.type!=='other')return null;const d=String(p.detected||'')+' '+String(p.detG||'')+' '+String(p.notes||'');
  if(/\bDACT\b|communicator/i.test(d))return'dact';if(/\bFATC\b|terminal cabinet/i.test(d))return'fatc';if(/PANEL_BOX|panelbox|equipment box/i.test(d))return'panelbox';if(p.type==='other'&&/\bFACP\b/i.test(d))return'panel';return null}
@@ -1004,13 +1008,14 @@ async function rotView(dir){if(!plan||!pageW)return;const c=toW(stage.clientWidt
 {const b=$('#rotBtn');let lp=0,long=false;b.onclick=e=>{if(long){long=false;return}rotView(1)};b.oncontextmenu=e=>{e.preventDefault();rotView(-1)};
  b.addEventListener('pointerdown',()=>{long=false;lp=setTimeout(()=>{long=true;rotView(-1)},550)});['pointerup','pointerleave','pointercancel'].forEach(k=>b.addEventListener(k,()=>clearTimeout(lp)))}
 // ---------- v15: smooth slide (walk) ----------
-let slideRaf=0,slideTok=0;
-function slideTo(v1,ms=500){cancelAnimationFrame(slideRaf);const tok=++slideTok,v0={...view},t0=performance.now(),ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+var slideRaf=0,slideTok=0;
+function slideTo(v1,ms=2000){cancelAnimationFrame(slideRaf);const tok=++slideTok,v0={...view},t0=performance.now(),ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
  // interpolate in log-scale for zoom, keep the target point fixed in the end state
  return new Promise(res=>{const step=now=>{if(tok!==slideTok){res(false);return}const t=Math.min(1,(now-t0)/ms),k=ease(t),s=Math.exp(Math.log(v0.s)+(Math.log(v1.s)-Math.log(v0.s))*k);
-  view={s,x:v0.x+(v1.x-v0.x)*k,y:v0.y+(v1.y-v0.y)*k};if(t<1){fastView();slideRaf=requestAnimationFrame(step)}else{view={...v1};draw();scheduleRender();res(true)}};slideRaf=requestAnimationFrame(step)})}
-stage.addEventListener('pointerdown',()=>{if(slideRaf){slideTok++;cancelAnimationFrame(slideRaf);slideRaf=0;requestDraw()}},true);
-stage.addEventListener('wheel',()=>{if(slideRaf){slideTok++;cancelAnimationFrame(slideRaf);slideRaf=0}},{capture:true,passive:true});
+  view={s,x:v0.x+(v1.x-v0.x)*k,y:v0.y+(v1.y-v0.y)*k};if(t<1){SLIDING=1;draw();slideRaf=requestAnimationFrame(step)}else{SLIDING=0;slideRaf=0;view={...v1};draw();scheduleRender();res(true)}};slideRaf=requestAnimationFrame(step)})}
+var SLIDING=0;
+stage.addEventListener('pointerdown',()=>{if(slideRaf){slideTok++;cancelAnimationFrame(slideRaf);slideRaf=0;SLIDING=0;requestDraw();scheduleRender()}},true);
+stage.addEventListener('wheel',()=>{if(slideRaf){slideTok++;cancelAnimationFrame(slideRaf);slideRaf=0;SLIDING=0}},{capture:true,passive:true});
 // ---------- v15: walk type picker ----------
 async function walkPick(){if(!plan)return alert('Open a plan first.');if(!pins.length)return alert('This plan has no pins yet. Place pins or use 🔍 Detect devices first.');
  const last=(await get('meta','walkTypes'))||null,types=[...new Set(pins.map(p=>p.type))].sort((a,b)=>(TYPES[a]?.n||a).localeCompare(TYPES[b]?.n||b));
@@ -1018,7 +1023,7 @@ async function walkPick(){if(!plan)return alert('Open a plan first.');if(!pins.l
  const bx=()=>[...document.querySelectorAll('#wkTypes input')];$('#wkAll').onclick=()=>bx().forEach(b=>b.checked=true);$('#wkNone').onclick=()=>bx().forEach(b=>b.checked=false);$('#wkProj').parentElement.hidden=true;
  $('#wkGo').onclick=async()=>{const sel_=bx().filter(b=>b.checked).map(b=>b.value);if(!sel_.length){alert('Tick at least one device type.');return}await put('meta',sel_,'walkTypes');$('#walkDlg').close();startWalk('',sel_.length===types.length?null:sel_)};$('#walkDlg').showModal()}
 // ---------- v15: page thumbnails ----------
-let THB={},thObs=null;
+var THB={},thObs=null;
 function thumbsWanted(){return innerWidth>=800}
 async function thumbFor(n){const key=plan.id+':'+n;if(THB[key])return THB[key];let url=null;try{
   if(pdf){const pg=await pdf.getPage(n),vp=pg.getViewport({scale:1}),sc=Math.min(150/vp.width,150/vp.height),c=document.createElement('canvas');c.width=Math.ceil(vp.width*sc);c.height=Math.ceil(vp.height*sc);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
@@ -1040,7 +1045,7 @@ setTimeout(()=>{if(thumbsWanted()&&plan&&$('#thumbs').hidden){$('#thumbs').hidde
 // ---------- v15: editable checklist templates ----------
 function sanTpl(o){const r={};for(const[k,v]of Object.entries(o||{}))if(TYPES[k]&&Array.isArray(v)){const it=v.map(x=>String(x||'').trim().slice(0,160)).filter(Boolean).slice(0,40);if(it.length)r[k]=it}return r}
 get('meta','cktpl').then(v=>{if(v)CKT=sanTpl(v)}).catch(()=>{});
-let ckEd={t:null,items:[]};
+var ckEd={t:null,items:[]};
 function ckRender(){const t=ckEd.t,ov=!!CKT[t];$('#ckInfo').textContent=(ov?'Custom template.':'Built-in default.')+' New pins of this type use it; existing pins keep their own list until you tap ↺ on the pin.';
  $('#ckItems').innerHTML=ckEd.items.map((x,i)=>`<div class="row ckrow"><input value="${esc(x)}" data-i="${i}" spellcheck="true" lang="en" maxlength="160"><button type="button" class="btn" data-up="${i}" title="Move up"${i?'':' disabled'}>↑</button><button type="button" class="btn" data-dn="${i}" title="Move down"${i<ckEd.items.length-1?'':' disabled'}>↓</button><button type="button" class="btn danger" data-rm="${i}" title="Remove">✕</button></div>`).join('')||'<small>No items.</small>';
  const sync=()=>document.querySelectorAll('#ckItems input').forEach(e=>ckEd.items[+e.dataset.i]=e.value);
@@ -1059,3 +1064,49 @@ $('#ckExp').onclick=()=>{const b=new Blob([JSON.stringify({format:'bpm-checklist
 $('#ckImp').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const j=JSON.parse(await f.text()),tp=sanTpl(j.templates||j);if(!Object.keys(tp).length)throw new Error('no templates found');if(!confirm(`Import ${Object.keys(tp).length} template(s)? Existing templates for those types are replaced.`))return;Object.assign(CKT,tp);await put('meta',{...CKT},'cktpl');ckOpen(ckEd.t||Object.keys(tp)[0]);toast('Templates imported')}catch(err){alert('Import failed: '+err.message)}};
 $('#ckEdit').onclick=()=>ckOpen(form.elements.type.value||cur?.type||'smoke');
 $('#ckReset').onclick=()=>{if(ckl.some(c=>c.v)&&!confirm('Replace this pin\'s checklist with the current template? Answers on this pin are cleared.'))return;ckl=checkItems(form.elements.type.value);renderChecks()};
+
+// ---------- v15: inline text editing on the plan (no popup) ----------
+var ted=null;
+function tedPos(){if(!ted)return;const e=ted.el,m=ted.m,q=toS(m.x1,m.y1),fs=Math.max(8,m.fs*view.s);Object.assign(e.style,{left:q.x+'px',top:q.y+'px',fontSize:fs+'px',lineHeight:'1.15',transform:VR?`rotate(${VR}deg)`:'',transformOrigin:'0 0'});
+ e.style.width='1px';e.style.width=Math.max(fs*3,e.scrollWidth+fs*.6)+'px';e.style.height='1px';e.style.height=(e.scrollHeight)+'px'}
+function inlineText(m,w){if(ted)tedEnd(true);if(!plan)return;const isNew=!m;
+ if(isNew)m={id:uid(),planId:plan.id,page,type:'text',text:'',x1:w.x,y1:w.y,fs:(SZT[$('#size').value]||18)/view.s,color:$('#color').value,w:3,opacity:toolOp(false)};
+ const e=document.createElement('textarea');e.className='ted';e.rows=1;e.spellcheck=true;e.lang='en';e.setAttribute('autocapitalize','sentences');e.value=m.text||'';
+ Object.assign(e.style,{color:m.color,opacity:opOf(m,false),webkitTextStroke:'0'});stage.append(e);ted={m,el:e,isNew,orig:isNew?null:structuredClone(m)};sel=null;draw();
+ e.addEventListener('input',()=>tedPos());e.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&!ev.shiftKey){ev.preventDefault();tedEnd(true)}else if(ev.key==='Escape'){ev.preventDefault();tedEnd(false)}ev.stopPropagation()});
+ e.addEventListener('blur',()=>setTimeout(()=>{if(ted&&ted.el===e)tedEnd(true)},0));e.addEventListener('pointerdown',ev=>ev.stopPropagation());
+ tedPos();setTimeout(()=>{e.focus();e.setSelectionRange(e.value.length,e.value.length)},0)}
+async function tedEnd(commit){const t=ted;if(!t)return;ted=null;const v=t.el.value.replace(/\s+$/,'').replace(/^\s+/,'');t.el.remove();
+ if(commit&&v){if(t.isNew)await change('markups',null,textBox({...t.m,text:v}));else if(v!==t.orig.text)await change('markups',t.orig,textBox({...t.orig,text:v}))}
+ else if(commit&&!v&&!t.isNew){/* emptied existing text: keep original (delete with 🗑) */}
+ draw()}
+stage.addEventListener('pointerdown',e=>{if(ted&&e.target!==ted.el)tedEnd(true)},true);
+
+// ---------- v16: de-overlap pins & ghosts (display only; stored x,y stay on the device) ----------
+var OFFMAP=null,SCRNOFF=null;
+function pinOffsets(list){const M=new Map(),r=pinR(),th=r*1.7,n=list.length;if(n<2)return M;const key=o=>o.id||o;
+ // union-find over pairs closer than th (grid bucketed)
+ const par=list.map((_,i)=>i),f=i=>par[i]===i?i:(par[i]=f(par[i])),G=new Map(),C=th;
+ list.forEach((o,i)=>{const k=Math.floor(o.x/C)+','+Math.floor(o.y/C);(G.get(k)||G.set(k,[]).get(k)).push(i)});
+ list.forEach((o,i)=>{const gx=Math.floor(o.x/C),gy=Math.floor(o.y/C);for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)for(const j of G.get((gx+a)+','+(gy+b))||[])if(j>i&&Math.hypot(list[j].x-o.x,list[j].y-o.y)<th)par[f(j)]=f(i)});
+ const cl=new Map();list.forEach((o,i)=>{const k=f(i);(cl.get(k)||cl.set(k,[]).get(k)).push(o)});
+ for(const g of cl.values()){if(g.length<2)continue;const cx=g.reduce((a,o)=>a+o.x,0)/g.length,cy=g.reduce((a,o)=>a+o.y,0)/g.length,R=Math.max(r*2.3,g.length*r*2.3/(2*Math.PI));
+  g.sort((a,b)=>Math.atan2(a.y-cy,a.x-cx)-Math.atan2(b.y-cy,b.x-cx));g.forEach((o,i)=>{const t=-Math.PI/2+i*2*Math.PI/g.length;M.set(key(o),{dx:cx+R*Math.cos(t)-o.x,dy:cy+R*Math.sin(t)-o.y})})}
+ return M}
+function drawLeader(c,x,y,X,Y,col){c.save();c.globalAlpha=Math.max(.7,c.globalAlpha);c.strokeStyle=col;c.lineWidth=1.2;c.beginPath();c.moveTo(x,y);c.lineTo(X,Y);c.stroke();c.fillStyle=col;c.strokeStyle='#fff';c.lineWidth=.8;c.beginPath();c.arc(x,y,2.4,0,7);c.fill();c.stroke();c.restore()}
+
+// ---------- v16: sharp walk slide — render one tile covering the whole path before animating ----------
+async function prefetchPath(v0,v1){if(!pdf||!pageW)return;const keep=view;try{
+ view=v0;const a=visRect();view=v1;const b=visRect();view=keep;
+ const x=Math.max(0,Math.min(a.x,b.x)),y=Math.max(0,Math.min(a.y,b.y)),X=Math.min(pageW,Math.max(a.x+a.w,b.x+b.w)),Y=Math.min(pageH,Math.max(a.y+a.h,b.y+b.h));
+ const r={x,y,w:Math.max(1,X-x),h:Math.max(1,Y-y)},want=wantScale();if(baseOK(want))return;
+ if(tile&&tile.s>=want*.87&&tile.x<=r.x+1&&tile.y<=r.y+1&&tile.x+tile.w>=r.x+r.w-1&&tile.y+tile.h>=r.y+r.h-1)return;
+ const pg=await pdf.getPage(page),s=Math.min(want,Math.sqrt(MAXPX/(r.w*r.h)));SLIDING=1;const c=await raster(pg,s,r);if(c)tile={c,s:c._s,...r}}catch(e){console.info('prefetch skipped',e)}finally{view=keep;SLIDING=0}}
+
+function walkPrev(){if(!walk?.hist?.length)return;let p=null;while(walk.hist.length&&!p){const id=walk.hist.pop();p=pins.find(x=>x.id===id)}if(p){walk.skip.delete(p.id);walkGo(p,true)}else renderWalk()}
+
+// ---------- v16 perf: page bitmap LRU cache + background base sharpen ----------
+var PCACHE=new Map();const PC_MAX=matchMedia('(pointer:coarse)').matches?3:5;
+function pcGet(n){if(!plan)return null;const k=plan.id+':'+n,v=PCACHE.get(k);if(v){PCACHE.delete(k);PCACHE.set(k,v)}return v||null}
+function pcPut(n,b){if(!plan||!b)return;const k=plan.id+':'+n;PCACHE.delete(k);PCACHE.set(k,b);while(PCACHE.size>PC_MAX){const[k0,v0]=PCACHE.entries().next().value;PCACHE.delete(k0);if(v0!==baseBm&&v0.c){v0.c.width=v0.c.height=0}}}
+async function upgradeBase(pn,seq,full){if(!pdf||pn!==page||seq!==opSeq)return;if(SLIDING||renderTask){setTimeout(()=>upgradeBase(pn,seq,full),250);return}try{const pg=await pdf.getPage(pn);const c=await raster(pg,full,{x:0,y:0,w:pageW,h:pageH});if(!c||pn!==page||seq!==opSeq)return;const old=baseBm;baseBm={c,s:c._s};if(bmpScale<c._s)bmpScale=c._s;pcPut(pn,baseBm);if(old&&old!==baseBm&&old.c&&![...PCACHE.values()].includes(old))old.c.width=old.c.height=0;requestDraw();scheduleRender()}catch{}}
