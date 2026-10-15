@@ -36,6 +36,8 @@ const PSC=1.3;const PANEL_S=new Set(['panel','dact','fatc','panelbox']);
 // bpm-v27: panels take the printed box size+orientation (bw/bh from detection), inset by the stroke so the fill sits inside and never overflows; WF/TS diamonds at print size (no 1.3x) so they sit flush on the printed diamond
 const pinInset=(w,h)=>{const pad=pinLW()+1;return[Math.max(3,w-pad),Math.max(3,h-pad)]}; // stroke+1pt so plan outline stays clearly outside pin border
 const pshOf=o=>{const t=typeof o==='string'?o:o&&o.type,v=PSH[t]||PSH.other;if(PANEL_S.has(t)){if(o&&o.bw>4&&o.bh>4)return['rect',...pinInset(o.bw,o.bh)];if(o&&o.vert)return['rect',...pinInset(v[2],v[1])];return['rect',...pinInset(v[1],v[2])]}if(v[0]==='dia')return[v[0],v[1],v[2]];if(o&&o.bw>4&&o.bh>4&&(v[0]==='rect'||v[0]==='hex'||v[0]==='circ')){const[iw,ih]=pinInset(o.bw,o.bh);return[v[0],iw,ih]}return[v[0],...pinInset(v[1],v[2])]};
+// bpm-v33: code chips (no checkboxes) + Confirm clears leftover suggestions; hide Loop from pin/bulk UI
+// bpm-v32: confirm selected code refs via checkboxes (reverted UI in v33)
 // bpm-v31: pin location field; 'Other' reason textbox; removed checklist JSON import/export
 // bpm-v30: DH status border 1.2pt (~60%); relay clearer cyan-teal #2dd4bf; print-matched inset silhouettes for all pins/ghosts
 function pinPath(c,t){const[k,w,h]=pshOf(t),a=w/2,b=h/2;if(k==='rect')c.rect(-a,-b,w,h);else if(k==='dia'){c.moveTo(-a,0);c.lineTo(0,-b);c.lineTo(a,0);c.lineTo(0,b);c.closePath()}
@@ -272,7 +274,7 @@ $('#undo').onclick=undo;$('#redo').onclick=redo;
 // ---------- pin dialog ----------
 const dlg=$('#pinDlg'),form=$('#pinForm');let cur=null,urls=[];
 for(const[k,t]of Object.entries(TYPES)){$('#pinType').add(new Option(t.n,k));$('#dType').add(new Option(t.n,k));$('#fType').add(new Option(t.n,k))}
-const PK=['type','address','loop','location','status','notes','reason','reasonText','severity'];
+const PK=['type','address','location','status','notes','reason','reasonText','severity'];
 let ckl=[];async function openPin(p){cur=p;if(!Array.isArray(cur.codes))cur.codes=[];for(const k of PK)form.elements[k].value=p[k]||(k==='severity'?'Non-critical':'');autoR=false;ckl=structuredClone(p.checks||checkItems(p.type));renderChecks();failUI();rtUpd();renderCodes();$('#testedInfo').textContent=testedTxt(p);await showMedia();dlg.showModal()}
 const fmtT=t=>{const d=new Date(t),z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`};
 const testedTxt=p=>p.testedAt?`${p.status} ${fmtT(p.testedAt)}${p.tester?' by '+p.tester:''}`:'';
@@ -567,7 +569,7 @@ function boxSelect(a,b){$('#selBox')?.remove();const x=Math.min(a.x,b.x),X=Math.
 let clipPins=false,multiOn=false,boxOn=false;
 function renderSelBar(){const b=$('#selBar'),it=tool==='select'?selItems():msel,ST0=tool==='select'&&plan;if(walk||(!it.length&&!clip&&!ST0)){b.hidden=true;b.innerHTML='';return}const np=it.filter(isPinO).length;
  b.innerHTML=(ST0?`<button type="button" class="btn${multiOn?' on':''}" id="multiBtn" title="Multi-select: tap items to add/remove them">${multiOn?'☑':'☐'} Multi</button><button type="button" class="btn${boxOn?' on':''}" id="boxBtn" title="Box select: drag on empty space to select everything inside">▭ Box</button><select id="selAll" title="Select all on this page"><option value="">All…</option><option value="all">All on page</option><option value="m">Markups</option><option value="p">Pins</option></select>`:'')
-  +(it.length?`<b>${it.length} sel.</b><button type="button" class="btn" id="cpBtn">⧉ Copy</button><button type="button" class="btn" id="cutBtn">✂ Cut</button>${np?`<label><input type="checkbox" id="cpPins" ${clipPins?'checked':''}> incl. ${np} pin${np>1?'s':''}</label>`:''}<button type="button" class="btn" id="bulkEd" title="Edit color, size, pin status/type/loop">✎ Edit</button><button type="button" class="btn danger" id="bulkDel" title="Delete selected">🗑</button><button type="button" class="btn" id="selX" title="Clear selection">✕</button>`:'')
+  +(it.length?`<b>${it.length} sel.</b><button type="button" class="btn" id="cpBtn">⧉ Copy</button><button type="button" class="btn" id="cutBtn">✂ Cut</button>${np?`<label><input type="checkbox" id="cpPins" ${clipPins?'checked':''}> incl. ${np} pin${np>1?'s':''}</label>`:''}<button type="button" class="btn" id="bulkEd" title="Edit color, size, pin status/type">✎ Edit</button><button type="button" class="btn danger" id="bulkDel" title="Delete selected">🗑</button><button type="button" class="btn" id="selX" title="Clear selection">✕</button>`:'')
   +(clip?`<button type="button" class="btn pri" id="pasteBtn" title="Paste at the same plan position">📋 Paste ${clip.m.length+clip.p.length}</button><button type="button" class="btn" id="pasteAt" title="Paste centred on the next point you tap">📍 at tap</button><button type="button" class="btn" id="clipX" title="Clear clipboard">✕</button>`:'');
  b.hidden=false;const q=x=>b.querySelector(x);
  if(q('#multiBtn'))q('#multiBtn').onclick=()=>{multiOn=!multiOn;if(multiOn&&sel){if(!msel.includes(sel.o))msel.push(sel.o);sel=null}renderSelBar();requestDraw(false)};if(q('#boxBtn'))q('#boxBtn').onclick=()=>{boxOn=!boxOn;renderSelBar()};
@@ -672,12 +674,12 @@ async function bulkDelete(){const it=selItems().filter(o=>o.planId===plan?.id);i
  msel=[];sel=null;await changeMulti(L);renderSelBar();toast(`Deleted ${L.length} item${L.length>1?'s':''}`,true)}
 $('#bkType').innerHTML='<option value="">unchanged</option>'+Object.entries(TYPES).map(([k,v])=>`<option value="${k}">${esc(v.n)}</option>`).join('');
 function openBulk(){const it=selItems();if(!it.length)return;const nm=it.filter(o=>!isPinO(o)).length,np=it.length-nm;$('#bkN').textContent=`${it.length} item${it.length>1?'s':''}`;$('#bkM').hidden=!nm;$('#bkP').hidden=!np;
- $('#bkCOn').checked=false;$('#bkColor').value=$('#color').value;$('#bkSize').value='';$('#bkOOn').checked=false;$('#bkOpac').value=$('#opac').value;$('#bkOpacLbl').textContent=$('#opac').value+'%';$('#bkStatus').value='';$('#bkType').value='';$('#bkLoop').value='';$('#bulkDlg').showModal()}
+ $('#bkCOn').checked=false;$('#bkColor').value=$('#color').value;$('#bkSize').value='';$('#bkOOn').checked=false;$('#bkOpac').value=$('#opac').value;$('#bkOpacLbl').textContent=$('#opac').value+'%';$('#bkStatus').value='';$('#bkType').value='';$('#bulkDlg').showModal()}
 $('#bkColor').oninput=()=>$('#bkCOn').checked=true;$('#bkOpac').oninput=()=>{$('#bkOOn').checked=true;$('#bkOpacLbl').textContent=+$('#bkOpac').value+'%'};
-$('#bkGo').onclick=async()=>{$('#bulkDlg').close();await bulkApply({color:$('#bkCOn').checked?$('#bkColor').value:null,size:$('#bkSize').value,opacity:$('#bkOOn').checked?clampOp(+$('#bkOpac').value/100):null,status:$('#bkStatus').value,type:$('#bkType').value,loop:$('#bkLoop').value.trim()})};
+$('#bkGo').onclick=async()=>{$('#bulkDlg').close();await bulkApply({color:$('#bkCOn').checked?$('#bkColor').value:null,size:$('#bkSize').value,opacity:$('#bkOOn').checked?clampOp(+$('#bkOpac').value/100):null,status:$('#bkStatus').value,type:$('#bkType').value})};
 async function bulkApply(o){const it=selItems().filter(x=>x.planId===plan?.id),L=[],now=Date.now();let who=null;
  for(const x of it){const b=structuredClone(x);let a=structuredClone(x);
-  if(isPinO(x)){if(o.type&&o.type!==a.type)a.type=o.type;if(o.loop)a.loop=o.loop;if(o.opacity!=null)a.opacity=o.opacity;
+  if(isPinO(x)){if(o.type&&o.type!==a.type)a.type=o.type;if(o.opacity!=null)a.opacity=o.opacity;
    if(o.status&&o.status!==b.status){if(o.status==='passed'||o.status==='failed'){who??=await getTester();a.testedAt=now;a.tester=who}
     if(o.status==='passed'){a.checks=(b.checks||checkItems(a.type)).map(c=>({...c,v:'pass'}));a.reason=a.reasonText=a.severity=''}
     else if(o.status==='failed'){a.reason=b.reason||'Other';a.severity=b.severity||'Non-critical'}
@@ -704,7 +706,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v32',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v33',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -818,18 +820,24 @@ function scoreCode(c,reason,type,ck){let s=0;const pers=!!c.personal;
  if(type&&blob.includes(type))s+=1;
  if(ck){for(const w of ck.split(/\W+/).filter(x=>x.length>4)){if(blob.includes(w)){s+=2;break}}}
  return s}
+let SUG=[];
 async function suggestCodes(){const all=await allCodeEntries();if(!cur)return;const reason=form.elements.reason?.value||cur.reason||'',type=form.elements.type?.value||cur.type||'',ck=failedCkText();
  const scored=all.map(c=>({c,s:scoreCode(c,reason,type,ck)})).filter(x=>x.s>0).sort((a,b)=>b.s-a.s||a.c.section.localeCompare(b.c.section,undefined,{numeric:true})).slice(0,8);
- const html=scored.length?'<small style="color:#94a3b8">Suggested (personal first)</small>'+scored.map(({c})=>`<button type="button" class="btn" data-id="${esc(c.id)}">${c.personal?'📌 ':''}<b>${esc(fmtCodeLine(c))}</b></button>`).join(''):'';
- SUG=scored.map(x=>x.c);renderCodes();for(const sel of['#codeSugDlg']){const box=$(sel);if(!box)continue;box.innerHTML=html;box.querySelectorAll('[data-id]').forEach(b=>b.onclick=e=>{e.preventDefault();addCodeById(b.dataset.id)})}}
+ SUG=scored.map(x=>x.c);
+ const have=new Set((cur.codes||[]).map(c=>c.code+'|'+c.section));
+ const left=SUG.filter(c=>!have.has(c.code+'|'+c.section));
+ const html=left.length?'<small style="color:#94a3b8">Suggested (personal first)</small>'+left.map(c=>`<button type="button" class="btn" data-id="${esc(c.id)}">${c.personal?'📌 ':''}<b>${esc(fmtCodeLine(c))}</b></button>`).join(''):'';
+ for(const sel of['#codeSug','#codeSugDlg']){const box=$(sel);if(!box)continue;box.innerHTML=html;box.querySelectorAll('[data-id]').forEach(b=>b.onclick=e=>{e.preventDefault();addCodeById(b.dataset.id)})}
+ renderCodes()}
 function codeHintUpd(){const el=$('#codeHint');if(!el)return;const crit=form.elements.severity.value==='Critical',n=cur?.codes?.length||0;
  el.textContent=crit?(n?'Critical — code reference attached.':'Critical — attach at least one code reference.'):(n?`${n} code reference(s).`:'Optional: attach NFPA 72 / IFC / IBC section references.')}
-let SUG=[];const ckey=c=>c.code+'|'+c.section;
-function renderCodes(){const box=$('#codeList');if(!box||!cur)return;const have=new Set((cur.codes||[]).map(ckey));const sug=SUG.filter(c=>!have.has(ckey(c)));
- const row=(c,k,on,tag)=>`<label class="chip"><input type="checkbox" data-k="${k}" ${on?'checked':''} style="width:20px;height:20px;flex:none;margin:2px 4px 0 0"><span>${tag}<b>${esc(fmtCodeLine(c))}</b></span></label>`;
- const items=(cur.codes||[]).map((c,i)=>row(c,'a'+i,true,''))+sug.map((c,i)=>row(c,'s'+i,false,'<small style="color:#94a3b8">Suggested · </small>'+(c.personal?'📌 ':'')));
- box.innerHTML=items?items+`<div class="row" style="gap:6px"><button type="button" class="btn pri" id="codeConfirm">✓ Confirm selected</button><small style="color:#94a3b8">Unchecked codes are removed</small></div>`:'<small style="color:#64748b">No codes yet</small>';
- const cf=$('#codeConfirm');if(cf)cf.onclick=e=>{e.preventDefault();const keep=[];box.querySelectorAll('input[data-k]').forEach(x=>{if(!x.checked)return;const k=x.dataset.k;if(k[0]==='a')keep.push(cur.codes[+k.slice(1)]);else{const c=sug[+k.slice(1)];keep.push({id:c.id,code:c.code,section:c.section,title:c.title,sum:c.sum||c.text||'',note:'',personal:!!c.personal})}});const rm=(cur.codes||[]).length+0;cur.codes=keep;SUG=[];renderCodes();toast(`${keep.length} code(s) confirmed`)};
+function renderCodes(){const box=$('#codeList');if(!box||!cur)return;
+ box.innerHTML=(cur.codes||[]).map((c,i)=>`<button type="button" class="chip" data-i="${i}" title="${esc(c.sum||c.text||'')}"><span><b>${esc(fmtCodeLine(c))}</b></span><span class="sp"></span>✕</button>`).join('')||'<small style="color:#64748b">No codes yet</small>';
+ const have=new Set((cur.codes||[]).map(c=>c.code+'|'+c.section));
+ const left=(SUG||[]).filter(c=>!have.has(c.code+'|'+c.section));
+ if(left.length)box.insertAdjacentHTML('beforeend',`<div class="row" style="gap:6px;margin-top:4px"><button type="button" class="btn pri" id="codeConfirm">✓ Confirm</button><small style="color:#94a3b8">Keeps attached codes; clears remaining suggestions</small></div>`);
+ box.querySelectorAll('[data-i]').forEach(b=>b.onclick=e=>{e.preventDefault();cur.codes.splice(+b.dataset.i,1);renderCodes();codeHintUpd()});
+ const cf=$('#codeConfirm');if(cf)cf.onclick=e=>{e.preventDefault();const n=(cur.codes||[]).length;SUG=[];const sug=$('#codeSug');if(sug)sug.innerHTML='';renderCodes();toast(n?`${n} code(s) confirmed`:'Suggestions cleared')};
  codeHintUpd()}
 async function openCodePicker(){await loadCodes();$('#codeQ').value='';$('#codeDlg').showModal();renderCodeFav();suggestCodes();filterCodes('');renderMyCodesList();$('#codeQ').focus()}
 function renderCodeFav(){const box=$('#codeFav');const all=[...MY_CODES,...CODE_CAT];const favs=CODE_FAV.map(id=>all.find(c=>c.id===id)).filter(Boolean).slice(0,10);
@@ -843,6 +851,11 @@ async function addCodeById(id){const all=await allCodeEntries();const c=all.find
 async function addCode(c){if(!c||!cur)return;cur.codes=cur.codes||[];if(cur.codes.some(x=>x.id===c.id||(x.code===c.code&&x.section===c.section))){toast('Already attached');return}
  cur.codes.push({id:c.id,code:c.code,section:c.section,title:c.title,sum:c.sum||c.text||'',note:'',personal:!!c.personal});
  CODE_FAV=[c.id,...CODE_FAV.filter(x=>x!==c.id)].slice(0,16);await put('meta',CODE_FAV,'codeFav');
+ // refresh suggestion buttons so attached codes drop out; keep Confirm for leftovers
+ const have=new Set(cur.codes.map(x=>x.code+'|'+x.section));
+ const left=(SUG||[]).filter(x=>!have.has(x.code+'|'+x.section));
+ const html=left.length?'<small style="color:#94a3b8">Suggested (personal first)</small>'+left.map(x=>`<button type="button" class="btn" data-id="${esc(x.id)}">${x.personal?'📌 ':''}<b>${esc(fmtCodeLine(x))}</b></button>`).join(''):'';
+ const sug=$('#codeSug');if(sug){sug.innerHTML=html;sug.querySelectorAll('[data-id]').forEach(b=>b.onclick=e=>{e.preventDefault();addCodeById(b.dataset.id)})}
  renderCodes();renderCodeFav();toast(fmtCodeLine(c)+' added')}
 function renderMyCodesList(){const box=$('#myCodeList');if(!box)return;box.innerHTML=MY_CODES.length?MY_CODES.map(c=>`<div class="row" style="align-items:flex-start;gap:6px;margin:4px 0"><button type="button" class="btn" data-use="${esc(c.id)}" style="flex:1;text-align:left;white-space:normal"><b>${esc(fmtCodeLine(c))}</b><br><small style="color:#94a3b8">${esc((c.text||c.sum||'').slice(0,120))}</small></button><button type="button" class="btn danger" data-del="${esc(c.id)}" title="Delete">🗑</button></div>`).join(''):'<small style="color:#64748b">No personal codes yet. Add entries from your NFPA 72 book below.</small>';
  box.querySelectorAll('[data-use]').forEach(b=>b.onclick=()=>addCodeById(b.dataset.use));
