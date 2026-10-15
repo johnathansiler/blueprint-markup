@@ -36,6 +36,7 @@ const PSC=1.3;const PANEL_S=new Set(['panel','dact','fatc','panelbox']);
 // bpm-v27: panels take the printed box size+orientation (bw/bh from detection), inset by the stroke so the fill sits inside and never overflows; WF/TS diamonds at print size (no 1.3x) so they sit flush on the printed diamond
 const pinInset=(w,h)=>{const pad=pinLW()+1;return[Math.max(3,w-pad),Math.max(3,h-pad)]}; // stroke+1pt so plan outline stays clearly outside pin border
 const pshOf=o=>{const t=typeof o==='string'?o:o&&o.type,v=PSH[t]||PSH.other;if(PANEL_S.has(t)){if(o&&o.bw>4&&o.bh>4)return['rect',...pinInset(o.bw,o.bh)];if(o&&o.vert)return['rect',...pinInset(v[2],v[1])];return['rect',...pinInset(v[1],v[2])]}if(v[0]==='dia')return[v[0],v[1],v[2]];if(o&&o.bw>4&&o.bh>4&&(v[0]==='rect'||v[0]==='hex'||v[0]==='circ')){const[iw,ih]=pinInset(o.bw,o.bh);return[v[0],iw,ih]}return[v[0],...pinInset(v[1],v[2])]};
+// bpm-v35: zoom % readout; pin progress summary = pass/fail/total/left/%
 // bpm-v34: default fit/page-switch zoom 60% closer (scale ×1.6)
 // bpm-v33: code chips (no checkboxes) + Confirm clears leftover suggestions; hide Loop from pin/bulk UI
 // bpm-v32: confirm selected code refs via checkboxes (reverted UI in v33)
@@ -113,6 +114,8 @@ async function gotoPage(n,seq){if(!plan)return;const own=seq===undefined;if(own)
  finally{if(own&&seq===opSeq)busy(0)}}
 function fit(){if(!pageW)return;const D=dispWH(),w=stage.clientWidth,h=stage.clientHeight,s=Math.min(w/D.w,h/D.h)*.95*1.6;view={s,x:(w-D.w*s)/2,y:(h-D.h*s)/2};draw()} // bpm-v34: page-change/fit zoom 60% closer (×1.6)
 $('#fit').onclick=fit;
+// bpm-v35: live zoom percentage (100% = 1 CSS px per plan point)
+function updZoom(){const el=$('#zoomPct');if(!el)return;el.textContent=plan&&pageW?Math.round(view.s*100)+'%':'—'}
 // crisp re-render: render the page at current zoom*dpr, capped by pixel budget
 // Perf: a small full-page base bitmap is rendered once per page; zoomed-in views render only the visible
 // region (plus margin) at screen resolution, capped by a pixel budget. Markups live on a separate overlay canvas.
@@ -189,9 +192,9 @@ function drawOverlay0(){const ctx=octx;ctx.setTransform(1,0,0,1,0,0);ctx.clearRe
  if(sel&&sel.kind==='m'){const m=sel.o;ctx.save();ctx.setLineDash([6/view.s,4/view.s]);ctx.strokeStyle='#2563eb';ctx.lineWidth=1.5/view.s;const p=8/view.s;if(!isLine(m))ctx.strokeRect(Math.min(m.x1,m.x2)-p,Math.min(m.y1,m.y2)-p,Math.abs(m.x2-m.x1)+2*p,Math.abs(m.y2-m.y1)+2*p);
   ctx.setLineDash([]);ctx.fillStyle='#fff';ctx.lineWidth=2;for(const[hx,hy]of handles(m)){ctx.beginPath();ctx.arc(hx,hy,6,0,7);ctx.fill();ctx.stroke()}ctx.restore()}
  OFFMAP=SCRNOFF=pinOffsets([...pins.filter(p=>p.page===page&&pVis(p)),...(lay.ghosts?ghosts.filter(g=>g.page===page):[])]);for(const p of pins)if(p.page===page&&pVis(p))drawPinL(ctx,p,view.s,sel&&sel.o===p||msel.includes(p));drawMsel(ctx);if(lay.ghosts)drawGhosts(ctx);OFFMAP=null;if(walk?.p&&walk.p.page===page){ctx.save();ctx.strokeStyle='#38bdf8';ctx.lineWidth=3;ctx.beginPath();ctx.arc(walk.p.x,walk.p.y,pinR()*2.1,0,7);ctx.stroke();ctx.restore()}}
-function draw(){drawBase();drawOverlay()}
+function draw(){drawBase();drawOverlay();updZoom()}
 // during pan/pinch/wheel move the already-drawn canvases with a cheap CSS transform; repaint once the gesture pauses (150ms) or on release
-let drawn=null,gTimer=0;function fastView(){if(drawn){const k=view.s/drawn.s,t=`translate(${view.x-drawn.x*k}px,${view.y-drawn.y*k}px) scale(${k})`;cv.style.transform=ov.style.transform=t}clearTimeout(gTimer);gTimer=setTimeout(()=>{gTimer=0;requestDraw()},150);scheduleRender()}
+let drawn=null,gTimer=0;function fastView(){if(drawn){const k=view.s/drawn.s,t=`translate(${view.x-drawn.x*k}px,${view.y-drawn.y*k}px) scale(${k})`;cv.style.transform=ov.style.transform=t}updZoom();clearTimeout(gTimer);gTimer=setTimeout(()=>{gTimer=0;requestDraw()},150);scheduleRender()}
 let raf=0,rafB=0;function requestDraw(b=true){if(b)rafB=1;if(!raf)raf=requestAnimationFrame(()=>{raf=0;if(rafB)drawBase();drawOverlay();rafB=0})}
 // ---------- hit testing ----------
 function hit(w){const tol=10/view.s,pr=Math.max(pinR()*1.4,16/view.s);for(const p of[...pins].reverse()){if(p.page!==page||!pVis(p))continue;const o=SCRNOFF&&SCRNOFF.get(p.id);if(o&&Math.hypot(p.x+o.dx-w.x,p.y+o.dy-w.y)<pr)return{kind:'p',o:p}}
@@ -353,11 +356,11 @@ async function renderCounts(){const PD=await projData();$('#defCount').textConte
  const t=sum(C.total);$('#counts').innerHTML=`<summary><b>Device counts</b> · project ${t[0]} (${t[1]} tested, ${t[2]} in progress, ${t[3]} untested)</summary><table><tr><th></th><th>#</th><th>tested</th><th>in prog.</th><th>untested</th></tr>${C.plans.filter(b=>b.rows.length).map(b=>`<tr><th colspan="5">${esc(plName(b.pl))}</th></tr>${b.rows.map(tr).join('')}`).join('')}<tr><th colspan="5">Project total</th></tr>${C.total.map(tr).join('')}<tr><td><b>All devices</b></td>${t.map(v=>`<td><b>${v}</b></td>`).join('')}</tr></table>`;$('#counts').open=open;return C}
 $('#countCsv').onclick=async()=>{const C=await renderCounts(),rows=[['plan','type','total','tested','in progress','untested']];for(const b of C.plans)for(const r of b.rows)rows.push([b.pl.name,TYPES[r.t].n,r.n,r.te,r.ip,r.un]);for(const r of C.total)rows.push(['PROJECT TOTAL',TYPES[r.t].n,r.n,r.te,r.ip,r.un]);csvDl(rows,'-device-counts.csv')};
 const cntSt=a=>{const c={passed:0,failed:0,ip:0,nt:0};for(const p of a)p.status==='passed'?c.passed++:p.status==='failed'?c.failed++:p.status==='in progress'?c.ip++:c.nt++;c.t=a.length;c.pct=c.t?Math.round((c.passed+c.failed)*100/c.t):0;return c};
-function renderSummary(){const cnt=a=>{const c={passed:0,failed:0,ip:0,nt:0};for(const p of a)p.status==='passed'?c.passed++:p.status==='failed'?c.failed++:p.status==='in progress'?c.ip++:c.nt++;c.t=a.length;c.pct=c.t?Math.round((c.passed+c.failed)*100/c.t):0;return c};
- const row=(l,a)=>{const c=cnt(a);return `<tr><td>${esc(l)}</td><td>${c.t}</td><td class="st-passed">${c.passed}</td><td class="st-failed">${c.failed}</td><td class="st-in">${c.ip}</td><td class="st-not">${c.nt}</td><td><b>${c.pct}%</b></td></tr>`};
- const grp=(key,lab)=>{const m=new Map();for(const p of pins){const k=key(p);if(!m.has(k))m.set(k,[]);m.get(k).push(p)}return[...m].sort((a,b)=>String(a[0]).localeCompare(b[0],undefined,{numeric:true})).map(([k,a])=>row(lab(k),a)).join('')};
- const o=cnt(pins),open=$('#sum').open;
- $('#sum').innerHTML=`<summary><b>${o.pct}% tested</b> · <span class="st-passed">${o.passed} passed</span> · <span class="st-failed">${o.failed} failed</span> · <span class="st-in">${o.ip} in progress</span> · <span class="st-not">${o.nt} not tested</span> of ${o.t}</summary>${o.t?`<table><tr><th></th><th>#</th><th>✔</th><th>✖</th><th>◐</th><th>–</th><th>done</th></tr>${row('All pages',pins)}<tr><th colspan="7">By loop</th></tr>${grp(p=>p.loop||'',k=>k?'Loop '+k:'No loop')}<tr><th colspan="7">By type</th></tr>${grp(p=>p.type,k=>TYPES[k]?.n||k)}</table>`:''}`;$('#sum').open=open}
+function renderSummary(){ // bpm-v35: progress = pass, fail, total, left, %
+ const c={passed:0,failed:0};for(const p of pins)p.status==='passed'?c.passed++:p.status==='failed'?c.failed++:0;c.t=pins.length;c.left=c.t-c.passed-c.failed;c.pct=c.t?Math.round((c.passed+c.failed)*100/c.t):0;
+ const open=$('#sum').open;
+ $('#sum').innerHTML=`<summary><b>${c.pct}%</b> · <span class="st-passed">${c.passed} pass</span> · <span class="st-failed">${c.failed} fail</span> · ${c.t} total · ${c.left} left</summary>`;
+ $('#sum').open=open}
 $('#testerBtn').onclick=()=>getTester(true);
 $('#csvBtn').onclick=async()=>{if(!project)return;const rows=[['plan','page','type','address','loop','location','status','tested','tester','notes']];
  for(const pl of(await all('plans')).filter(p=>p.projectId===project.id).sort((a,b)=>a.added-b.added))for(const p of(await byIdx('pins','planId',pl.id)).sort((a,b)=>a.page-b.page||String(a.address).localeCompare(b.address,undefined,{numeric:true})))
@@ -707,7 +710,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v34',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v35',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}

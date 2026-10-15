@@ -131,3 +131,7 @@ label.opac span{font-size:11px;color:#94a3b8;min-width:28px;text-align:right}
 @media(min-width:800px){#panel{font-size:13px;padding:6px;gap:5px}#panel .ph .btn{padding:4px 6px;font-size:13px}#panel select{font-size:12px;padding:3px 4px}#panel table{font-size:12px}#panel td,#panel th{padding:1px 2px}#panel .row .btn{padding:4px 7px;font-size:12.5px}#pinList li{padding:5px 4px}}
 
 #detTypes{display:block}.detGrp{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:2px 8px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #8883}.detGrp .detGh{grid-column:1/-1;font-size:14px;margin:4px 0 0}#detTypes .dim{opacity:.6;font-size:12px}
+
+/* bpm-v35: live zoom percentage near page controls */
+#zoomPct.zoomPct{display:inline-flex;align-items:center;min-width:3.2em;justify-content:center;padding:6px 8px;min-height:40px;font-size:13px;font-variant-numeric:tabular-nums;font-weight:600;color:#e2e8f0;background:#0f172a;border:1px solid #475569;border-radius:6px;cursor:default;user-select:none}
+@media(max-width:520px){#zoomPct.zoomPct{padding:6px 6px;font-size:12px;min-width:2.8em}}
