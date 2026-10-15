@@ -43,13 +43,29 @@ const pshOf=o=>{const t=typeof o==='string'?o:o&&o.type,v=PSH[t]||PSH.other;if(P
 // bpm-v30: DH status border 1.2pt (~60%); relay clearer cyan-teal #2dd4bf
 // bpm-v39: clean outset — fill uses the print path; the gray stroke uses the path expanded by OUT(t)=LW/2+print-line margin along every edge normal, so the stroke's inner edge sits fully outside the black print line (no gray over black)
 // bpm-v41: fill = print interior (d=-PRINT_LW/2 inside the measured outer-black size); status stroke on a true polygon offset so its inner edge sits just outside the black line; flow/tamper use a thinner ring so adjacent TS don't merge
-const PRINT_LW=.7;const OUT=t=>pinLW(t)/2+.15;
-function pinPath(c,t,d=0){const[k,w,h]=pshOf(t);let a=w/2-PRINT_LW/2,b=h/2-PRINT_LW/2;if(k==='rect'){a+=d;b+=d;c.rect(-a,-b,2*a,2*b)}else if(k==='dia'){const L=Math.hypot(a,b),A=a+d*L/b,B=b+d*L/a;c.moveTo(-A,0);c.lineTo(0,-B);c.lineTo(A,0);c.lineTo(0,B);c.closePath()}
- else if(k==='hex'){const s=Math.hypot(a/2,b),A=a+d*s/b,B=b+d,X=a/2+(d*s-a*d/2)/b;c.moveTo(-A,0);c.lineTo(-X,-B);c.lineTo(X,-B);c.lineTo(A,0);c.lineTo(X,B);c.lineTo(-X,B);c.closePath()}else c.arc(0,0,Math.max(.1,a+d),0,7)}
-// bpm-v43: AABB de-overlap; selection follows nudged pin
-// bpm-v42: sandwich — fill to black centerline (black covers its edge → no white gap), crisp black print ring, status ring fully outside black
-function pinFS(c,t,ghost){c.beginPath();pinPath(c,t,0);c.fill();if(!ghost){const ss=c.strokeStyle,lw=c.lineWidth,ld=c.getLineDash();c.setLineDash([]);c.strokeStyle='#000';c.lineWidth=PRINT_LW;c.lineJoin='miter';c.beginPath();pinPath(c,t,0);c.stroke();c.strokeStyle=ss;c.lineWidth=lw;c.setLineDash(ld)}c.beginPath();pinPath(c,t,PRINT_LW/2+OUT(t));c.stroke()}
-const pinHalf=t=>{const[k,w,h]=pshOf(t),r=k==='circ'?w/2:k==='rect'?Math.hypot(w,h)/2:Math.max(w,h)/2;return r+OUT(t)+pinLW(t)/2-PRINT_LW/2}; // print half + half stroke (outer edge)
+// bpm-v44: from-scratch silhouette. pshOf(t) w/h = OUTER edge of the plan's black print line (measured bw/bh or PSH default).
+// Outer size MUST match the print, otherwise our black sits outside the plan's black and color shows past it. No PSC scaling here.
+// Three explicit sizes, each a true perpendicular offset d from that outer edge:
+//   fill   d=-PRINT_LW        (inner edge of black; fill is also CLIPPED here so no AA bleed)
+//   black  d=-PRINT_LW/2      (black stroke centerline, full opacity)
+//   status d=GAP+pinLW/2      (status stroke centerline → inner edge GAP outside black)
+const PRINT_LW=.85,GAP=.1;const OUT=t=>GAP+pinLW(t)/2;
+// half-sizes [a,b,x] for kind k offset by d from outer half-sizes (a,b); hex x = top-vertex half-x
+function offHalf(k,a,b,d){if(k==='rect'||k==='circ')return[Math.max(.05,a+d),Math.max(.05,b+d),0];
+ if(k==='dia'){const L=Math.hypot(a,b);return[Math.max(.05,a+d*L/b),Math.max(.05,b+d*L/a),0]}
+ const s=Math.hypot(a/2,b);return[Math.max(.05,a+d*s/b),Math.max(.05,b+d),Math.max(.02,a/2+(d*s-a*d/2)/b)]}
+function shapePath(c,k,a,b,x){if(k==='rect')c.rect(-a,-b,2*a,2*b);else if(k==='dia'){c.moveTo(-a,0);c.lineTo(0,-b);c.lineTo(a,0);c.lineTo(0,b);c.closePath()}
+ else if(k==='hex'){x=x??a/2;c.moveTo(-a,0);c.lineTo(-x,-b);c.lineTo(x,-b);c.lineTo(a,0);c.lineTo(x,b);c.lineTo(-x,b);c.closePath()}else c.arc(0,0,a,0,Math.PI*2)}
+function pinGeo(t,d){const[k,w,h]=pshOf(t);const W=k==='circ'?w:w,H=k==='circ'?w:h;return[k,...offHalf(k,W/2,H/2,d)]}
+function pinPath(c,t,d=0){const[k,a,b,x]=pinGeo(t,d-PRINT_LW/2);shapePath(c,k,a,b,x)} // legacy: d relative to black centerline
+function pinFS(c,t,ghost){
+ const sa=c.globalAlpha,ss=c.strokeStyle,lw=c.lineWidth,ld=c.getLineDash(),lj=c.lineJoin;
+ const F=pinGeo(t,-PRINT_LW),K=pinGeo(t,-PRINT_LW/2),S=pinGeo(t,ghost?0:OUT(t)),k=F[0];
+ c.save();c.beginPath();shapePath(c,k,F[1],F[2],F[3]);c.clip();c.beginPath();shapePath(c,k,F[1],F[2],F[3]);c.fill();c.restore();
+ if(!ghost){c.globalAlpha=1;c.setLineDash([]);c.strokeStyle='#000';c.lineWidth=PRINT_LW;c.lineJoin='miter';c.beginPath();shapePath(c,k,K[1],K[2],K[3]);c.stroke();c.globalAlpha=sa}
+ c.strokeStyle=ss;c.lineJoin='miter';if(ghost){c.lineWidth=lw;c.setLineDash([3,2])}else{c.lineWidth=pinLW(t);c.setLineDash([])}
+ c.beginPath();shapePath(c,k,S[1],S[2],S[3]);c.stroke();c.setLineDash(ld);c.lineWidth=lw;c.lineJoin=lj}
+const pinHalf=t=>{const[k,w,h]=pshOf(t),r=k==='circ'?w/2:k==='rect'?Math.hypot(w,h)/2:Math.max(w,h)/2;return r+OUT(t)+pinLW(t)/2}; // outer edge of status ring
 const pinLW=t=>{const k=typeof t==='string'?t:t&&t.type;return k==='doorholder'||k==='flow'||k==='tamper'?1.2:2}; // bpm-v30: DH status border ~60% so pink fill dominates; others stay 2pt
 const clampOp=v=>Math.max(.15,Math.min(1,+(v??1)));
 const opOf=(o,isPin)=>clampOp(o&&o.opacity!=null?o.opacity:(isPin?PIN_OP:MK_OP));
@@ -723,7 +739,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v43',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v44',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
