@@ -739,7 +739,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v46',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v47',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -1200,6 +1200,8 @@ function pinOffsets(list){list=list.filter(o=>!['flow','tamper'].includes(o.type
  let moved=false;for(let it=0;it<90;it++){let any=false;
   for(let i=0;i<n;i++)for(const j of nb[i]){
    if(Ang[i]||Ang[j]){const hit=obbPen(pinObb(list[i],X[i],Y[i]),pinObb(list[j],X[j],Y[j]));if(!hit)continue;any=true;const push=(hit.pen+gap)/2;X[i]-=hit.ax*push;Y[i]-=hit.ay*push;X[j]+=hit.ax*push;Y[j]+=hit.ay*push;continue}
+   // bpm-v47: stacked/edge-sharing prints (e.g. dual (E)/(N) box) — print rects only touch, so don't nudge apart
+   {const A=pinObb(list[i],X[i],Y[i]),B=pinObb(list[j],X[j],Y[j]),ox=A.hw+B.hw-Math.abs(B.x-A.x),oy=A.hh+B.hh-Math.abs(B.y-A.y);if(ox<=1.5||oy<=1.5)continue}
    const dx=X[j]-X[i],dy=Y[j]-Y[i],px=E[i][0]+E[j][0]-Math.abs(dx),py=E[i][1]+E[j][1]-Math.abs(dy);if(px<=.05||py<=.05)continue;any=true;
    if(px<py){const sx=dx>=0?(dx||((i+j)%2?1:-1))>0?1:-1:-1,push=(px+gap)/2;X[i]-=sx*push;X[j]+=sx*push}else{const sy=dy>0||(dy===0&&(i+j)%2)?1:-1,push=(py+gap)/2;Y[i]-=sy*push;Y[j]+=sy*push}}
   if(!any)break;moved=true}
