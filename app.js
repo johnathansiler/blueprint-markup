@@ -191,7 +191,7 @@ function drawMarkup(c,m,s){s=MK_S;c.save();c.globalAlpha=opOf(m,false);c.strokeS
  else if(m.type==='zig'||m.type==='zarrow'){const P=zPts(m);if(P.length>1){c.lineJoin='miter';c.miterLimit=10;c.beginPath();P.forEach(([px,py],i)=>i?c.lineTo(px,py):c.moveTo(px,py));c.stroke();if(m.type==='zarrow'){const[ax,ay]=P[P.length-2],[bx,by]=P[P.length-1],a=Math.atan2(by-ay,bx-ax),L=Math.max(c.lineWidth*4,12/s);c.lineJoin='round';c.beginPath();c.moveTo(bx-L*Math.cos(a-.45),by-L*Math.sin(a-.45));c.lineTo(bx,by);c.lineTo(bx-L*Math.cos(a+.45),by-L*Math.sin(a+.45));c.stroke()}}}
  else if(m.type==='dim'||m.type==='cal'||m.type==='darea'||m.type==='dpath')drawMeasure(c,m,s);
  else if(m.type==='text'){c.font=`bold ${m.fs}px sans-serif`;c.textBaseline='top';c.textAlign='left';c.lineWidth=m.fs/5;c.strokeStyle='#fff';c.strokeText(m.text,m.x1,m.y1);c.fillStyle=m.color;c.fillText(m.text,m.x1,m.y1)}c.restore()}
-// bpm-v54: zigzag polyline (zig) / zigzag arrow (zarrow); points stored relative to x1,y1 so move works unchanged
+// bpm-v54/v56: zigzag polyline (zig); zarrow kept for legacy files (still render+select, no toolbar button); points relative to x1,y1 so move works
 const ZT=['zig','zarrow'],zPts=m=>(m.rp||[]).map(([dx,dy])=>[m.x1+dx,m.y1+dy]);
 function zFinish(m,P){const xs=P.map(p=>p[0]),ys=P.map(p=>p[1]);m.x1=Math.min(...xs);m.y1=Math.min(...ys);m.x2=Math.max(...xs);m.y2=Math.max(...ys);m.rp=P.map(([x,y])=>[x-m.x1,y-m.y1]);return m}
 const isLine=m=>m.type==='arrow'||m.type==='line'||m.type==='dim'||m.type==='cal';
@@ -247,7 +247,7 @@ stage.addEventListener('pointerdown',e=>{if(!plan||e.target!==cv)return;stage.se
  if(tool==='pin'){gesture={type:'pin',...start,w};return}
  if(tool==='text'){gesture={type:'text',...start,w};return}
  if(tool==='measure'){if(MS.mode==='path'&&!MS.cal){gesture={type:'mpath',...start,w,v:{...view}};return}const p0=mSnap(w);draft={id:uid(),planId:plan.id,page,type:MS.cal?'cal':MS.mode==='area'?'darea':'dim',x1:p0.x,y1:p0.y,x2:p0.x,y2:p0.y,color:MS.cal?'#0ea5e9':$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false)};gesture={type:'draw',...start};mRead();return}
- if(ZT.includes(tool)){const p=mkSnap(w);draft={id:uid(),planId:plan.id,page,type:tool,x1:p.x,y1:p.y,x2:p.x,y2:p.y,rp:[[0,0],[0,0]],color:$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false)};gesture={type:'zig',...start,V:[[p.x,p.y]],S:[]};return}
+ if(tool==='zig'){const p=mkSnap(w);draft={id:uid(),planId:plan.id,page,type:'zig',x1:p.x,y1:p.y,x2:p.x,y2:p.y,rp:[[0,0],[0,0]],color:$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false)};gesture={type:'zig',...start,V:[[p.x,p.y]],S:[]};return}
  {let p=w;if(['rect','ellipse','cloud','arrow','line','check'].includes(tool))p=mkSnap(w);draft={id:uid(),planId:plan.id,page,type:tool,x1:p.x,y1:p.y,x2:p.x,y2:p.y,color:$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false)};gesture={type:'draw',...start}}});
 stage.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,{x:e.offsetX,y:e.offsetY});if(!gesture)return;
  if(gesture.type==='pinch'&&ptrs.size>=2){const[a,b]=[...ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y),c={x:(a.x+b.x)/2,y:(a.y+b.y)/2},g=gesture,s=clampS(g.v.s*d/g.d),wx=(g.c.x-g.v.x)/g.v.s,wy=(g.c.y-g.v.y)/g.v.s;view={s,x:c.x-wx*s,y:c.y-wy*s};fastView();return}
@@ -753,7 +753,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v55',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v56',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
