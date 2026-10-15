@@ -740,15 +740,15 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v50',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v51',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
   const ly=await get('meta','layers:'+pl.id);if(ly)man.layers[pl.id]=ly;const sc=await get('meta','scale:'+pl.id);if(sc)(man.scales??={})[pl.id]=sc;const ro=await get('meta','rot:'+pl.id);if(ro)(man.rots??={})[pl.id]=ro}
  const last=await get('meta','last:'+pid);if(last)man.meta.last=last;const job=await get('meta','job:'+pid);if(job)man.meta.job=job;if(withLearned)man.learned=await all('learned');man.mycodes=await all('mycodes');man.cktpl=Object.keys(CKT).length?CKT:null;
  files.unshift({name:'project.json',blob:new Blob([JSON.stringify(man)],{type:'application/json'})});const tot=files.reduce((a,f)=>a+f.blob.size,0);let done=0;return zipBlob(files,n=>{done+=n;onP&&onP(done/tot)})}
-async function readBpm(file){const z=await unzipBlob(file),mj=z.get('project.json');if(!mj)throw new Error('this file has no project.json, it is not a Blueprint Markup project');let man;try{man=JSON.parse(await mj.blob.text())}catch{throw new Error('project.json is damaged')}
- if(man.format!==BPM_FMT)throw new Error('this is not a Blueprint Markup project file');if(!Number.isInteger(man.version)||man.version<1)throw new Error('unknown project file version');if(man.version>BPM_VER)throw new Error(`this file was saved by a newer app (format v${man.version}; this app reads up to v${BPM_VER}). Reload the app to update it, then try again.`);
+async function readBpm(file){const z=await unzipBlob(file),mj=z.get('project.json');if(!mj)throw new Error('this file has no project.json, it is not a Marker project');let man;try{man=JSON.parse(await mj.blob.text())}catch{throw new Error('project.json is damaged')}
+ if(man.format!==BPM_FMT)throw new Error('this is not a Marker project file');if(!Number.isInteger(man.version)||man.version<1)throw new Error('unknown project file version');if(man.version>BPM_VER)throw new Error(`this file was saved by a newer app (format v${man.version}; this app reads up to v${BPM_VER}). Reload the app to update it, then try again.`);
  for(const k of['plans','markups','pins','media'])if(!Array.isArray(man[k]))throw new Error('project.json is missing '+k);return{z,man}}
 async function importBpm(file,replaceId,onP){const{z,man}=await readBpm(file);
  const ent=async(n,type)=>{const e=z.get(n);if(!e)throw new Error('the file is missing '+n);if(await crcBlob(e.blob)!==e.crc)throw new Error(n+' is damaged (checksum mismatch)');return new Blob([await e.blob.arrayBuffer()],{type:type||''})};
@@ -775,7 +775,7 @@ async function importBpm(file,replaceId,onP){const{z,man}=await readBpm(file);
   return{pid,name,plans:plans.length,markups:mk.length,pins:pn.length,media:media.length,learned:nl,mycodes:nm}}
  catch(e){for(const[s,id]of wrote.reverse())try{await del(s,id)}catch{}throw e}}
 // deliver a file: save picker (desktop Chrome/Edge), else share sheet, else a normal download
-async function deliver(name,mime,ext,make){let h=null;if(window.showSaveFilePicker){try{h=await showSaveFilePicker({suggestedName:name,types:[{description:ext==='.bpm'?'Blueprint Markup project':ext.toUpperCase().slice(1)+' file',accept:{[mime]:[ext]}}]})}catch(e){if(e.name==='AbortError')return null;h=null}}
+async function deliver(name,mime,ext,make){let h=null;if(window.showSaveFilePicker){try{h=await showSaveFilePicker({suggestedName:name,types:[{description:ext==='.bpm'?'Marker project':ext.toUpperCase().slice(1)+' file',accept:{[mime]:[ext]}}]})}catch(e){if(e.name==='AbortError')return null;h=null}}
  const blob=await make();if(h){const w=await h.createWritable();await w.write(blob);await w.close();return'saved as '+h.name}
  const f=new File([blob],name,{type:mime});if(navigator.canShare&&navigator.share&&matchMedia('(pointer:coarse)').matches){try{if(navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});return'shared'}}catch(e){if(e.name==='AbortError')return null}}
  dl(blob,name);return'downloaded'}
@@ -831,7 +831,7 @@ async function exportPlanPdf(pl,mks,pns,L,onPage,outDoc=null){const{PDFDocument}
  else{const im=await createImageBitmap(pl.blob);const W=im.width,H=im.height;const drawFn=(x,ps)=>{const E=L.exp;for(const m of mks)if(m.page===1&&(!E||mVis(m)))drawMarkup(x,m,1/1.5);const pp=pns.filter(p=>p.page===1&&(!E||pVis(p)));OFFMAP=pinOffsets(pp);for(const p of pp)(E?drawPinL:drawPin)(x,p,ps,false);OFFMAP=null;drawLegend(x,ps,pp,H)};
   const jpeg=await rasterFullPage(null,W,H,(x,ps)=>{x.drawImage(im,0,0,W,H);drawFn(x,ps)});const img=await out.embedJpg(await jpeg.arrayBuffer());const page=out.addPage([W,H]);page.drawImage(img,{x:0,y:0,width:W,height:H});pages=1;onPage&&onPage(1,1)}
  }finally{lay=keep}
- if(!outDoc){try{out.setTitle((pl.name||'plan')+' (marked up)');out.setProducer('Blueprint Markup')}catch{}}
+ if(!outDoc){try{out.setTitle((pl.name||'plan')+' (marked up)');out.setProducer('Marker')}catch{}}
  return{doc:out,pages}}
 async function mergePdfBlobs(blobs){const{PDFDocument}=PDFLib;const out=await PDFDocument.create();
  for(const b of blobs){const src=await PDFDocument.load(await b.arrayBuffer());const pages=await out.copyPages(src,src.getPageIndices());for(const pg of pages)out.addPage(pg)}
@@ -923,7 +923,7 @@ async function ensureJob(){let j=await getJob();if(j.building&&j.inspDate)return
 function nfpaHeader(doc,title,j,tn){
  doc.setFillColor(30,41,59);doc.rect(0,0,612,72,'F');doc.setTextColor(255,255,255);doc.setFont(undefined,'bold');doc.setFontSize(16);doc.text(title,40,28);
  doc.setFont(undefined,'normal');doc.setFontSize(9);
- doc.text('Generated by Blueprint Markup — maps to NFPA 72 Ch. 7 Documentation and Ch. 14 Inspection, Testing, and Maintenance.',40,46,{maxWidth:530});
+ doc.text('Generated by Marker — maps to NFPA 72 Ch. 7 Documentation and Ch. 14 Inspection, Testing, and Maintenance.',40,46,{maxWidth:530});
  doc.setFontSize(10);doc.text(`Project: ${project.name}    Date: ${j.inspDate||fmtT(Date.now())}    Inspector: ${tn||'-'}${j.license?'  Lic. '+j.license:''}`,40,62);
  doc.setTextColor(120);doc.setFontSize(9);
  doc.text('This is NOT an official NFPA form and does not reproduce NFPA copyrighted form layouts or wording.',40,88,{maxWidth:530});
@@ -932,7 +932,7 @@ function nfpaJobBlock(doc,j,y){const L=(t)=>{const ls=doc.splitTextToSize(t,530)
  L(`Building: ${j.building||'-'}    Address: ${j.address||'-'}`);L(`Owner/contact: ${j.owner||'-'}    AHJ: ${j.ahj||'-'}`);
  L(`System type: ${j.systemType||'-'}    Monitoring: ${j.monitoring||'-'}`);L(`Control panel: ${j.panel||'-'}    Inspection type: ${j.inspType||'-'}`);
  doc.setDrawColor(180);doc.line(40,y,572,y);return y+14}
-function nfpaFooter(doc,name){const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(120);doc.text(`${name} · Blueprint Markup report (NFPA 72-mapped) · page ${i} of ${n}`,40,780);doc.setTextColor(0)}}
+function nfpaFooter(doc,name){const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(120);doc.text(`${name} · Marker report (NFPA 72-mapped) · page ${i} of ${n}`,40,780);doc.setTextColor(0)}}
 async function nfpaDeviceStats(D){const by={};for(const{pins:ps}of D)for(const p of ps){const t=p.type||'other';(by[t]??= {t,n:0,pass:0,fail:0,ip:0,nt:0,na:0});by[t].n++;
   if(p.status==='passed')by[t].pass++;else if(p.status==='failed')by[t].fail++;else if(p.status==='in progress')by[t].ip++;else by[t].nt++;
   for(const c of p.checks||[])if(c.v==='na')by[t].na++}return Object.values(by).sort((a,b)=>(TYPES[a.t]?.n||'').localeCompare(TYPES[b.t]?.n||''))}
