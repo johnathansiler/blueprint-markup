@@ -30,11 +30,12 @@ const PIN_OP=.5,MK_OP=.8;const pinR=()=>9.6;
 // bpm-v26/27: pin silhouettes match the printed plan symbols (shape + size in plan points, measured from the fa.pdf legend:
 // hex smoke/duct/module ~15pt, flat flow/tamper diamond ~24x9, 13pt square for pull/notification/J/relay, wide boxes for panels/DH)
 const PSH={smoke:['hex',15,13],duct:['hex',15,13],module:['hex',15,13],heat:['circ',13,13],pull:['rect',13,13],horn:['rect',13,13],spkstrobe:['rect',13,13],strobe:['rect',13,13],linearray:['rect',13,13],
- panel:['rect',26,13],dact:['rect',26,13],fatc:['rect',26,13],panelbox:['rect',26,13],doorholder:['rect',24,10],relay:['hex',15,13],jbox:['rect',13,13],surge:['rect',20,20],
+ panel:['rect',26,13],dact:['rect',26,13],fatc:['rect',26,13],panelbox:['rect',26,13],doorholder:['rect',24,10],relay:['hex',15,13],jbox:['rect',13,13],surge:['rect',13,13],
  flow:['dia',24,9],tamper:['dia',24,9],rai:['circ',6,6],other:['circ',12,12]};
 const PSC=1.3;const PANEL_S=new Set(['panel','dact','fatc','panelbox']);
 // bpm-v27: panels take the printed box size+orientation (bw/bh from detection), inset by the stroke so the fill sits inside and never overflows; WF/TS diamonds at print size (no 1.3x) so they sit flush on the printed diamond
-const pshOf=o=>{const t=typeof o==='string'?o:o&&o.type,v=PSH[t]||PSH.other;if(PANEL_S.has(t)){if(o&&o.bw>4&&o.bh>4)return['rect',o.bw-2.5,o.bh-2.5];if(o&&o.vert)return['rect',v[2]-1,v[1]-1];return['rect',v[1]-1,v[2]-1]}if(v[0]==='dia')return[v[0],v[1],v[2]];return[v[0],v[1]*PSC,v[2]*PSC]};
+const pshOf=o=>{const t=typeof o==='string'?o:o&&o.type,v=PSH[t]||PSH.other;if(PANEL_S.has(t)){if(o&&o.bw>4&&o.bh>4)return['rect',o.bw-2.5,o.bh-2.5];if(o&&o.vert)return['rect',v[2]-1,v[1]-1];return['rect',v[1]-1,v[2]-1]}if(v[0]==='dia')return[v[0],v[1],v[2]];if(o&&o.bw>4&&o.bh>4&&v[0]==='rect')return['rect',o.bw-2.5,o.bh-2.5];return[v[0],Math.max(3,v[1]-2.5),Math.max(3,v[2]-2.5)]};
+// bpm-v28: every pin type fits inside its printed symbol: print size (no 1.3x) minus the stroke, so the plan outline stays outside the pin border; surge square 13pt like the printed SS box
 function pinPath(c,t){const[k,w,h]=pshOf(t),a=w/2,b=h/2;if(k==='rect')c.rect(-a,-b,w,h);else if(k==='dia'){c.moveTo(-a,0);c.lineTo(0,-b);c.lineTo(a,0);c.lineTo(0,b);c.closePath()}
  else if(k==='hex'){c.moveTo(-a,0);c.lineTo(-a/2,-b);c.lineTo(a/2,-b);c.lineTo(a,0);c.lineTo(a/2,b);c.lineTo(-a/2,b);c.closePath()}else c.arc(0,0,a,0,7)}
 const pinHalf=t=>{const[k,w,h]=pshOf(t);return k==='circ'?w/2:k==='rect'?Math.hypot(w,h)/2:Math.max(w,h)/2}; // plan points — scales with zoom (constant on the blueprint); bpm-v25: 80% of prior 12
@@ -697,7 +698,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v27',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v28',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
