@@ -72,6 +72,8 @@ function detect(P,W,H,want){const TB=W>H?W*.825:W;let G=P.filter(g=>dark(g)&&g.x
   else if(sk==='diamond'){
    // Legend: FS (waterflow) vs TS (tamper). Glyph bags from this plan family often look like 1,2,19 (FS) vs 1,1,19 (TS).
    const gs=glyph.join(',');
+   // v19: "SS" surge square (axis-aligned, ~13pt) can pass the diamond size test; two big S glyphs and no single strokes = surge
+   if(glyph.length===2&&glyph.every(x=>x>=4))t='SURGE';else
    if(gs==='1,1,19'||gs==='1,1'||gs.startsWith('1,1,'))t='TAMPER';
    else if(gs==='1,2,19'||gs==='1,2'||gs.startsWith('1,2,'))t='FLOW';
    else if(glyph.includes(2))t='FLOW';else t='TAMPER';

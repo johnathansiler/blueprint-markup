@@ -152,7 +152,7 @@ function resizeTo(m,o,h,w){if(isLine(m)){if(h===0){m.x1=w.x;m.y1=w.y}else{m.x2=w
  const x0=Math.min(o.x1,o.x2),y0=Math.min(o.y1,o.y2),X0=Math.max(o.x1,o.x2),Y0=Math.max(o.y1,o.y2),L=h===0||h===3,T=h===0||h===1;
  if(m.type==='text'){const nh=Math.max(6/view.s,T?Y0-w.y:w.y-y0);m.fs=o.fs*nh/((Y0-y0)||1);const tw=textBox({...m,x1:0,y1:0}).x2;Object.assign(m,{x1:L?X0-tw:x0,y1:T?Y0-m.fs*1.15:y0});textBox(m);return}
  let x=L?w.x:x0,X=L?X0:w.x,y=T?w.y:y0,Y=T?Y0:w.y;m.x1=Math.min(x,X);m.x2=Math.max(x,X);m.y1=Math.min(y,Y);m.y2=Math.max(y,Y)}
-let CR=0;function drawPin(c,p,s,hl,bare,nolab){const T=TYPES[p.type]||TYPES.other,r=pinR();c.save();if(!bare)c.globalAlpha=opOf(p,true);const oo=!bare&&OFFMAP&&OFFMAP.get(p.id);if(oo)drawLeader(c,p.x,p.y,p.x+oo.dx,p.y+oo.dy,T.c);c.translate(p.x+(oo?oo.dx:0),p.y+(oo?oo.dy:0));if(CR)c.rotate(-CR);if(oo&&oo.cl&&!hl)c.scale(.82,.82);
+let CR=0;function drawPin(c,p,s,hl,bare,nolab){const T=TYPES[p.type]||TYPES.other,r=pinR();c.save();if(!bare)c.globalAlpha=opOf(p,true);const oo=!bare&&OFFMAP&&OFFMAP.get(p.id);if(oo)drawLeader(c,p.x,p.y,p.x+oo.dx,p.y+oo.dy,T.c);c.translate(p.x+(oo?oo.dx:0),p.y+(oo?oo.dy:0));if(CR)c.rotate(-CR);
  // s is kept for call-site compat; pin geometry is in plan points so it scales with view
  const sc=ST[p.status]||ST['not tested'];if(hl&&!bare){c.beginPath();c.arc(0,0,r*1.75,0,7);c.fillStyle='rgba(56,189,248,.35)';c.fill()}
  c.fillStyle=T.c;c.strokeStyle=bare?'#fff':sc;c.lineWidth=bare?2:pinLW();c.beginPath();
@@ -677,7 +677,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v18',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v19',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -1088,19 +1088,19 @@ stage.addEventListener('pointerdown',e=>{if(ted&&e.target!==ted.el)tedEnd(true)}
 var OFFMAP=null,SCRNOFF=null;
 const PANEL_T=new Set(['panel','dact','fatc','panelbox']),PANEL_G=new Set(['facp','dact','fatc','panelbox']);
 function isPanelO(o){return PANEL_T.has(o.type)||PANEL_G.has(o.g)}
-function pinOffsets(list){const M=new Map(),r=pinR(),th=r*3,n=list.length;const key=o=>o.id||o;
- // v18: panel equipment markers sit off the printed FACP/DACT/FATC box (up-right, long leader) so the plan text stays readable
- for(const o of list)if(isPanelO(o))M.set(key(o),{dx:r*3.4,dy:-r*3.4,pn:1});
- if(n<2)return M;
- // union-find over pairs closer than th (grid bucketed)
- const par=list.map((_,i)=>i),f=i=>par[i]===i?i:(par[i]=f(par[i])),G=new Map(),C=th;
+function pinOffsets(list){const M=new Map(),r=pinR(),n=list.length;if(n<2)return M;const key=o=>o.id||o;
+ // v19: minimal nudge. Markers start on their device; only pairs whose badges would overlap are pushed apart,
+ // just far enough to clear (D), with a spring back home. Isolated pins get no offset and no leader.
+ const D=r*2.06,X=list.map(o=>o.x),Y=list.map(o=>o.y),C=D*3,G=new Map();
  list.forEach((o,i)=>{const k=Math.floor(o.x/C)+','+Math.floor(o.y/C);(G.get(k)||G.set(k,[]).get(k)).push(i)});
- list.forEach((o,i)=>{const gx=Math.floor(o.x/C),gy=Math.floor(o.y/C);for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)for(const j of G.get((gx+a)+','+(gy+b))||[])if(j>i&&Math.hypot(list[j].x-o.x,list[j].y-o.y)<th)par[f(j)]=f(i)});
- const cl=new Map();list.forEach((o,i)=>{const k=f(i);(cl.get(k)||cl.set(k,[]).get(k)).push(o)});
- for(const g of cl.values()){if(g.length<2)continue;const cx=g.reduce((a,o)=>a+o.x,0)/g.length,cy=g.reduce((a,o)=>a+o.y,0)/g.length;
-  // v18: ring well clear of the symbols (2.4x the old radius); >8 markers spill into an outer ring (spiral)
-  g.sort((a,b)=>Math.atan2(a.y-cy,a.x-cx)-Math.atan2(b.y-cy,b.x-cx));const per=8,rings=Math.ceil(g.length/per);
-  g.forEach((o,i)=>{const ring=Math.floor(i/per),cnt=ring<rings-1?per:g.length-ring*per,R=Math.max(r*7,cnt*r*2.4/(2*Math.PI))+ring*r*2.6,t=-Math.PI/2+(i%per)*2*Math.PI/cnt+ring*.4;M.set(key(o),{dx:cx+R*Math.cos(t)-o.x,dy:cy+R*Math.sin(t)-o.y,cl:1})})}
+ const nb=list.map((o,i)=>{const a=[],gx=Math.floor(o.x/C),gy=Math.floor(o.y/C);for(let u=-1;u<=1;u++)for(let v=-1;v<=1;v++)for(const j of G.get((gx+u)+','+(gy+v))||[])if(j>i)a.push(j);return a});
+ let moved=false;for(let it=0;it<90;it++){let any=false;
+  for(let i=0;i<n;i++)for(const j of nb[i]){let dx=X[j]-X[i],dy=Y[j]-Y[i],d=Math.hypot(dx,dy);if(d>=D)continue;any=true;
+   if(d<1e-3){const t=(i*2.399+j*.7);dx=Math.cos(t);dy=Math.sin(t);d=1e-3}const p=(D-d)/2*1.02/d;X[i]-=dx*p;Y[i]-=dy*p;X[j]+=dx*p;Y[j]+=dy*p}
+  if(!any)break;moved=true;
+  if(it<50)for(let i=0;i<n;i++){X[i]+=(list[i].x-X[i])*.04;Y[i]+=(list[i].y-Y[i])*.04}}
+ if(!moved)return M;
+ list.forEach((o,i)=>{const dx=X[i]-o.x,dy=Y[i]-o.y;if(Math.hypot(dx,dy)>r*.25)M.set(key(o),{dx,dy,cl:1})});
  return M}
 function drawLeader(c,x,y,X,Y,col){c.save();c.globalAlpha=Math.max(.7,c.globalAlpha);c.strokeStyle=col;c.lineWidth=1.2;c.beginPath();c.moveTo(x,y);c.lineTo(X,Y);c.stroke();c.fillStyle=col;c.strokeStyle='#fff';c.lineWidth=.8;c.beginPath();c.arc(x,y,2.4,0,7);c.fill();c.stroke();c.restore()}
 
