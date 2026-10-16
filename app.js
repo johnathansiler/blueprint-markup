@@ -133,7 +133,7 @@ async function gotoPage(n,seq){if(!plan)return;const own=seq===undefined;if(own)
   const ok=await renderPage(true);if(seq!==opSeq)return;if(ok===false)showErr('Could not render this page, even at low resolution. Try ⤢ or reopen the plan.');renderList()}
  catch(e){if(seq===opSeq)showErr('Could not show page '+n+': '+(e&&e.message||e))}
  finally{if(own&&seq===opSeq)busy(0)}}
-function fit(){if(!pageW)return;const D=dispWH(),w=stage.clientWidth,h=stage.clientHeight,s=Math.min(w/D.w,h/D.h)*.95*1.6;view={s,x:(w-D.w*s)/2,y:(h-D.h*s)/2};draw()} // bpm-v34: page-change/fit zoom 60% closer (×1.6)
+function fit(){if(!pageW)return;const D=dispWH(),w=stage.clientWidth,h=stage.clientHeight,s=Math.min(w/D.w,h/D.h)*.95*1.6;const sw=D.w*s;view={s,x:sw>w?8:(w-sw)/2,y:(h-D.h*s)/2};draw()} // bpm-v86: wider than the stage → left edge stays visible; bpm-v34: page-change/fit zoom 60% closer (×1.6)
 $('#fit').onclick=fit;
 // bpm-v35: live zoom percentage (100% = 1 CSS px per plan point)
 function updZoom(){const el=$('#zoomPct');if(!el)return;el.textContent=plan&&pageW?Math.round(view.s*100)+'%':'—'}
@@ -273,7 +273,7 @@ async function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);c
  if(!g.moved&&(g.type==='resize'||g.type==='move'&&g.wasSel)&&sel?.o.type==='text'){inlineText(sel.o);return}
  if((g.type==='move'||g.type==='resize')&&g.moved&&sel)await change(sel.kind==='p'?'pins':'markups',g.orig,sel.o);
  if(g.type==='text'&&!g.moved){inlineText(null,g.w)}
- if(g.type==='pin'){const p={id:uid(),planId:plan.id,page,x:g.w.x,y:g.w.y,type:$('#pinType').value,address:'',loop:'',status:'not tested',notes:'',created:Date.now(),opacity:toolOp(true)};await change('pins',null,p);openPin(pins.find(x=>x.id===p.id))}
+ if(g.type==='pin'){const p={id:uid(),planId:plan.id,page,x:g.w.x,y:g.w.y,type:$('#pinType').value,address:'',loop:'',status:'not tested',notes:'',created:Date.now(),opacity:toolOp(true)};await change('pins',null,p);quickChip(pins.find(x=>x.id===p.id))} // bpm-v86: quick-place: no form, Edit chip
  if(g.type==='mpath'){if(g.moved){requestDraw();return}await mPathTap(mSnap(w));return}
  if(g.type==='zig'){const d=draft;draft=null;const V=g.V.slice();if(g.tip)V.push(g.tip);if(V.length>1&&Math.hypot(V[V.length-1][0]-V[0][0],V[V.length-1][1]-V[0][1])+(V.length-2)>3/view.s){zFinish(d,V);await change('markups',null,d)}else drawOverlay();return}
  if(g.type==='draw'&&draft?.type==='cal'){const d=draft;draft=null;drawOverlay();await mCalibrate(d);return}
@@ -758,7 +758,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v85',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v86',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -767,7 +767,7 @@ async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),
  {// bpm-v72: human-readable reports inside the archive (ignored on import)
   const q=v=>/[",\n]/.test(String(v??''))?'"'+String(v).replace(/"/g,'""')+'"':String(v??''),pm=new Map(man.plans.map(p=>[p.id,p.name])),rows=[['plan','page','type','address','loop','model','location','status','reason','severity','codes','tested','tester','notes'],...man.pins.map(p=>[pm.get(p.planId)||'',p.page,TYPES[p.type]?.n||p.type,p.address,p.loop,p.model||'',p.location||'',p.status,p.reason||'',p.severity||'',(p.codes||[]).map(c=>c.code+' '+c.section).join('; '),p.testedAt?new Date(p.testedAt).toISOString():'',p.tester||'',p.notes||''])];
   files.push({name:'reports/device-list.csv',blob:new Blob([rows.map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv'})});if(job)files.push({name:'reports/job-info.json',blob:new Blob([JSON.stringify(job,null,1)],{type:'application/json'})})}
- man.models=await get('meta','models:custom')||null;
+ man.models=await get('meta','models:custom')||null;man.changelog=(await get('meta','chlog:'+pid))||null;
  files.unshift({name:'project.json',blob:new Blob([JSON.stringify(man)],{type:'application/json'})});const tot=files.reduce((a,f)=>a+f.blob.size,0);let done=0;return zipBlob(files,n=>{done+=n;onP&&onP(done/tot)})}
 async function readBpm(file){const z=await unzipBlob(file),mj=z.get('project.json');if(!mj)throw new Error('this file has no project.json, it is not a Marker project');let man;try{man=JSON.parse(await mj.blob.text())}catch{throw new Error('project.json is damaged')}
  if(man.format!==BPM_FMT)throw new Error('this is not a Marker project file');if(!Number.isInteger(man.version)||man.version<1)throw new Error('unknown project file version');if(man.version>BPM_VER)throw new Error(`this file was saved by a newer app (format v${man.version}; this app reads up to v${BPM_VER}). Reload the app to update it, then try again.`);
@@ -1136,7 +1136,7 @@ function faTermsIn(t){const W=new Set(String(t).match(/[A-Za-z&-]+/g)||[]),hit=[
 function askText(title,init){return new Promise(res=>{const d=$('#txtDlg');$('#txtH').textContent=title;const ta=$('#txtIn');ta.value=init||'';const upd=()=>{const h=faTermsIn(ta.value);$('#txtFa').textContent=h.length?'Fire-alarm terms OK even if underlined: '+h.join(', '):'Spell check uses your device keyboard/browser dictionary.'};ta.oninput=upd;upd();
  const done=()=>{d.removeEventListener('close',done);res(d.returnValue==='ok'?ta.value.replace(/\s+$/,''):null)};d.returnValue='';d.addEventListener('close',done);d.showModal();setTimeout(()=>ta.focus(),50)})}
 // ---------- v15: rotate page view ----------
-function updRotBtn(){const b=$('#rotBtn');if(b)b.textContent=VR?`⟳${VR}°`:'⟳'}
+function updRotBtn(){const b=$('#rotBtn');if(b)b.innerHTML=(VR?`⟳${VR}°`:'⟳')+'<span class="tl">Rotate</span>'}
 async function rotView(dir){if(!plan||!pageW)return;const c=toW(stage.clientWidth/2,stage.clientHeight/2),s=view.s;VR=(VR+(dir<0?270:90))%360;if(VR)ROTS[page]=VR;else delete ROTS[page];await put('meta',{...ROTS},'rot:'+plan.id);
  centerOn(c.x,c.y,s,stage.clientWidth/2,stage.clientHeight/2);tile=null;updRotBtn();draw();scheduleRender();renderThumbs()}
 {const b=$('#rotBtn');let lp=0,long=false;b.onclick=e=>{if(long){long=false;return}rotView(1)};b.oncontextmenu=e=>{e.preventDefault();rotView(-1)};
