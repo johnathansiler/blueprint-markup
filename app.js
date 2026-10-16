@@ -758,7 +758,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v86',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v87',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -1540,6 +1540,11 @@ Enclosures & Doors|panel|RCC-1FR|Legacy remote enclosure, flush red (legacy)|ov
 Enclosures & Doors|panel|RCC-3F|Legacy remote enclosure, flush (legacy)|ov
 Enclosures & Doors|panel|RCC-3FR|Legacy remote enclosure, flush red (legacy)|ov`.split('\n').map(l=>{const[c,t,m,d,k]=l.split('|');return{c,t,m,d,u:(INSTALL[m]||[''])[0]}});
 const MODEL_DESC={};CATALOG.forEach(p=>{MODEL_DESC[p.m]=p.d;if(p.u)DATASHEETS[p.m]=p.u;if(p.t&&!(MODELS[p.t]||[]).includes(p.m))(MODELS[p.t]=MODELS[p.t]||[]).push(p.m)});
+
+{// bpm-v87: door holders confirmed in Siemens docs
+ const SDH='https://sid.siemens.com/api/khub/documents/tK3c3EtuyIdOkZnrgDlqZQ/content',PAD4='https://sid.siemens.com/r/A6V10406110/33243998219___en-US_33139400587',dsc={2:'flush wall, concealed wiring',3:'surface wiring',4:'concealed, fully recessed',5:'floor mount',6:'floor mount, double',7:'heavy duty',8:'heavy duty, overhead/vents'};
+ for(const n of [2,3,4,5,6,7,8])for(const v of ['A','D']){const m='SDH-'+n+v;MODEL_DESC[m]=`Siemens door holder, ${dsc[n]}, ${v==='A'?'120 VAC':'24 VDC'}`;DATASHEETS[m]=SDH;(MODELS.doorholder??=[]).push(m)}
+ for(const[m,d]of[['FM998','Rixson door holder (listed compatible in Siemens PAD-4 manual)'],['DH24120','RSG door holder (listed compatible in Siemens PAD-4 manual)']]){MODEL_DESC[m]=d;DATASHEETS[m]=PAD4;MODELS.doorholder.push(m)}}
 const CAT_SET=new Set(CATALOG.map(p=>p.m));
 // bpm-v84: user QR-scanned install links (IndexedDB meta 'installLinks', exported in .marker) override built-ins
 let ULINKS={};async function userLinks(){ULINKS=(await get('meta','installLinks'))||{};return ULINKS}
@@ -1548,7 +1553,7 @@ async function setUserLink(m,url){await userLinks();if(url)ULINKS[m]={url,ts:Dat
 function dsSearchUrl(m){return 'https://sid.siemens.com/search?q='+encodeURIComponent(m+' installation instructions')}
 function dsUrl(m){m=String(m||'').trim();return ULINKS[m]?.url||DATASHEETS[m]||dsSearchUrl(m)}
 function openDs(m){m=String(m||'').trim();if(m)openViewer(dsUrl(m),m)}
-function dsBtnSync(){const m=form.elements.model.value.trim(),b=$('#dDsBtn');b.hidden=!m;$('#dQrBtn').hidden=!m;$('#dDsScan').hidden=!(m&&ULINKS[m]);b.title=m?(ULINKS[m]||DATASHEETS[m]?'Open '+m+' install instructions':'Search Siemens for '+m+' installation instructions'):''}
+function dsBtnSync(){const m=form.elements.model.value.trim(),b=$('#dDsBtn');b.hidden=false;$('#dQrBtn').hidden=false;/* bpm-v87: always visible */$('#dDsScan').hidden=!(m&&ULINKS[m]);b.title=m?(ULINKS[m]||DATASHEETS[m]?'Open '+m+' install sheet':'Search Siemens for '+m+' installation instructions'):'Search Siemens for '+(TYPES[form.elements.type.value]?.n||'device')+' installation instructions'}
 // ---------- bpm-v84: in-app install-sheet viewer (pdf.js for PDFs, iframe for HTML, external only as last resort) ----------
 const DOC_CACHE='bpm-docs';let IV={pdf:null,z:1,obs:null,tok:0};
 async function fetchPdfBytes(url){const abs=new URL(url,location.href).href;
@@ -1624,10 +1629,10 @@ $('#qrRep').onclick=async()=>{const{m,u}=QR.pend||{};if(!m)return;await setUserL
 
 $('#qrDlg').addEventListener('close',qrStop);
 $('#dsQr').onclick=()=>openQr($('#dsQ').value.trim()&&CATALOG.concat().some(p=>p.m===$('#dsQ').value.trim())?$('#dsQ').value.trim():'');
-$('#dQrBtn').onclick=()=>openQr(form.elements.model.value.trim());
+$('#dQrBtn').onclick=async()=>{const m=form.elements.model.value.trim();await openQr(m);if(!m&&$('#qrT'))$('#qrT').value=form.elements.type.value;QR.pinType=form.elements.type.value};
 $('#qrTool').onclick=()=>openQr('',true); // bpm-v85: toolbar scan: auto-match → keep/attach, else new My devices entry
 userLinks();userParts();
-$('#dDsBtn').onclick=()=>openDs(form.elements.model.value);
+$('#dDsBtn').onclick=()=>{const m=form.elements.model.value.trim();if(m)return openDs(m);const n=TYPES[form.elements.type.value]?.n||'fire alarm device';openViewer('https://sid.siemens.com/search?q='+encodeURIComponent(n+' installation instructions Siemens'),n+' installation instructions')};
 ['change','input'].forEach(ev=>{$('#dModelSel').addEventListener(ev,dsBtnSync);$('#dModelC').addEventListener(ev,dsBtnSync)});
 // bpm-v82: category/type keywords (notification, NAC, horn, strobe, speaker…) match every notification device; rank part number > category > description
 const DS_NOTIF_T=new Set(['horn','spkstrobe','strobe','linearray']),DS_NOTIF_KW=['notification','nac','horn','strobe','speaker','chime','visual','audible','appliance','sounder','acend'];
