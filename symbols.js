@@ -35,6 +35,11 @@
      const r=crop(c,S,{x:x0,y:y0,w:f.x-6-x0,h:y1-y0});if(!r)continue;have.add(norm(label));out.push({...r,name:label,type:guess(label),tag:tagOfLabel(label),page:n,src:'legend',_c:c,_S:S})}}}
   return out}
  window.scanLegend=scanLegend;
+ // bpm-v98: legend/symbol-table regions on a page (Detect marks suggestions inside them low-confidence: they're legend samples, not devices)
+ const LRC=new Map();window.legendRects=async(pg,n)=>{const k=(plan?.id||'')+':'+n;if(LRC.has(k))return LRC.get(k);const vp=pg.getViewport({scale:1});let tc;try{tc=await pg.getTextContent()}catch{tc={items:[]}}
+  const items=tc.items.filter(t=>(t.str||'').trim()).map(t=>{const m=pdfjsLib.Util.transform(vp.transform,t.transform);return{s:t.str.trim(),x:m[4],y:m[5]}});
+  const heads=items.filter(t=>/^((fire alarm|device|notification|back-of-house|initiating)[ -])*(symbols?|legend|symbol legend|symbol schedule)$/i.test(t.s)&&!/wire|subscript|pathway|circuit|abbrev/i.test(t.s));
+  const out=heads.map(H=>{const next=heads.filter(h=>h!==H&&h.y>H.y+20&&Math.abs(h.x-H.x)<300).sort((a,b)=>a.y-b.y)[0];return{x:H.x-320,y:H.y-10,w:760,h:(next?next.y-4:H.y+900)-(H.y-10)}});LRC.set(k,out);return out};
  // ---- bpm-v94: crop step (touch-friendly box with edge/corner handles, zoomed preview, Reset/Cancel/Save) ----
  const cd=ce('dialog');cd.id='cropDlg';document.body.append(cd);
  function cropUI(src,auto,title){return new Promise(done=>{const VW=Math.min(340,innerWidth-48),VH=Math.min(300,innerHeight*.42),k=Math.min(VW/src.width,VH/src.height,8),dw=Math.round(src.width*k),dh=Math.round(src.height*k);
@@ -64,8 +69,13 @@
   rv.querySelector('#symRx').onclick=()=>rv.close();rv.querySelectorAll('[data-c]').forEach(bt=>bt.onclick=async()=>{const c=cands[+bt.dataset.c],r=await cropUI(c._c,pxBox(c._c,c._S,c.bb),c.name||'Crop symbol');rv.open||rv.showModal();if(!r)return;Object.assign(c,exact(c._c,c._S,r));bt.closest('.symR').querySelector('img').src=c.img});rv.querySelector('#symRok').onclick=async()=>{await load();let k=0;cands.forEach((c,i)=>{const t=rv.querySelector(`[data-t="${i}"]`).value;if(!t)return;M.push({id:uid(),name:rv.querySelector(`[data-n="${i}"]`).value.trim()||TYPES[t].n,type:t,notes:'',img:c.img,tpl:c.tpl,tag:(rv.querySelector(`[data-g="${i}"]`)?.value||'').trim().toUpperCase(),src:c.src||'legend',planId:plan?.id,page:c.page,bb:c.bb,created:Date.now()});k++});await save();rv.close();toast(`Added ${k} symbol${k===1?'':'s'} to the master legend`);if($('#gDlg')?.open&&window.openGuides)openGuides('sym')};
   rv.showModal()}
  window.symReview=review;
+ // bpm-v98: non-blocking chip instead of a modal on plan load (B1)
+ function legendChip(c,pl){let h=document.getElementById('legChip');if(!h){h=ce('div','legChip');h.id='legChip';h.setAttribute('role','status');(document.getElementById('stage')||document.body).append(h)}
+  h.innerHTML=`<button type="button" class="btn" id="legRev">🔣 ${c.length} new legend symbol${c.length>1?'s':''} · <b>Review</b></button><button type="button" class="btn" id="legX" title="Dismiss" aria-label="Dismiss">✕</button>`;h.hidden=false;
+  h.querySelector('#legRev').onclick=()=>{h.hidden=true;if(plan===pl)review(c,`Legend found: ${c.length} new symbol${c.length>1?'s':''}`)};h.querySelector('#legX').onclick=()=>h.hidden=true}
+ window.legendChip=legendChip;
  // auto-scan new plans once
- const _op=openPlan;openPlan=async function(id,...a){const r=await _op.call(this,id,...a);try{if(pdf&&plan&&!(await get('meta','legendScan:'+plan.id))){await put('meta',Date.now(),'legendScan:'+plan.id);const pl=plan;const c=await scanLegend(pdf,Array.from({length:Math.min(pl.pages,40)},(_,i)=>i+1));if(plan===pl&&c.length)review(c,`Legend found: ${c.length} new symbol${c.length>1?'s':''}`)}}catch(e){console.warn('legend scan',e)}return r};
+ const _op=openPlan;openPlan=async function(id,...a){const lc=document.getElementById('legChip');if(lc)lc.hidden=true;const r=await _op.call(this,id,...a);try{if(pdf&&plan&&!(await get('meta','legendScan:'+plan.id))){await put('meta',Date.now(),'legendScan:'+plan.id);const pl=plan;const c=await scanLegend(pdf,Array.from({length:Math.min(pl.pages,40)},(_,i)=>i+1));if(plan===pl&&c.length)legendChip(c,pl)}}catch(e){console.warn('legend scan',e)}return r};
  // ---- tap to teach ----
  window.teachSymbol=()=>{if(!plan||!pdf)return toast('Open a PDF plan first');document.querySelectorAll('dialog[open]').forEach(d=>d.close());const o=ce('div','teachOv','<div class="teachTip">Tap the middle of a device symbol</div>');stage.append(o);
   o.onpointerdown=async e=>{e.stopPropagation();const r=stage.getBoundingClientRect(),w=toW(e.clientX-r.left,e.clientY-r.top);o.remove();const S=3,pg=await pdf.getPage(page),c=await render(pg,S,{x:w.x-40,y:w.y-40,w:80,h:80}),k=crop(c,S,{x:w.x-16,y:w.y-16,w:32,h:32});const box=pxBox(c,S,k?.bb)||{x:72,y:72,w:96,h:96},cr=await cropUI(c,box,'Crop the symbol');if(!cr)return;const ex=exact(c,S,cr);let tag='';try{if(window.tagsNear)tag=(await tagsNear(pg,page,w.x,w.y,Math.max(ex.bb.w,ex.bb.h))).mods.join('+')}catch{}review([{...ex,name:'',type:'',tag,page,src:'tap',_c:c,_S:S}],'Teach symbol')}};
@@ -96,7 +106,7 @@
   <h4>App pin symbols</h4><div class="symG">${Object.entries(TYPES).map(([k,v])=>`<div class="symC"><canvas data-k="${k}" width="56" height="44"></canvas><small>${esc(v.n)}</small></div>`).join('')}</div>
   <h4>My master legend (${M.length})</h4><div class="symG">${M.map(m=>`<div class="symC"><img src="${m.img}" alt=""><small><b>${esc(m.name)}</b><br>${esc(TYPES[m.type]?.n||m.type)}${m.tpl?' · Detect':''}${m.notes?'<br>'+esc(m.notes):''}</small><div class="row"><button type="button" class="btn" data-e="${m.id}">✎ Edit</button><button type="button" class="btn danger" data-d="${m.id}">🗑 Delete</button></div></div>`).join('')||'<small>None yet. Open a plan with a legend, or teach a symbol.</small>'}</div>`;
   el.querySelectorAll('canvas[data-k]').forEach(cv=>{const c=cv.getContext('2d'),k=cv.dataset.k,[,w,h]=pshOf(k),s=Math.min(40/w,30/h,2.4);c.save();c.translate(28,22);c.scale(s,s);try{drawPin(c,{type:k,x:0,y:0,status:'not tested'},1,false,false,true)}catch{}c.restore()});
-  el.querySelectorAll('[data-d]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this symbol from the master legend?'))return;M=M.filter(m=>m.id!==b.dataset.d);await save();draw()});
+  el.querySelectorAll('[data-d]').forEach(b=>b.onclick=async()=>{if(!await uiConfirm('Delete this symbol from the master legend?'))return;M=M.filter(m=>m.id!==b.dataset.d);await save();draw()});
   el.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>edit(M.find(m=>m.id===b.dataset.e)));
   el.querySelector('#syAdd').onclick=()=>edit(null);el.querySelector('#syTeach').onclick=()=>teachSymbol();
   el.querySelector('#syScan').onclick=async()=>{if(!pdf)return toast('Open a PDF plan first');busy(1,'Scanning legend');try{const c=await scanLegend(pdf,Array.from({length:plan.pages},(_,i)=>i+1));busy(0);review(c,`Legend: ${c.length} new symbol${c.length===1?'':'s'}`)}catch(e){busy(0);toast('Legend scan failed')}}};
