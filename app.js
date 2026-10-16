@@ -670,8 +670,8 @@ function renderWalk(){const w=$('#walk');if(!walk){w.hidden=true;return}const S=
  w.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>testPin(p,'fail',b.dataset.r,q('#wCrit').checked))}
 async function testPin(p,res,reason,crit){p=pins.find(x=>x.id===p.id);if(!p)return;const b=structuredClone(p),a={...b,testedAt:Date.now(),tester:await getTester()};
  if(res==='pass'){a.checks=(b.checks||checkItems(b.type)).map(c=>({...c,v:'pass'}));a.status='passed';a.reason=a.reasonText=a.severity=''}
- else{a.status='failed';a.reason=reason||'Other';a.severity=crit?'Critical':'Non-critical';a.reasonText=b.reasonText||''}
- await change('pins',b,a);toast(`${TYPES[a.type]?.n||a.type} ${a.address||''}: ${a.status}${res==='fail'?` (${a.reason}${crit?', critical':''})`:''}`,true);
+ else{const ck=b.checks||checkItems(b.type);a.checks=ck.some(c=>c.v==='fail')?ck.map(c=>({...c})):ck.map(c=>({...c,v:c.v==='pass'?'':c.v}));a.status='failed';a.reason=reason||'Other';a.severity=crit?'Critical':'Non-critical';a.reasonText=b.reasonText||''}
+ await change('pins',b,a);if(dlg.open&&cur?.id===a.id){const np=pins.find(x=>x.id===a.id)||a;cur=np;ckl=structuredClone(np.checks||checkItems(np.type));renderChecks();form.elements.status&&(form.elements.status.value=np.status||'');}toast(`${TYPES[a.type]?.n||a.type} ${a.address||''}: ${a.status}${res==='fail'?` (${a.reason}${crit?', critical':''})`:''}`,true);
  if(walk&&walk.p?.id===p.id)walkNext()}
 // ---------- v9: voice commands (Web Speech API) ----------
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let srec=null;
@@ -705,7 +705,7 @@ async function runVoice(text){const c=parseVoice(text);window.__lastVoice={text,
  if(!p){toast(`Heard “${text}”: select a pin or start walk mode (🚶) first`);return c}
  if(c.cmd==='pass'||c.cmd==='fail'){await testPin(p,c.cmd,c.reason,c.crit);return c}
  const b=structuredClone(p),a={...b};if(c.cmd==='address')a.address=c.v;else if(c.cmd==='loop')a.loop=c.v;else if(c.cmd==='note')a.notes=(b.notes?b.notes+'\n':'')+c.v;
- await change('pins',b,a);toast(`${TYPES[a.type]?.n||a.type}: ${c.cmd} → ${c.v}`,true);if(walk)renderWalk();return c}
+ await change('pins',b,a);if(dlg.open&&cur?.id===a.id){const np=pins.find(x=>x.id===a.id)||a;cur=np;ckl=structuredClone(np.checks||checkItems(np.type));renderChecks();form.elements.status&&(form.elements.status.value=np.status||'');}toast(`${TYPES[a.type]?.n||a.type}: ${c.cmd} → ${c.v}`,true);if(walk)renderWalk();return c}
 // ---------- v9: learned detection rules (global, IndexedDB 'learned') ----------
 let lrCache=null;async function learnedRules(){return lrCache||(lrCache=await all('learned'))}
 function fpDist(a,b){if(!a||!b||a.s!==b.s||a.gl!==b.gl)return 1e9;let d=0;for(let i=0;i<Math.max(a.v.length,b.v.length);i++){const x=(a.v[i]||0)-(b.v[i]||0);d+=x*x}return Math.sqrt(d)}
@@ -753,7 +753,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v64',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v65',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
