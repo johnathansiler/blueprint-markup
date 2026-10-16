@@ -758,7 +758,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v75',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v76',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -1284,6 +1284,36 @@ async function rememberModel(t,m){m=String(m||'').trim();if(!m||(MODELS[t]||[]).
 async function modelOpts(t){const c=await customModels(),S=MODELS[t]||[],C=(c[t]||[]).filter(m=>!S.includes(m)),v=form.elements.model.value,sel=$('#dModelSel');
  const op=(m,l)=>`<option value="${esc(m)}"${m===v?' selected':''}>${esc(l||m)}</option>`;
  sel.innerHTML=op('','— none —')+(S.length?`<optgroup label="Siemens">${S.map(m=>op(m)).join('')}</optgroup>`:'')+(C.length?`<optgroup label="My models">${C.map(m=>op(m)).join('')}</optgroup>`:'')+(v&&!S.includes(v)&&!C.includes(v)?`<optgroup label="Saved on this pin">${op(v)}</optgroup>`:'')+'<option value="__custom">Custom…</option>';
- $('#dModelCL').hidden=true;$('#dModelC').value='';return[...S,...C]}
+ $('#dModelCL').hidden=true;$('#dModelC').value='';if(typeof dsBtnSync==='function')dsBtnSync();return[...S,...C]}
 $('#dModelSel').addEventListener('change',e=>{const c=e.target.value==='__custom';$('#dModelCL').hidden=!c;if(c){$('#dModelC').value='';form.elements.model.value='';$('#dModelC').focus()}else form.elements.model.value=e.target.value});
 $('#dModelC').addEventListener('input',e=>{form.elements.model.value=e.target.value.trim()});
+// Datasheet links: only URLs fetched and confirmed (v76). Anything else -> Siemens SID search.
+const DS_SID='https://sid.siemens.com/v/u/',DS_KH='https://sid.siemens.com/api/khub/documents/',DS_AC='https://assets.new.siemens.com/siemens/assets/api/uuid:';
+const DATASHEETS=(()=>{const d={},a=(ms,u)=>ms.split(' ').forEach(m=>d[m]=u);
+ a('FPT-11',DS_SID+'A6V10238830');a('HFP-11','https://9780611.app.netsuite.com/core/media/media.nl?_xt=.pdf&c=9780611&h=n-VEmNcdQ_8kFNd4PBl0s5sgSpUm2iUUHsP97zBIH0fbb01t&id=234528');
+ a('HFPO-11','https://www.hvacusa.com/media/datasheetfiles/500-034800-signed.pdf');a('OP921',DS_SID+'A6V10343336');
+ a('FDO421',DS_KH+'UhSLkJaUKyKGTpTlxDf0FA/content');a('FDOT421','https://www.lifesafetycom.com/wp-content/uploads/2026/04/FDOT421-datasheet.pdf');
+ a('XTRI-S XTRI-D XTRI-R',DS_SID+'A6V11208901');a('XTRI-M',DS_SID+'A6V11208900');
+ a('HTRI-S HTRI-D HTRI-R',DS_KH+'LEPOlbqcsqPhXHEbnbuNTQ/content');a('TRI-S TRI-D TRI-R',DS_KH+'YEk5wrCLxSWQBeE7xQi08Q/content');
+ a('HLIM',DS_SID+'A6V10232957');a('SBGA-34',DS_KH+'VfrrVAS0OK7TfcQyoibs1A/content');
+ a('MSI-10B MSI-20B',DS_KH+'2L0T3dOweTffu525JxJvaQ/content');a('HMS-M','https://rybbfirealarm.com/wp-content/uploads/HMS-M.pdf');
+ a('XMS-51 XMS-M',DS_KH+'dy2QFEOq0EJ6fFC0Rz3HDw/content');
+ a('FDBZ492 FDBZ492-HR FDBZ492-R FDBZ492-PR',DS_SID+'A6V10366084');a('AD2-P AD2-PR',DS_KH+'7qk3MfjN~hRS42WxKAPXcQ/content');
+ a('SC-HS-WR-F SC-HS-WW-F SC-HN-WR-N SC-HN-WW-N SC-ST-WR-F SC-ST-WW-F',DS_AC+'14c84802-dfa9-47e9-a021-667bbec94bd1/ACEND-Horn-Strobes-Wall-Mount-Appliances-Data-Sheet.pdf');
+ a('SC-SS-WW-F SC-SP-WW-F',DS_AC+'7186dedb-33b1-44bb-8383-ac048b587539/ACEND-Speaker-Strobes-Wall-Mount-Appliances-Data-Sheet.pdf');
+ a('SC-SS-CW-F SC-SP-CW-F',DS_AC+'691c0196-400c-499f-b922-649712c74317/ACEND-Speaker-Strobes-Ceiling-Mount-Appliances-Data-Sheet.pdf');
+ a('SL24XSPS-FW','https://www.lifesafetycom.com/product/siemens-sl24xsps-fw-weatherproof-speakers-strobe-surface-mount-only-fire-text-white/');
+ a('FC2025 FC2050',DS_SID+'A6V10356081');a('FC922 FC924',DS_SID+'A6V10349710');
+ a('FireFinder XLS','https://cache.industry.siemens.com/dl/files/579/109787579/att_1044333/v2/A6V10238846.pdf');return d})();
+function dsUrl(m){m=String(m||'').trim();return DATASHEETS[m]||'https://sid.siemens.com/search?q='+encodeURIComponent(m)}
+function openDs(m){if(String(m||'').trim())window.open(dsUrl(m),'_blank','noopener')}
+function dsBtnSync(){const m=form.elements.model.value.trim(),b=$('#dDsBtn');b.hidden=!m;b.title=m?(DATASHEETS[m]?'Open '+m+' datasheet':'Search Siemens for '+m):''}
+$('#dDsBtn').onclick=()=>openDs(form.elements.model.value);
+['change','input'].forEach(ev=>{$('#dModelSel').addEventListener(ev,dsBtnSync);$('#dModelC').addEventListener(ev,dsBtnSync)});
+async function dsList(){const c=await customModels(),q=$('#dsQ').value.trim().toLowerCase();let h='';
+ for(const t in TYPES){const ms=[...new Set([...(MODELS[t]||[]),...(c[t]||[])])].filter(m=>!q||m.toLowerCase().includes(q)||TYPES[t].n.toLowerCase().includes(q));if(!ms.length)continue;
+  h+=`<details open class="dsGrp" data-type="${t}"><summary>${esc(TYPES[t].n)} <small>(${ms.length})</small></summary>`+ms.map(m=>`<button type="button" class="btn dsM" data-m="${esc(m)}" title="${DATASHEETS[m]?'Datasheet':'Siemens search'}">${esc(m)} ${DATASHEETS[m]?'📄':'🔎'}</button>`).join('')+'</details>'}
+ $('#dsBody').innerHTML=h||'<small style="color:#94a3b8">No models match.</small>'}
+$('#dsBody').onclick=e=>{const b=e.target.closest('.dsM');if(b)openDs(b.dataset.m)};
+$('#dsQ').oninput=dsList;
+$('#dsBtn').onclick=async()=>{$('#dsQ').value='';await dsList();$('#dsDlg').showModal()};
