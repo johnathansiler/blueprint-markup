@@ -758,7 +758,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v84',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v85',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -1548,7 +1548,7 @@ async function setUserLink(m,url){await userLinks();if(url)ULINKS[m]={url,ts:Dat
 function dsSearchUrl(m){return 'https://sid.siemens.com/search?q='+encodeURIComponent(m+' installation instructions')}
 function dsUrl(m){m=String(m||'').trim();return ULINKS[m]?.url||DATASHEETS[m]||dsSearchUrl(m)}
 function openDs(m){m=String(m||'').trim();if(m)openViewer(dsUrl(m),m)}
-function dsBtnSync(){const m=form.elements.model.value.trim(),b=$('#dDsBtn');b.hidden=!m;$('#dDsScan').hidden=!(m&&ULINKS[m]);b.title=m?(ULINKS[m]||DATASHEETS[m]?'Open '+m+' install instructions':'Search Siemens for '+m+' installation instructions'):''}
+function dsBtnSync(){const m=form.elements.model.value.trim(),b=$('#dDsBtn');b.hidden=!m;$('#dQrBtn').hidden=!m;$('#dDsScan').hidden=!(m&&ULINKS[m]);b.title=m?(ULINKS[m]||DATASHEETS[m]?'Open '+m+' install instructions':'Search Siemens for '+m+' installation instructions'):''}
 // ---------- bpm-v84: in-app install-sheet viewer (pdf.js for PDFs, iframe for HTML, external only as last resort) ----------
 const DOC_CACHE='bpm-docs';let IV={pdf:null,z:1,obs:null,tok:0};
 async function fetchPdfBytes(url){const abs=new URL(url,location.href).href;
@@ -1602,9 +1602,9 @@ async function qrInferText(url){let a='',pdfT='';try{const u=new URL(url);a=deco
 async function qrInfer(url){await userParts();const pre=$('#qrP').value.trim();const r=matchPart(await qrInferText(url));QR.inf=r;
  if(r.m){$('#qrP').value=r.m;$('#qrM').textContent=`Identified ${r.m} (${r.how} match)${pre&&pre!==r.m?` — the pin's model was ${pre}`:''}. Confirm or change it, then Continue.`}
  else{if(!pre&&r.guess)$('#qrP').value=r.guess;$('#qrM').textContent=r.guess?`No catalog part matched; part number read as ${r.guess}. Confirm or change it.`:'No part number found in the link. Type the part, then Continue.'}
- $('#qrS').textContent='✓ Link read. Confirm the part, then Continue.';qrPartChg()}
+ $('#qrS').textContent='✓ Link read. Confirm the part, then Continue.';qrPartChg();if(QR.auto&&r.m)qrDecide()}
 function qrPartChg(){const m=$('#qrP').value.trim(),known=m&&allParts().includes(m);$('#qrNew').hidden=!m||known;$('#qrHas').hidden=true}
-async function openQr(part){const d=$('#qrDlg');$('#qrU').value='';$('#qrP').value=part||'';$('#qrS').textContent='Point the camera at the QR code…';$('#qrM').textContent='';$('#qrNew').hidden=$('#qrHas').hidden=true;$('#qrD').value='';$('#qrC').value='My devices';$('#qrT').innerHTML='<option value="">(catalog only)</option>'+Object.entries(TYPES).map(([k,v])=>`<option value="${k}">${esc(v.n)}</option>`).join('');{const cur=typeof form!=='undefined'&&$('#pinDlg')?.open?form.elements.type?.value:'';if(cur)$('#qrT').value=cur}await userParts();
+async function openQr(part,auto){QR.auto=!!auto;const d=$('#qrDlg');$('#qrU').value='';$('#qrP').value=part||'';$('#qrS').textContent='Point the camera at the QR code…';$('#qrM').textContent='';$('#qrNew').hidden=$('#qrHas').hidden=true;$('#qrD').value='';$('#qrC').value='My devices';$('#qrT').innerHTML='<option value="">(catalog only)</option>'+Object.entries(TYPES).map(([k,v])=>`<option value="${k}">${esc(v.n)}</option>`).join('');{const cur=typeof form!=='undefined'&&$('#pinDlg')?.open?form.elements.type?.value:'';if(cur)$('#qrT').value=cur}await userParts();
  const ms=[...new Set([...CATALOG.map(p=>p.m),...Object.values(MODELS).flat(),...Object.values(await customModels()).flat()])].sort();$('#qrPL').innerHTML=ms.map(m=>`<option value="${esc(m)}">${esc(MODEL_DESC[m]||'')}</option>`).join('');
  d.showModal();let det;try{det=await qrDecoder()}catch(e){$('#qrS').textContent='QR decoder unavailable.';return}
  try{QR.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});const v=$('#qrV');v.srcObject=QR.stream;await v.play();
@@ -1625,6 +1625,7 @@ $('#qrRep').onclick=async()=>{const{m,u}=QR.pend||{};if(!m)return;await setUserL
 $('#qrDlg').addEventListener('close',qrStop);
 $('#dsQr').onclick=()=>openQr($('#dsQ').value.trim()&&CATALOG.concat().some(p=>p.m===$('#dsQ').value.trim())?$('#dsQ').value.trim():'');
 $('#dQrBtn').onclick=()=>openQr(form.elements.model.value.trim());
+$('#qrTool').onclick=()=>openQr('',true); // bpm-v85: toolbar scan: auto-match → keep/attach, else new My devices entry
 userLinks();userParts();
 $('#dDsBtn').onclick=()=>openDs(form.elements.model.value);
 ['change','input'].forEach(ev=>{$('#dModelSel').addEventListener(ev,dsBtnSync);$('#dModelC').addEventListener(ev,dsBtnSync)});
