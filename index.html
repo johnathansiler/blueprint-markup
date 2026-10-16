@@ -3,7 +3,7 @@
 <title>Marker</title><meta name="apple-mobile-web-app-title" content="Marker"><meta name="application-name" content="Marker"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1e293b">
 <link rel="icon" href="icon.svg"><link rel="apple-touch-icon" href="icon-192.png"><link rel="stylesheet" href="app.css"></head><body><div id="splash" style="position:fixed;inset:0;z-index:99999;background:#0f172a;display:flex;align-items:center;justify-content:center;transition:opacity .4s;transform:none"><svg width="240" height="240" style="display:block;width:240px;height:240px;flex:none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="32" fill="#1e3a8a"/><rect x="15.5" y="21.25" width="69" height="57.5" rx="9" fill="none" stroke="#93c5fd" stroke-width="4"/><circle cx="37" cy="49" r="12" fill="#e11d48"/><ellipse cx="63" cy="45" rx="11.5" ry="13.5" fill="#e11d48"/><circle cx="52.5" cy="64.5" r="2.272" fill="#e11d48"/></svg>
 </div>
-<div id="proj"><span title="Project">🗂</span><select id="projSel" title="Project"></select><button class="btn" id="projNew" title="New project">＋</button><button class="btn" id="projRen" title="Rename project">✎</button><button class="btn" id="projDel" title="Delete project">🗑</button><button class="btn" id="projSave" title="Save project file (.bpm) / export plans">💾<span class="lbl"> Save</span></button><label class="btn" id="projOpen" title="Open project file (.bpm)">📥<span class="lbl"> Open</span><input id="bpmFile" type="file" accept=".bpm,application/zip,application/octet-stream" hidden></label></div>
+<div id="proj"><span title="Project">🗂</span><select id="projSel" title="Project"></select><button class="btn" id="projNew" title="New project">＋</button><button class="btn" id="projRen" title="Rename project">✎</button><button class="btn" id="projDel" title="Delete project">🗑</button><button class="btn" id="projSave" title="Save project file (.bpm) / export plans">💾<span class="lbl"> Save</span></button><label class="btn" id="projOpen" title="Open project file (.bpm)">📥<span class="lbl"> Open</span><input id="bpmFile" type="file" accept=".bpm,.marker,application/zip,application/octet-stream" hidden></label></div>
 <header id="top">
  <label class="btn" title="Open plan">📂<input id="file" type="file" accept="application/pdf,image/png,image/jpeg" hidden></label>
  <select id="planSel" title="Plan"></select><button class="btn" id="planDel" title="Delete this plan">🗑</button>
@@ -39,7 +39,7 @@
  <button id="detBtn" class="tool" title="Detect devices (suggest pins from the plan's symbols)">🔍</button>
 </div>
 <main id="stage"><canvas id="cv"></canvas><canvas id="ov"></canvas><div id="empty">Open a PDF plan set (or image) with 📂</div><div id="busy" hidden><span id="busyTxt">Rendering</span> <b id="busyPct">…</b><div id="busyTrack"><div id="busyBar"></div></div><button type="button" class="btn" id="stop">Stop</button></div><div id="ghBar" hidden></div><div id="selBar" hidden></div><div id="mBar" hidden></div><div id="thumbs" hidden></div><div id="walk" hidden></div><div id="toast" hidden><span id="toastTxt"></span><button type="button" class="btn" id="toastUndo">↶ Undo</button></div><div id="err" hidden><span id="errTxt"></span><button type="button" class="btn" id="errX" title="Dismiss">✕</button></div></main>
-<aside id="panel" hidden><div class="ph"><button class="btn tab on" id="modePins">Pins</button><button class="btn tab" id="modeDefs">⚠ Deficiencies <b id="defCount"></b></button><span class="sp"></span><button class="btn" id="csvBtn" title="Export device list (CSV, whole project)">CSV</button><button class="btn" id="testerBtn" title="Tester name">👤</button><button class="btn danger" id="clrBtn" title="Clear pins">🗑 Pins</button><button class="btn danger" id="clrMBtn" title="Clear markups (shapes, text, measurements)">🗑 Markups</button><button class="btn" id="closeList">✕</button></div>
+<aside id="panel" hidden><div class="ph"><button class="btn tab on" id="modePins">Pins</button><button class="btn tab" id="modeDefs">⚠ Deficiencies <b id="defCount"></b></button><span class="sp"></span><button class="btn" id="csvBtn" title="Export device list (CSV, whole project)">CSV</button><button class="btn" id="imBtn" title="Import panel device list (CSV) into pins">⇪ Import</button><button class="btn" id="testerBtn" title="Tester name">👤</button><button class="btn danger" id="clrBtn" title="Clear pins">🗑 Pins</button><button class="btn danger" id="clrMBtn" title="Clear markups (shapes, text, measurements)">🗑 Markups</button><button class="btn" id="closeList">✕</button></div>
  <input id="q" placeholder="Search address, location, type, loop, notes…">
  <div class="row"><select id="fType"><option value="">All types</option></select>
  <select id="fStat"><option value="">All status</option><option>passed</option><option>failed</option><option>in progress</option><option>not tested</option></select>
@@ -68,7 +68,7 @@
 <dialog id="pinDlg"><form method="dialog" id="pinForm">
  <div style="width:40px;height:4px;background:#64748b;border-radius:2px;margin:0 auto 6px"></div><h3 style="margin:4px 0">Device pin</h3>
  <label>Type <select name="type" id="dType"></select></label>
- <label>Address <input name="address"></label><label>Location <input name="location" spellcheck="true" lang="en" placeholder="e.g. Room 204, corridor by stair B"></label>
+ <label>Address <input name="address"></label><label>Model <input name="model" id="dModel" list="modelList" autocomplete="off" placeholder="pick or type a model"></label><datalist id="modelList"></datalist><label>Location <input name="location" spellcheck="true" lang="en" placeholder="e.g. Room 204, corridor by stair B"></label>
  <div class="row ckbar"><b id="ckHead">Checklist</b><span class="sp"></span><button type="button" class="btn" id="ckReset" title="Replace this pin's checklist with the current template">↺</button><button type="button" class="btn" id="ckEdit" title="Edit the checklist template for this device type">✎</button><button type="button" class="btn" id="passAll">✔ Pass all</button></div><div id="checks"></div>
  <label>Status <small style="color:#94a3b8">(auto from checklist; can override)</small><select name="status"><option>not tested</option><option>in progress</option><option>passed</option><option>failed</option></select></label><small id="testedInfo" style="color:#94a3b8"></small>
  <div id="failBox" hidden><label>Fail reason <select name="reason"><option value="">— pick —</option><option>No alarm</option><option>Trouble</option><option>Damaged</option><option>Missing</option><option>Obstructed</option><option>Wrong location</option><option>Dirty/needs cleaning</option><option>Other</option></select></label><label id="reasonTextL" hidden>Other reason <textarea name="reasonText" rows="2" spellcheck="true" lang="en" placeholder="Enter the reason"></textarea></label><label>Severity <select name="severity"><option>Non-critical</option><option>Critical</option></select></label>
@@ -126,6 +126,18 @@
  <label>System type <select name="systemType"><option>Protected premises (local)</option><option>Central station</option><option>Remote supervising station</option><option>Proprietary supervising station</option><option>Emergency communications (ECS)</option><option>Other</option></select></label>
  <label>Monitoring company <input name="monitoring"></label>
  <label>Control panel make / model <input name="panel"></label>
+ <details open><summary><b>NFPA 72 Ch. 7 record details</b> <small style="color:#94a3b8">(all optional)</small></summary>
+ <label>Property owner <input name="ownerName"></label><label>Owner address <input name="ownerAddr"></label><label>Owner phone <input name="ownerPhone"></label>
+ <label>Occupancy / use <input name="occupancy"></label>
+ <label>Panel manufacturer <input name="panelMake"></label><label>Panel model <input name="panelModel"></label><label>Firmware / software version <input name="firmware"></label><label>Panel location <input name="panelLoc"></label>
+ <label>Monitoring account # <input name="monAcct"></label><label>Monitoring phone <input name="monPhone"></label><label>Monitoring method <input name="monMethod" placeholder="e.g. DACT dual line, cellular, IP"></label>
+ <label>Primary power (panel / circuit #) <input name="priPower"></label><label>Primary power location <input name="priLoc"></label>
+ <label>Batteries (type, Ah, qty) <input name="battery"></label><label>Battery date / install date <input name="batDate"></label><label>Battery test result <input name="batTest" placeholder="e.g. 25.6 V under load, pass"></label>
+ <label>Other power supplies (NAC / aux) <input name="aux"></label>
+ <label>Service company <input name="company"></label><label>Technician name <input name="techName"></label><label>Technician cert / license # <input name="techLic"></label>
+ <label>System installed date <input name="installDate" type="date"></label><label>Test date <input name="testDate" type="date"></label><label>Next due <input name="nextDate" type="date"></label>
+ <label>Overall test result <select name="result"><option></option><option>System passed</option><option>System passed with deficiencies</option><option>System failed</option></select></label>
+ <label>Remarks <textarea name="remarks" rows="2"></textarea></label></details>
  <label>Inspection type <select name="inspType"><option>Annual</option><option>Semi-annual</option><option>Quarterly</option><option>Monthly</option><option>Acceptance / new</option><option>Reacceptance</option><option>Other</option></select></label>
  <label>Inspection date <input name="inspDate" type="date"></label>
  <label>Inspector license # <input name="license"></label>
@@ -148,4 +160,14 @@
   <div class="row"><span class="sp"></span><button type="button" class="btn pri" id="myCodeSave">Save to my library</button></div>
  </details>
  <div class="row"><span class="sp"></span><button class="btn" value="cancel">Done</button></div></form></dialog>
+<dialog id="imDlg"><form method="dialog"><h3 style="margin:4px 0">⇪ Import panel device list (CSV)</h3>
+ <small style="color:#94a3b8">Match rows to existing pins by address (and loop), then fill in label, model and loop. Nothing changes until you press Apply.</small>
+ <label>CSV file <input type="file" id="imFile" accept=".csv,text/csv,text/plain"></label>
+ <label>Apply to <select id="imScope"><option value="page">This page</option><option value="plan">This plan (all pages)</option><option value="proj">Whole project (all plans)</option></select></label>
+ <label>Match by <select id="imKey"><option value="addr">Address (+ loop when both have one)</option><option value="addrloop">Address and loop (both required)</option></select></label>
+ <div id="imMap"></div>
+ <label><input type="checkbox" id="imOver" style="width:auto"> Overwrite pin values that are already filled in</label>
+ <div class="row"><button type="button" class="btn" id="imReview">Review</button><span class="sp"></span><button class="btn" value="cancel">Cancel</button></div>
+ <div id="imRes"></div>
+ <div class="row"><span class="sp"></span><button type="button" class="btn pri" id="imApply" disabled>Apply</button></div></form></dialog>
 <script src="vendor/pdf.min.js"></script><script src="vendor/jspdf.umd.min.js"></script><script src="vendor/pdf-lib.min.js"></script><script src="app.js"></script><script>addEventListener("load",function(){var s=document.getElementById("splash");if(!s)return;setTimeout(function(){s.style.opacity="0";setTimeout(function(){s.remove()},450)},300)})</script></body></html>

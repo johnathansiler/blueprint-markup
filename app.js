@@ -324,8 +324,8 @@ $('#undo').onclick=undo;$('#redo').onclick=redo;
 // ---------- pin dialog ----------
 const dlg=$('#pinDlg'),form=$('#pinForm');let cur=null,urls=[];
 for(const[k,t]of Object.entries(TYPES)){$('#pinType').add(new Option(t.n,k));$('#dType').add(new Option(t.n,k));$('#fType').add(new Option(t.n,k))}
-const PK=['type','address','location','status','notes','reason','reasonText','severity'];
-let ckl=[];async function openPin(p){cur=p;if(!Array.isArray(cur.codes))cur.codes=[];for(const k of PK)form.elements[k].value=p[k]||(k==='severity'?'Non-critical':'');autoR=false;ckl=structuredClone(p.checks||checkItems(p.type));renderChecks();failUI();rtUpd();renderCodes();$('#testedInfo').textContent=testedTxt(p);await showMedia();dlg.showModal()}
+const PK=['type','address','model','location','status','notes','reason','reasonText','severity'];
+let ckl=[];async function openPin(p){cur=p;modelOpts(p.type);if(!Array.isArray(cur.codes))cur.codes=[];for(const k of PK)form.elements[k].value=p[k]||(k==='severity'?'Non-critical':'');autoR=false;ckl=structuredClone(p.checks||checkItems(p.type));renderChecks();failUI();rtUpd();renderCodes();$('#testedInfo').textContent=testedTxt(p);await showMedia();dlg.showModal()}
 const fmtT=t=>{const d=new Date(t),z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`};
 const testedTxt=p=>p.testedAt?`${p.status} ${fmtT(p.testedAt)}${p.tester?' by '+p.tester:''}`:'';
 let tester=null;async function getTester(force){if(tester===null)tester=(await get('meta','tester'))||'';if(!tester||force){const n=prompt('Tester name (asked once, saved on this device):',tester);if(n!==null&&n.trim()){tester=n.trim();await put('meta',tester,'tester')}}return tester}
@@ -352,12 +352,12 @@ function checksChanged(){const st=autoStatus(ckl);form.elements.status.value=st;
  failUI();renderChecks()}
 $('#checks').addEventListener('click',e=>{const b=e.target.closest('button[data-i]');if(!b)return;const c=ckl[+b.dataset.i];c.v=c.v===b.dataset.v?'':b.dataset.v;checksChanged()});
 $('#passAll').onclick=()=>{for(const c of ckl)if(!c.v)c.v='pass';checksChanged()};
-form.elements.type.addEventListener('change',()=>{if(!ckl.some(c=>c.v)){ckl=checkItems(form.elements.type.value);renderChecks()}});
+form.elements.type.addEventListener('change',()=>{modelOpts(form.elements.type.value);if(!ckl.some(c=>c.v)){ckl=checkItems(form.elements.type.value);renderChecks()}});
 form.addEventListener('submit',async e=>{if(e.submitter?.value!=='save')return;
  if(form.elements.status.value==='failed'&&!form.elements.reason.value){e.preventDefault();alert('Pick a fail reason for this failed device.');form.elements.reason.focus();return}
  if(form.elements.status.value==='failed'&&form.elements.severity.value==='Critical'&&!(cur.codes&&cur.codes.length)){e.preventDefault();if(confirm('Critical deficiency needs a code reference. Open the code picker?'))openCodePicker();else alert('Add at least one code reference for a Critical deficiency.');return}
  dlgSave=(async()=>{const b=structuredClone(cur),a={...b};for(const k of PK)a[k]=form.elements[k].value;if(ckl.some(c=>c.v)||b.checks)a.checks=structuredClone(ckl);if(a.status!=='failed'){a.reason='';a.reasonText='';a.severity='';delete a.codes}else if(cur.codes?.length)a.codes=structuredClone(cur.codes);else delete a.codes
- if(a.status!==b.status){a.testedAt=Date.now();a.tester=await getTester()}if(b.fp&&a.type!==b.type){const ng=groupFor(a.type,b.detG);a.detG=ng;learn(b.fp,ng)}if(JSON.stringify(a)!==JSON.stringify(b))await change('pins',b,a);cur=pins.find(x=>x.id===a.id)})()});
+ if(a.status!==b.status){a.testedAt=Date.now();a.tester=await getTester()}if(b.fp&&a.type!==b.type){const ng=groupFor(a.type,b.detG);a.detG=ng;learn(b.fp,ng)}if(a.model)rememberModel(a.type,a.model);if(JSON.stringify(a)!==JSON.stringify(b))await change('pins',b,a);cur=pins.find(x=>x.id===a.id)})()});
 // bpm-v66: wait for the async Save to land before the walk re-reads the pin (it used to re-render with the pre-save pin)
 let dlgSave=null;dlg.addEventListener('close',()=>{if(rec)rec.stop();const w=dlgSave;dlgSave=null;Promise.resolve(w).catch(()=>{}).then(()=>{if(walk)setTimeout(walkAfterDialog,0)})});
 $('#pinDel').onclick=async()=>{if(!confirm('Delete this pin and its media?'))return;await deletePin(cur);dlg.close()};
@@ -409,9 +409,9 @@ function renderSummary(){ // bpm-v35: progress = pass, fail, total, left, %
  $('#sum').innerHTML=`<summary><b>${c.pct}%</b> · <span class="st-passed">${c.passed} pass</span> · <span class="st-failed">${c.failed} fail</span> · ${c.t} total · ${c.left} left</summary>`;
  $('#sum').open=open}
 $('#testerBtn').onclick=()=>getTester(true);
-$('#csvBtn').onclick=async()=>{if(!project)return;const rows=[['plan','page','type','address','loop','location','status','tested','tester','notes']];
+$('#csvBtn').onclick=async()=>{if(!project)return;const rows=[['plan','page','type','address','loop','model','location','status','tested','tester','notes']];
  for(const pl of(await all('plans')).filter(p=>p.projectId===project.id).sort((a,b)=>a.added-b.added))for(const p of(await byIdx('pins','planId',pl.id)).sort((a,b)=>a.page-b.page||String(a.address).localeCompare(b.address,undefined,{numeric:true})))
-  rows.push([pl.name,p.page,TYPES[p.type]?.n||p.type,p.address,p.loop,p.location||'',p.status,p.testedAt?fmtT(p.testedAt):'',p.tester||'',p.notes]);
+  rows.push([pl.name,p.page,TYPES[p.type]?.n||p.type,p.address,p.loop,p.model||'',p.location||'',p.status,p.testedAt?fmtT(p.testedAt):'',p.tester||'',p.notes]);
  const cell=v=>{v=String(v??'');if(/^[=+\-@\t\r]/.test(v))v="'"+v;return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
  dl(new Blob(['\ufeff'+rows.map(r=>r.map(cell).join(',')).join('\r\n')],{type:'text/csv'}),project.name.replace(/[\\/:*?"<>|]/g,'_')+'-devices.csv')};
 // ---------- export ----------
@@ -431,7 +431,7 @@ $('#exPdf').onclick=async()=>{if(!plan)return;busy(1,'Exporting');prog(0);try{
  const blob=new Blob([await r.doc.save()],{type:'application/pdf'});
  const {jsPDF}=window.jspdf;const list=new jsPDF({unit:'pt',format:'letter'});let y=40;const ps=pins.filter(p=>p.page===page&&(!lay.exp||pVis(p)));
  list.setFontSize(14);list.text(`Device list - ${plan.name} page ${page}`,40,y);y+=20;list.setFontSize(10);
- for(const p of ps){if(y>760){list.addPage();y=40}list.text(`${TYPES[p.type].n} | Addr ${p.address||'-'} | Loop ${p.loop||'-'}${p.location?' | '+p.location:''} | ${p.status}${p.testedAt?' '+fmtT(p.testedAt):''}${p.tester?' by '+p.tester:''}${p.notes?' | '+p.notes.slice(0,50):''}${p.codes?.length?' | '+fmtCodes(p.codes):''}`.slice(0,120),40,y);y+=16}
+ for(const p of ps){if(y>760){list.addPage();y=40}list.text(`${TYPES[p.type].n}${p.model?' '+p.model:''} | Addr ${p.address||'-'} | Loop ${p.loop||'-'}${p.location?' | '+p.location:''} | ${p.status}${p.testedAt?' '+fmtT(p.testedAt):''}${p.tester?' by '+p.tester:''}${p.notes?' | '+p.notes.slice(0,50):''}${p.codes?.length?' | '+fmtCodes(p.codes):''}`.slice(0,120),40,y);y+=16}
  const C=countRows(await projData());if(C.total.length){list.addPage();list.setFontSize(14);list.text(`Device counts - ${project.name}`,40,40);pdfCounts(list,C,64)}
  const out=ps.length||C.total.length?await mergePdfBlobs([blob,list.output('blob')]):blob;
  window.__lastPlanPdf=out;dl(out,base()+'.pdf');toast('PDF exported (selectable plan text where the source has a text layer)')}
@@ -758,12 +758,16 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v71',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v72',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
   const ly=await get('meta','layers:'+pl.id);if(ly)man.layers[pl.id]=ly;const sc=await get('meta','scale:'+pl.id);if(sc)(man.scales??={})[pl.id]=sc;const ro=await get('meta','rot:'+pl.id);if(ro)(man.rots??={})[pl.id]=ro}
  const last=await get('meta','last:'+pid);if(last)man.meta.last=last;const job=await get('meta','job:'+pid);if(job)man.meta.job=job;if(withLearned)man.learned=await all('learned');man.mycodes=await all('mycodes');man.cktpl=Object.keys(CKT).length?CKT:null;
+ {// bpm-v72: human-readable reports inside the archive (ignored on import)
+  const q=v=>/[",\n]/.test(String(v??''))?'"'+String(v).replace(/"/g,'""')+'"':String(v??''),pm=new Map(man.plans.map(p=>[p.id,p.name])),rows=[['plan','page','type','address','loop','model','location','status','reason','severity','codes','tested','tester','notes'],...man.pins.map(p=>[pm.get(p.planId)||'',p.page,TYPES[p.type]?.n||p.type,p.address,p.loop,p.model||'',p.location||'',p.status,p.reason||'',p.severity||'',(p.codes||[]).map(c=>c.code+' '+c.section).join('; '),p.testedAt?new Date(p.testedAt).toISOString():'',p.tester||'',p.notes||''])];
+  files.push({name:'reports/device-list.csv',blob:new Blob([rows.map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv'})});if(job)files.push({name:'reports/job-info.json',blob:new Blob([JSON.stringify(job,null,1)],{type:'application/json'})})}
+ man.models=await get('meta','models:custom')||null;
  files.unshift({name:'project.json',blob:new Blob([JSON.stringify(man)],{type:'application/json'})});const tot=files.reduce((a,f)=>a+f.blob.size,0);let done=0;return zipBlob(files,n=>{done+=n;onP&&onP(done/tot)})}
 async function readBpm(file){const z=await unzipBlob(file),mj=z.get('project.json');if(!mj)throw new Error('this file has no project.json, it is not a Marker project');let man;try{man=JSON.parse(await mj.blob.text())}catch{throw new Error('project.json is damaged')}
  if(man.format!==BPM_FMT)throw new Error('this is not a Marker project file');if(!Number.isInteger(man.version)||man.version<1)throw new Error('unknown project file version');if(man.version>BPM_VER)throw new Error(`this file was saved by a newer app (format v${man.version}; this app reads up to v${BPM_VER}). Reload the app to update it, then try again.`);
@@ -771,7 +775,7 @@ async function readBpm(file){const z=await unzipBlob(file),mj=z.get('project.jso
 async function importBpm(file,replaceId,onP){const{z,man}=await readBpm(file);
  const ent=async(n,type)=>{const e=z.get(n);if(!e)throw new Error('the file is missing '+n);if(await crcBlob(e.blob)!==e.crc)throw new Error(n+' is damaged (checksum mismatch)');return new Blob([await e.blob.arrayBuffer()],{type:type||''})};
  const idm=new Map(),nid=o=>{if(!idm.has(o))idm.set(o,uid()+Math.random().toString(36).slice(2,5));return idm.get(o)};
- const pid=replaceId||'p'+uid(),names=(await all('projects')).filter(p=>p.id!==replaceId).map(p=>p.name);let name=man.project?.name||file.name.replace(/\.bpm$/i,'');if(!replaceId&&names.includes(name))name+=' (opened)';
+ const pid=replaceId||'p'+uid(),names=(await all('projects')).filter(p=>p.id!==replaceId).map(p=>p.name);let name=man.project?.name||file.name.replace(/\.(bpm|marker)$/i,'');if(!replaceId&&names.includes(name))name+=' (opened)';
  // 1) read + verify every blob before touching the database
  const plans=[],media=[],N=man.plans.length+man.media.length;let k=0;const tick=()=>onP&&onP(++k/Math.max(1,N));
  for(const m of man.plans){const{file:f,type,size,...r}=m;plans.push({...r,id:nid(m.id),projectId:pid,blob:f?await ent(f,type):new Blob([])});tick()}
@@ -789,7 +793,7 @@ async function importBpm(file,replaceId,onP){const{z,man}=await readBpm(file);
   if(replaceId){const old=(await all('plans')).filter(p=>p.projectId===replaceId&&!plans.some(x=>x.id===p.id));for(const o of old)await deletePlanData(o.id);const pr=await get('projects',replaceId);await put('projects',{...pr,...man.project,id:replaceId,name,created:pr?.created||Date.now()})}
   else await put('projects',{...man.project,id:pid,name,created:Date.now()});
   if(man.meta?.last&&idm.has(man.meta.last))await put('meta',idm.get(man.meta.last),'last:'+pid);
-  if(man.meta?.job)await put('meta',man.meta.job,'job:'+pid);
+  if(man.meta?.job)await put('meta',man.meta.job,'job:'+pid);if(man.models&&typeof man.models==='object'){const cm=await get('meta','models:custom')||{};for(const[t,l]of Object.entries(man.models))if(Array.isArray(l))cm[t]=[...new Set([...(cm[t]||[]),...l.map(String)])];await put('meta',cm,'models:custom');MODELS_C=cm}
   return{pid,name,plans:plans.length,markups:mk.length,pins:pn.length,media:media.length,learned:nl,mycodes:nm}}
  catch(e){for(const[s,id]of wrote.reverse())try{await del(s,id)}catch{}throw e}}
 // deliver a file: save picker (desktop Chrome/Edge), else share sheet, else a normal download
@@ -925,7 +929,7 @@ $('#myCodeTypes').innerHTML=Object.entries(TYPES).map(([k,v])=>`<option value="$
 loadCodes();
 
 // ---------- v11: job / system info ----------
-const JOB0={building:'',address:'',ahj:'',systemType:'Protected premises (local)',monitoring:'',panel:'',inspType:'Annual',inspDate:'',license:'',owner:''};
+const JOB0={building:'',address:'',ahj:'',systemType:'Protected premises (local)',monitoring:'',panel:'',inspType:'Annual',inspDate:'',license:'',owner:'',ownerName:'',ownerAddr:'',ownerPhone:'',occupancy:'',panelMake:'',panelModel:'',firmware:'',panelLoc:'',monAcct:'',monPhone:'',monMethod:'',priPower:'',priLoc:'',battery:'',batDate:'',batTest:'',aux:'',company:'',techName:'',techLic:'',installDate:'',testDate:'',nextDate:'',result:'',remarks:''};
 async function getJob(){return{...JOB0,...((await get('meta','job:'+project.id))||{})}}
 async function saveJob(j){await put('meta',j,'job:'+project.id)}
 function jobToForm(j){const f=$('#jobForm');for(const k of Object.keys(JOB0))if(f.elements[k])f.elements[k].value=j[k]||JOB0[k]}
@@ -949,6 +953,14 @@ function nfpaHeader(doc,title,j,tn){
 function nfpaJobBlock(doc,j,y){const L=(t)=>{const ls=doc.splitTextToSize(t,530);doc.text(ls,40,y);y+=ls.length*12+2};doc.setFontSize(11);doc.setFont(undefined,'bold');doc.text('System / job information',40,y);y+=16;doc.setFont(undefined,'normal');doc.setFontSize(10);
  L(`Building: ${j.building||'-'}    Address: ${j.address||'-'}`);L(`Owner/contact: ${j.owner||'-'}    AHJ: ${j.ahj||'-'}`);
  L(`System type: ${j.systemType||'-'}    Monitoring: ${j.monitoring||'-'}`);L(`Control panel: ${j.panel||'-'}    Inspection type: ${j.inspType||'-'}`);
+ // bpm-v72: NFPA 72 Ch. 7 record fields (project-level, editable in 🏛 Job info)
+ const H=t=>{if(y>730){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text(t,40,y);y+=13;doc.setFont(undefined,'normal')},v=x=>x||'-';
+ H('Property / owner');L(`Owner: ${v(j.ownerName||j.owner)}    Owner address: ${v(j.ownerAddr)}    Phone: ${v(j.ownerPhone)}`);L(`Occupancy / use: ${v(j.occupancy)}`);
+ H('Control unit');L(`Manufacturer: ${v(j.panelMake)}    Model: ${v(j.panelModel)}    Firmware/software: ${v(j.firmware)}    Location: ${v(j.panelLoc)}`);
+ H('Off-premises monitoring');L(`Company: ${v(j.monitoring)}    Account #: ${v(j.monAcct)}    Phone: ${v(j.monPhone)}    Method: ${v(j.monMethod)}`);
+ H('Power supplies');L(`Primary (panel/circuit): ${v(j.priPower)}    Location: ${v(j.priLoc)}`);L(`Secondary / batteries: ${v(j.battery)}    Battery date: ${v(j.batDate)}    Battery test: ${v(j.batTest)}`);L(`Other power supplies (NAC/aux): ${v(j.aux)}`);
+ H('Service / technician');L(`Company: ${v(j.company)}    Technician: ${v(j.techName)}    Cert/license #: ${v(j.techLic||j.license)}`);
+ H('Dates / result');L(`Installed: ${v(j.installDate)}    Inspection: ${v(j.inspDate)}    Test: ${v(j.testDate)}    Next due: ${v(j.nextDate)}`);L(`Overall test result: ${v(j.result)}`);if(j.remarks)L(`Remarks: ${j.remarks}`);
  doc.setDrawColor(180);doc.line(40,y,572,y);return y+14}
 function nfpaFooter(doc,name){const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(120);doc.text(`${name} · Marker report (NFPA 72-mapped) · page ${i} of ${n}`,40,780);doc.setTextColor(0)}}
 async function nfpaDeviceStats(D){const by={};for(const{pins:ps}of D)for(const p of ps){const t=p.type||'other';(by[t]??= {t,n:0,pass:0,fail:0,ip:0,nt:0,na:0});by[t].n++;
@@ -965,10 +977,10 @@ $('#nfpaItm').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1,
  y+=10;doc.setFont(undefined,'bold');doc.setFontSize(11);if(y>720){doc.addPage();y=44}doc.text('Deficiencies found',40,y);y+=14;doc.setFont(undefined,'normal');doc.setFontSize(10);
  const defs=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='failed').map(p=>({pl,p}))).sort((a,b)=>(a.p.severity==='Critical'?0:1)-(b.p.severity==='Critical'?0:1));
  if(!defs.length){doc.text('None recorded.',40,y);y+=14}
- for(const{pl,p}of defs){const block=[`${p.severity||'-'}: ${TYPES[p.type]?.n||p.type} ${p.address||''} (Loop ${p.loop||'-'})${p.location?' @ '+p.location:''} — ${p.reason||''}${p.reasonText?': '+p.reasonText:''}`,`${pl.name} pg ${p.page}${p.testedAt?' · '+fmtT(p.testedAt):''}${p.tester?' · '+p.tester:''}`,p.codes?.length?`Code refs: ${fmtCodes(p.codes)} (${(p.codes).map(c=>c.title).join('; ')})`:'Code refs: (none)',p.notes?`Notes: ${p.notes}`:''].filter(Boolean);
+ for(const{pl,p}of defs){const block=[`${p.severity||'-'}: ${TYPES[p.type]?.n||p.type}${p.model?' ['+p.model+']':''} ${p.address||''} (Loop ${p.loop||'-'})${p.location?' @ '+p.location:''} — ${p.reason||''}${p.reasonText?': '+p.reasonText:''}`,`${pl.name} pg ${p.page}${p.testedAt?' · '+fmtT(p.testedAt):''}${p.tester?' · '+p.tester:''}`,p.codes?.length?`Code refs: ${fmtCodes(p.codes)} (${(p.codes).map(c=>c.title).join('; ')})`:'Code refs: (none)',p.notes?`Notes: ${p.notes}`:''].filter(Boolean);
   const lines=doc.splitTextToSize(block.join('\n'),530);if(y+lines.length*12>760){doc.addPage();y=44}if(p.severity==='Critical')doc.setTextColor(185,28,28);doc.text(lines,40,y);doc.setTextColor(0);y+=lines.length*12+8}
  y+=8;if(y>680){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text('Signatures',40,y);y+=20;doc.setFont(undefined,'normal');
- doc.text('Inspector: _______________________________  Date: __________  License: '+ (j.license||'__________'),40,y);y+=28;
+ doc.text(`Inspector: ${j.techName||'_______________________________'}  Sign: ______________  Date: __________  License: `+(j.techLic||j.license||'__________'),40,y);y+=28;
  doc.text('Owner / representative: _______________________________  Date: __________',40,y);y+=28;
  doc.text('AHJ (if required): _______________________________  Date: __________',40,y);
  nfpaFooter(doc,project.name);dl(doc.output('blob'),fsafe(project.name)+'-inspection-testing-record.pdf');toast('Inspection & Testing Record exported')}
@@ -986,10 +998,10 @@ $('#nfpaComp').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1
  y+=6;doc.setFont(undefined,'bold');doc.text('Outstanding deficiencies at acceptance',40,y);y+=14;doc.setFont(undefined,'normal');
  const defs=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='failed').map(p=>({pl,p})));
  if(!defs.length)doc.text('None.',40,y),y+=14;
- for(const{pl,p}of defs){const t=`• ${p.severity}: ${TYPES[p.type]?.n||p.type} ${p.address||''} — ${p.reason||''}${p.codes?.length?' ['+fmtCodes(p.codes)+']':''} (${pl.name} pg ${p.page})`;const ls=doc.splitTextToSize(t,530);if(y+ls.length*12>760){doc.addPage();y=44}doc.text(ls,40,y);y+=ls.length*12+4}
+ for(const{pl,p}of defs){const t=`• ${p.severity}: ${TYPES[p.type]?.n||p.type}${p.model?' ['+p.model+']':''} ${p.address||''} — ${p.reason||''}${p.codes?.length?' ['+fmtCodes(p.codes)+']':''} (${pl.name} pg ${p.page})`;const ls=doc.splitTextToSize(t,530);if(y+ls.length*12>760){doc.addPage();y=44}doc.text(ls,40,y);y+=ls.length*12+4}
  y+=16;if(y>700){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text('Acceptance signatures',40,y);y+=22;doc.setFont(undefined,'normal');
  doc.text('Installing contractor: _________________________  Date: ________',40,y);y+=24;
- doc.text('Inspector / acceptance tester: _________________________  Date: ________',40,y);y+=24;
+ doc.text(`Inspector / acceptance tester: ${j.techName?j.techName+(j.techLic?' (Lic. '+j.techLic+')':'')+'  Sign: ___________':'_________________________'}  Date: ________`,40,y);y+=24;
  doc.text('Owner: _________________________  Date: ________    AHJ: _________________________',40,y);
  nfpaFooter(doc,project.name);dl(doc.output('blob'),fsafe(project.name)+'-record-of-completion.pdf');toast('Record of Completion summary exported')}
  catch(e){showErr('Completion record failed: '+e.message)}finally{busy(0)}};
@@ -1002,7 +1014,7 @@ $('#nfpaDef').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1,
  doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text(`${defs.length} deficiency(ies) · ${defs.filter(d=>d.p.severity==='Critical').length} critical`,40,y);y+=16;doc.setFont(undefined,'normal');doc.setFontSize(10);
  if(!defs.length)doc.text('No failed devices in this project.',40,y);
  for(const{pl,p}of defs){const ph=await firstPhoto(p.id);let im=null;if(ph)try{im=await blobJpeg(ph,500)}catch{}
-  const head=`${p.severity||'Non-critical'}: ${TYPES[p.type]?.n||p.type} ${p.address||'(no address)'} · Loop ${p.loop||'-'}${p.location?' · '+p.location:''}`;
+  const head=`${p.severity||'Non-critical'}: ${TYPES[p.type]?.n||p.type}${p.model?' ['+p.model+']':''} ${p.address||'(no address)'} · Loop ${p.loop||'-'}${p.location?' · '+p.location:''}`;
   const body=[`Reason: ${p.reason||'-'}${p.reasonText?' — '+p.reasonText:''}`,p.codes?.length?`Code references:\n`+p.codes.map(c=>`  • ${c.code} ${c.section} — ${c.title}`).join('\n'):'Code references: (none attached)',p.location?`Location: ${p.location}`:'',`Plan: ${pl.name}, page ${p.page}`,`Tested: ${p.testedAt?fmtT(p.testedAt):'-'}${p.tester?' by '+p.tester:''}`,p.notes?`Notes: ${p.notes}`:''].filter(Boolean).join('\n');
   const lines=doc.splitTextToSize(body,im?300:530);const ih=im?Math.min(120,im.h*(160/im.w)):0;const need=Math.max(ih,28+lines.length*12)+16;if(y+need>760){doc.addPage();y=44}
   if(p.severity==='Critical')doc.setTextColor(185,28,28);doc.setFont(undefined,'bold');doc.text(head,40,y+10);doc.setTextColor(0);doc.setFont(undefined,'normal');doc.text(lines,40,y+24);if(im)doc.addImage(im.d,'JPEG',400,y,160,ih);y+=need;doc.setDrawColor(200);doc.line(40,y-8,572,y-8)}
@@ -1253,3 +1265,56 @@ function walkGoto(){if(!walk)return;let d=$('#wGotoDlg');if(!d){d=document.creat
   d.querySelectorAll('#wgL [data-id]').forEach(b=>b.onclick=()=>{const p=pins.find(x=>x.id===b.dataset.id);d.close();if(p&&walk){walk.skip.delete(p.id);walkGo(p)}})};
  d.innerHTML=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px"><b style="flex:1">📍 Go to device</b><button type="button" class="btn" id="wgX">✕</button></div><input id="wgF" type="search" placeholder="Search address, loop, location, type" style="width:100%;margin-bottom:6px"><label style="display:flex;gap:6px;align-items:center;margin-bottom:6px"><input type="checkbox" id="wgU" checked style="width:20px;height:20px;min-height:20px"> Untested only</label><div id="wgL" style="overflow:auto;max-height:60vh"></div><small style="color:#94a3b8">Tip: you can also tap any pin on the plan to jump to it.</small>`;
  d.querySelector('#wgX').onclick=()=>d.close();d.querySelector('#wgF').oninput=e=>{f=e.target.value.trim().toLowerCase();draw_()};d.querySelector('#wgU').onchange=e=>{only=e.target.checked;draw_()};draw_();d.showModal()}
+
+// ---------- bpm-v72: device model numbers per type (seeded + remembered custom entries) ----------
+const MODELS={
+ smoke:['Notifier FSP-851','Notifier FSP-851T','Notifier FSP-951','Fire-Lite SD355','Fire-Lite SD355T','Simplex 4098-9714','EST SIGA-PD','EST SIGA-OSD','System Sensor 2W-B','System Sensor 2WT-B','System Sensor 4W-B'],
+ heat:['Notifier FST-851','Notifier FST-851R','Fire-Lite H355','Fire-Lite H355R','Simplex 4098-9733','EST SIGA-HRS','System Sensor 5601P','System Sensor 5602'],
+ pull:['Notifier NBG-12LX','Fire-Lite BG-12LX','EST SIGA-278','Edwards 270-SPO','Simplex 4099-9001'],
+ horn:['System Sensor HR','System Sensor P2R','System Sensor P2W','System Sensor P4R'],
+ strobe:['System Sensor SR','System Sensor SW','System Sensor SCR'],
+ spkstrobe:['System Sensor SPSR','System Sensor SPSW'],
+ duct:['System Sensor DNR','System Sensor DNRW','EST SIGA-SD'],
+ module:['Notifier FMM-1','Notifier FMM-101','Notifier FZM-1','Fire-Lite MMF-300','Fire-Lite MMF-301','Fire-Lite MMF-302','EST SIGA-CT1','EST SIGA-CT2','Simplex 4090-9001'],
+ relay:['XTRI-D','Notifier FRM-1','Notifier FCM-1','Fire-Lite CRF-300','Fire-Lite CMF-300','EST SIGA-CR','EST SIGA-CRR','Simplex 4090-9002'],
+ flow:['Potter VSR','Potter VSR-F','System Sensor WFD20','System Sensor WFD40','System Sensor WFD60'],
+ tamper:['Potter OSYSU-1','Potter OSYSU-2','Potter PIVS-U','System Sensor OSY2','System Sensor PIBV2'],
+ panel:['Notifier NFS2-3030','Notifier NFS2-640','Notifier NFS-320','Fire-Lite MS-9200UDLS','Fire-Lite MS-9600UDLS','Fire-Lite ES-50X','Simplex 4100ES','Simplex 4010ES','Simplex 4007ES','EST EST3','EST EST4','EST iO64','EST iO1000','Siemens FC2025','Siemens FC2050'],
+ dact:['Fire-Lite 411UDAC','Notifier UDACT-2'],
+ doorholder:['Edwards 1504','Edwards 1505'],
+ rai:['System Sensor RA100Z','System Sensor RA400Z']};
+let MODELS_C=null;async function customModels(){if(!MODELS_C)MODELS_C=(await get('meta','models:custom'))||{};return MODELS_C}
+async function rememberModel(t,m){m=String(m||'').trim();if(!m||(MODELS[t]||[]).some(x=>x===m||x.endsWith(' '+m)))return;const c=await customModels();if((c[t]||[]).includes(m))return;c[t]=[...(c[t]||[]),m];await put('meta',c,'models:custom')}
+async function modelOpts(t){const c=await customModels(),L=[...(MODELS[t]||[]),...(c[t]||[]).filter(m=>!(MODELS[t]||[]).includes(m))];$('#modelList').innerHTML=L.map(m=>`<option value="${esc(m)}">`).join('');return L}
+
+// ---------- bpm-v72: panel device list CSV import (review before apply) ----------
+function parseCSV(t){const R=[];let row=[],f='',q=false;t=t.replace(/^\uFEFF/,'');for(let i=0;i<t.length;i++){const ch=t[i];if(q){if(ch==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=ch}else if(ch==='"')q=true;else if(ch===','||ch===';'&&false||ch==='\t'){row.push(f);f=''}else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&t[i+1]==='\n')i++;row.push(f);f='';if(row.some(x=>x.trim()))R.push(row);row=[]}else f+=ch}row.push(f);if(row.some(x=>x.trim()))R.push(row);return R}
+const IM_F=[['address',/^(dev(ice)?\s*)?addr(ess)?|^point|^device\s*#?$|^dev\s*#|^sla|^no\.?$/i],['loop',/loop|slc|circuit/i],['label',/label|desc|custom|location|zone\s*label|name|text/i],['type',/type|kind|category/i],['model',/model|part|p\/n|catalog/i]];
+const imTypeOf=s=>{s=String(s||'').toLowerCase();if(!s)return'';for(const k of Object.keys(TYPES))if(s===k||s===TYPES[k].n.toLowerCase())return k;return /duct/.test(s)?'duct':/smoke|photo|ion|detector|sd\b|psd/.test(s)?'smoke':/heat|therm/.test(s)?'heat':/pull|manual|station/.test(s)?'pull':/flow/.test(s)?'flow':/tamper|valve|supv|supervis/.test(s)?'tamper':/relay|control|ctrl|output/.test(s)?'relay':/speaker/.test(s)?'spkstrobe':/strobe/.test(s)?'strobe':/horn/.test(s)?'horn':/monitor|module|input|zone/.test(s)?'module':''};
+const imNA=s=>String(s??'').trim().toLowerCase().replace(/^0+(?=\d)/,'').replace(/\s+/g,'');
+let IM={rows:[],head:[],plan:null};
+$('#imBtn').onclick=()=>{if(!plan)return alert('Open a plan first.');IM={rows:[],head:[]};$('#imFile').value='';$('#imMap').innerHTML='';$('#imRes').innerHTML='';$('#imApply').disabled=true;$('#imDlg').showModal()};
+$('#imFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;const R=parseCSV(await f.text());if(!R.length){$('#imMap').textContent='No rows found.';return}
+ const h=R[0],hasHead=h.some(x=>IM_F.some(([,re])=>re.test(x.trim())))&&!h.every(x=>/^\d*$/.test(x.trim()));IM.head=hasHead?h.map((x,i)=>x.trim()||'Column '+(i+1)):h.map((_,i)=>'Column '+(i+1));IM.rows=hasHead?R.slice(1):R;
+ const used=new Set(),guess={};for(const[k,re]of IM_F){const i=IM.head.findIndex((x,j)=>!used.has(j)&&re.test(x));if(i>=0){guess[k]=i;used.add(i)}}
+ $('#imMap').innerHTML=`<b>Column mapping</b> <small style="color:#94a3b8">${IM.rows.length} row(s)</small>`+IM_F.map(([k])=>`<label>${k==='label'?'Label / description → pin Location':k[0].toUpperCase()+k.slice(1)} <select data-f="${k}"><option value="-1">(none)</option>${IM.head.map((x,i)=>`<option value="${i}"${guess[k]===i?' selected':''}>${esc(x)}</option>`).join('')}</select></label>`).join('');$('#imRes').innerHTML='';$('#imApply').disabled=true};
+async function imTargets(){const sc=$('#imScope').value;if(sc==='page')return pins.filter(p=>p.page===page);if(sc==='plan')return pins.slice();return(await projData()).flatMap(d=>d.pins)}
+async function imReview(){const M={};document.querySelectorAll('#imMap [data-f]').forEach(s=>M[s.dataset.f]=+s.value);if(!(M.address>=0))throw new Error('Map the Address column first.');
+ const T=await imTargets(),key=$('#imKey').value,over=$('#imOver').checked,cell=(r,k)=>M[k]>=0?String(r[M[k]]??'').trim():'',out={match:[],un:[],conf:[]};
+ for(const[ri,r]of IM.rows.entries()){const ad=imNA(cell(r,'address')),lp=imNA(cell(r,'loop'));if(!ad){out.un.push({ri,r,why:'no address'});continue}
+  const C=T.filter(p=>imNA(p.address)===ad&&(key==='addrloop'?lp&&imNA(p.loop)===lp:(!lp||!imNA(p.loop)||imNA(p.loop)===lp)));
+  const lab=cell(r,'label'),mo=cell(r,'model'),ty=imTypeOf(cell(r,'type'));
+  if(!C.length){out.un.push({ri,r,why:'no pin with this address'+(lp?' / loop '+lp:'')});continue}
+  if(C.length>1){out.conf.push({ri,r,why:`${C.length} pins share this address — add a loop column or narrow the scope`});continue}
+  const p=C[0],set={},why=[];if(lab&&lab!==(p.location||'')){if(p.location&&!over)why.push(`label "${p.location}" vs "${lab}"`);else set.location=lab}
+  if(mo&&mo!==(p.model||'')){if(p.model&&!over)why.push(`model "${p.model}" vs "${mo}"`);else set.model=mo}
+  if(lp&&!p.loop)set.loop=cell(r,'loop');if(ty&&ty!==p.type)why.push(`type ${TYPES[p.type]?.n||p.type} vs ${TYPES[ty].n}`);
+  (why.length?out.conf:out.match).push({ri,r,p,set,why:why.join('; ')})}
+ return out}
+$('#imReview').onclick=async()=>{try{IM.res=await imReview();const R=IM.res,row=x=>`<li><small>row ${x.ri+1}:</small> ${esc(x.r.join(' · ').slice(0,90))}${x.p?` → <b>${esc(TYPES[x.p.type]?.n||x.p.type)} ${esc(x.p.address)}</b> pg ${x.p.page}`:''}${x.set&&Object.keys(x.set).length?` <small style="color:#4ade80">fill ${esc(Object.entries(x.set).map(([k,v])=>k+'='+v).join(', '))}</small>`:''}${x.why?` <small style="color:#fbbf24">${esc(x.why)}</small>`:''}</li>`;
+ $('#imRes').innerHTML=`<h4 style="margin:6px 0">✔ Matched (${R.match.length})</h4><ul class="imL" id="imM">${R.match.map(row).join('')||'<li>none</li>'}</ul><h4 style="margin:6px 0">⚠ Conflicts (${R.conf.length}) <small style="color:#94a3b8">not applied unless ticked</small></h4><ul class="imL" id="imC">${R.conf.map((x,i)=>x.p?`<label style="display:flex;gap:6px"><input type="checkbox" data-c="${i}" style="width:auto">${row(x)}</label>`:row(x)).join('')||'<li>none</li>'}</ul><h4 style="margin:6px 0">✖ Unmatched (${R.un.length})</h4><ul class="imL" id="imU">${R.un.map(row).join('')||'<li>none</li>'}</ul>`;
+ $('#imApply').disabled=!R.match.some(x=>Object.keys(x.set).length)&&!R.conf.some(x=>x.p)}catch(e){$('#imRes').textContent=e.message}};
+$('#imApply').onclick=async()=>{const R=IM.res;if(!R)return;const M={};document.querySelectorAll('#imMap [data-f]').forEach(s=>M[s.dataset.f]=+s.value);
+ const pick=[...R.match,...[...document.querySelectorAll('#imC [data-c]:checked')].map(b=>{const x=R.conf[+b.dataset.c],r=x.r,c=k=>M[k]>=0?String(r[M[k]]??'').trim():'',set={...x.set};if(c('label'))set.location=c('label');if(c('model'))set.model=c('model');return{...x,set}})].filter(x=>x.p&&Object.keys(x.set).length);
+ const here=[],other=[];for(const x of pick){const b=x.p,a={...structuredClone(b),...x.set};(b.planId===plan.id?here:other).push({store:'pins',id:a.id,before:structuredClone(b),after:a});if(a.model)await rememberModel(a.type,a.model)}
+ if(here.length)await changeMulti(here);for(const o of other)await put('pins',o.after);$('#imDlg').close();toast(`CSV import: ${pick.length} pin(s) updated${other.length?` (${other.length} on other plans)`:''}`)};

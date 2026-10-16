@@ -42,3 +42,9 @@ Personal `mycodes` are merged on open (existing ids kept). Built-in `codes.json`
 - `man.cktpl`: custom checklist templates `{ "<type>": ["item", ...] }` (meta `cktpl`). Missing types fall back to built-in defaults.
 - Pin type `surge` (surge protector/suppressor, short code SS).
 - v16: no format changes; pin overlap offsets are display-only (stored x,y are the true device location).
+
+## bpm-v72 additions
+- Files may use the `.marker` extension (same ZIP format as `.bpm`).
+- `reports/device-list.csv` and `reports/job-info.json`: human-readable copies, ignored on import.
+- `project.json` `models`: custom device model entries per type (merged on import).
+- Pins may carry `model` (string).
