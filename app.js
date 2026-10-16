@@ -229,11 +229,11 @@ function hit(w){const tol=10/view.s,pr=Math.max(pinR()*1.4,16/view.s);for(const 
  for(const m of[...markups].reverse()){if(m.page!==page||!mVis(m))continue;if(ZT.includes(m.type)){const P=zPts(m);for(let i=1;i<P.length;i++){const[ax,ay]=P[i-1],dx=P[i][0]-ax,dy=P[i][1]-ay,t=Math.max(0,Math.min(1,((w.x-ax)*dx+(w.y-ay)*dy)/((dx*dx+dy*dy)||1)));if(Math.hypot(ax+t*dx-w.x,ay+t*dy-w.y)<tol*1.4)return{kind:'m',o:m}}continue}if(isLine(m)){const dx=m.x2-m.x1,dy=m.y2-m.y1,t=Math.max(0,Math.min(1,((w.x-m.x1)*dx+(w.y-m.y1)*dy)/((dx*dx+dy*dy)||1)));if(Math.hypot(m.x1+t*dx-w.x,m.y1+t*dy-w.y)<tol*1.4)return{kind:'m',o:m};continue}const x=Math.min(m.x1,m.x2),y=Math.min(m.y1,m.y2),X=Math.max(m.x1,m.x2),Y=Math.max(m.y1,m.y2);if(w.x>x-tol&&w.x<X+tol&&w.y>y-tol&&w.y<Y+tol)return{kind:'m',o:m}}return null}
 // ---------- input ----------
 const ptrs=new Map();let gesture=null;
-// bpm-v55: free draw by default; constrain (15° lines/arrows/zigzag, equal-ratio shapes) only while holding the tool button
-let holdT=0,lastTap=null;const HOLD=new Set();
+// bpm-v71: free draw by default; constrain (15° lines/arrows/zigzag, equal-ratio shapes) while the Snap toggle is on or Shift is held (v55 hold-tool-button removed)
+let snapOn=false,shiftDn=false,lastTap=null;const snapK=()=>snapOn||shiftDn;
+addEventListener('keydown',e=>{if(e.key==='Shift')shiftDn=true});addEventListener('keyup',e=>{if(e.key==='Shift')shiftDn=false});addEventListener('blur',()=>shiftDn=false);
 function constrainPt(d,w){const dx=w.x-d.x1,dy=w.y-d.y1;if(d.type==='line'||d.type==='arrow'||d.type==='dim'){const L=Math.hypot(dx,dy),a=Math.round(Math.atan2(dy,dx)/(Math.PI/12))*(Math.PI/12);return{x:d.x1+L*Math.cos(a),y:d.y1+L*Math.sin(a)}}if(['rect','ellipse','cloud','check'].includes(d.type)){const m=Math.max(Math.abs(dx),Math.abs(dy));return{x:d.x1+(dx<0?-m:m),y:d.y1+(dy<0?-m:m)}}return w}
-document.querySelectorAll('[data-t]').forEach(b=>b.addEventListener('pointerdown',e=>{HOLD.add(e.pointerId);holdT=HOLD.size;if(b.dataset.t!==tool)b.click()}));
-['pointerup','pointercancel'].forEach(k=>window.addEventListener(k,e=>{if(HOLD.delete(e.pointerId))holdT=HOLD.size},true));
+(function(){const b=$('#cSnap');if(!b)return;const sync=()=>{b.classList.toggle('on',snapOn);b.setAttribute('aria-pressed',snapOn?'true':'false');b.title=snapOn?'Snap ON: 15° lines/arrows/zigzag, equal-ratio shapes — tap to turn off':'Snap off (freeform) — tap for 15° angles / equal ratios (or hold Shift)'};sync();b.onclick=()=>{snapOn=!snapOn;sync()}})();
 stage.addEventListener('pointerdown',e=>{if(!plan||e.target!==cv)return;stage.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.offsetX,y:e.offsetY});
  if(ptrs.size===2){draft=null;const[a,b]=[...ptrs.values()];gesture={type:'pinch',d:Math.hypot(a.x-b.x,a.y-b.y),c:{x:(a.x+b.x)/2,y:(a.y+b.y)/2},v:{...view}};return}
  const w=toW(e.offsetX,e.offsetY);const start={sx:e.offsetX,sy:e.offsetY,moved:false};
@@ -247,7 +247,7 @@ stage.addEventListener('pointerdown',e=>{if(!plan||e.target!==cv)return;stage.se
  if(tool==='pin'){gesture={type:'pin',...start,w};return}
  if(tool==='text'){gesture={type:'text',...start,w};return}
  if(tool==='measure'){if(MS.mode==='path'&&!MS.cal){gesture={type:'mpath',...start,w,v:{...view}};return}const p0=mSnap(w);draft={id:uid(),planId:plan.id,page,type:MS.cal?'cal':MS.mode==='area'?'darea':'dim',x1:p0.x,y1:p0.y,x2:p0.x,y2:p0.y,color:MS.cal?'#0ea5e9':$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false)};gesture={type:'draw',...start};mRead();return}
- if(tool==='zig'){const p=mkSnap(w);draft={id:uid(),planId:plan.id,page,type:'zig',x1:p.x,y1:p.y,x2:p.x,y2:p.y,rp:[[0,0],[0,0]],color:$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false)};gesture={type:'zig',...start,V:[[p.x,p.y]],S:[]};return}
+ if(tool==='zig'){const p=mkSnap(w);draft={id:uid(),planId:plan.id,page,type:'zig',x1:p.x,y1:p.y,x2:p.x,y2:p.y,rp:[[0,0],[0,0]],color:$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false)};gesture={type:'zig',...start,V:[[p.x,p.y]],R:[[p.x,p.y]]};return}
  {let p=w;if(['rect','ellipse','cloud','arrow','line','check'].includes(tool))p=mkSnap(w);draft={id:uid(),planId:plan.id,page,type:tool,x1:p.x,y1:p.y,x2:p.x,y2:p.y,color:$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false)};gesture={type:'draw',...start}}});
 stage.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,{x:e.offsetX,y:e.offsetY});if(!gesture)return;
  if(gesture.type==='pinch'&&ptrs.size>=2){const[a,b]=[...ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y),c={x:(a.x+b.x)/2,y:(a.y+b.y)/2},g=gesture,s=clampS(g.v.s*d/g.d),wx=(g.c.x-g.v.x)/g.v.s,wy=(g.c.y-g.v.y)/g.v.s;view={s,x:c.x-wx*s,y:c.y-wy*s};fastView();return}
@@ -257,7 +257,7 @@ stage.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.s
  else if(gesture.type==='mtap'){if(gesture.moved){view.x=gesture.v.x+dx;view.y=gesture.v.y+dy;fastView()}}
  else if(gesture.type==='move'){const o=sel.o,g=gesture.orig;let ddx=dx/view.s,ddy=dy/view.s;if(sel.kind==='p'){o.x=g.x+ddx;o.y=g.y+ddy}else{const s=mkSnapMove(g,ddx,ddy,o);ddx=s.ddx;ddy=s.ddy;o.x1=g.x1+ddx;o.x2=g.x2+ddx;o.y1=g.y1+ddy;o.y2=g.y2+ddy}requestDraw(false)}
  else if(gesture.type==='resize'){resizeTo(sel.o,gesture.orig,gesture.h,mkSnap(toW(e.offsetX,e.offsetY),sel.o));requestDraw(false)}
- else if(gesture.type==='draw'){let w=toW(e.offsetX,e.offsetY);if(draft.type==='dim'||draft.type==='cal')w=mSnap(w,draft);else if(['rect','ellipse','cloud','arrow','line','check'].includes(draft.type))w=mkSnap(w,draft);if(holdT)w=constrainPt(draft,w);draft.x2=w.x;draft.y2=w.y;mRead();requestDraw(false)}
+ else if(gesture.type==='draw'){let w=toW(e.offsetX,e.offsetY);if(draft.type==='dim'||draft.type==='cal')w=mSnap(w,draft);else if(['rect','ellipse','cloud','arrow','line','check'].includes(draft.type))w=mkSnap(w,draft);if(snapK())w=constrainPt(draft,w);draft.x2=w.x;draft.y2=w.y;mRead();requestDraw(false)}
  else if(gesture.type==='zig'){zMove(gesture,toW(e.offsetX,e.offsetY));requestDraw(false)}
  else if(gesture.type==='mpath'){if(gesture.moved){view.x=gesture.v.x+dx;view.y=gesture.v.y+dy;fastView()}else{MS.hover=toW(e.offsetX,e.offsetY)}}
  else if(gesture.type==='box'){gesture.w1=toW(e.offsetX,e.offsetY);showBox()}});
@@ -279,12 +279,16 @@ async function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);c
  if(g.type==='draw'&&draft?.type==='cal'){const d=draft;draft=null;drawOverlay();await mCalibrate(d);return}
  if(g.type==='draw'){const d=draft;draft=null;if(d.type==='check'&&!g.moved){const s=24/view.s;d.x1=w.x-s*.4;d.y1=w.y-s*.6;d.x2=w.x+s*.6;d.y2=w.y+s*.4}
   if(Math.abs(d.x2-d.x1)+Math.abs(d.y2-d.y1)>3/view.s)await change('markups',null,d);else drawOverlay()}}
-// zigzag: while held, samples since the last corner are checked against the straight chord; when the path bends away by more than ~9px (screen), a sharp corner is dropped at the bend point
-function zSeg(a,p){if(!holdT)return p;const dx=p[0]-a[0],dy=p[1]-a[1],L=Math.hypot(dx,dy),t=Math.round(Math.atan2(dy,dx)/(Math.PI/12))*(Math.PI/12);return[a[0]+L*Math.cos(t),a[1]+L*Math.sin(t)]}
-function zMove(g,w){const tol=9/view.s,A=g.V[g.V.length-1],p=[w.x,w.y];g.S.push(p);
- const dx=p[0]-A[0],dy=p[1]-A[1],L=Math.hypot(dx,dy);if(L>tol*2){let bi=-1,bd=tol;for(let i=0;i<g.S.length-1;i++){const q=g.S[i],dd=Math.abs((q[0]-A[0])*dy-(q[1]-A[1])*dx)/L;if(dd>bd){bd=dd;bi=i}}
-  if(bi>=0){const q=g.S[bi];if(Math.hypot(q[0]-A[0],q[1]-A[1])>tol){const v=zSeg(A,q);g.V.push(v);g.S=g.S.slice(bi+1)}}}
- const B=g.V[g.V.length-1];let t=zSeg(B,p);{const sp=mkSnap({x:t[0],y:t[1]},draft);if(!holdT)t=[sp.x,sp.y]}g.tip=t;zFinish(draft,[...g.V,t]);mRead()}
+// bpm-v71: zigzag corners = RDP-simplified stroke (tolerance in screen px), then keep only real turns (≥28°) between segments ≥ min length; Snap rounds each segment to 15°
+function zSeg(a,p){const dx=p[0]-a[0],dy=p[1]-a[1],L=Math.hypot(dx,dy),t=Math.round(Math.atan2(dy,dx)/(Math.PI/12))*(Math.PI/12);return[a[0]+L*Math.cos(t),a[1]+L*Math.sin(t)]}
+function rdp(P,eps){if(P.length<3)return P.slice();const A=P[0],B=P[P.length-1],dx=B[0]-A[0],dy=B[1]-A[1],L=Math.hypot(dx,dy);let bi=0,bd=-1;for(let i=1;i<P.length-1;i++){const q=P[i],d=L?Math.abs((q[0]-A[0])*dy-(q[1]-A[1])*dx)/L:Math.hypot(q[0]-A[0],q[1]-A[1]);if(d>bd){bd=d;bi=i}}if(bd<=eps)return[A,B];return[...rdp(P.slice(0,bi+1),eps).slice(0,-1),...rdp(P.slice(bi),eps)]}
+function zCorners(P,s){const eps=7/s,minL=16/s,minA=28*Math.PI/180;let V=rdp(P,eps);
+ const turn=(a,b,c)=>{const u=Math.atan2(b[1]-a[1],b[0]-a[0]),v=Math.atan2(c[1]-b[1],c[0]-b[0]);let d=Math.abs(v-u)%(2*Math.PI);return d>Math.PI?2*Math.PI-d:d},len=(a,b)=>Math.hypot(b[0]-a[0],b[1]-a[1]);
+ for(;;){if(V.length<3)break;let wi=-1,ws=Infinity;for(let i=1;i<V.length-1;i++){const t=turn(V[i-1],V[i],V[i+1]),l=Math.min(len(V[i-1],V[i]),len(V[i],V[i+1]));const bad=t<minA||l<minL;if(bad){const sc=t/minA+l/minL;if(sc<ws){ws=sc;wi=i}}}if(wi<0)break;V.splice(wi,1)}
+ return V}
+function zMove(g,w){const p=[w.x,w.y],Rw=g.R,q=Rw[Rw.length-1];if(Math.hypot(p[0]-q[0],p[1]-q[1])>.5/view.s)Rw.push(p);
+ let V=zCorners([...Rw,p],view.s);V[0]=Rw[0];if(snapK()){const S=[V[0]];for(let i=1;i<V.length;i++)S.push(zSeg(S[i-1],V[i]));V=S}else{const sp=mkSnap({x:p[0],y:p[1]},draft);V[V.length-1]=[sp.x,sp.y]}
+ g.V=V.slice(0,-1);g.tip=V[V.length-1];zFinish(draft,V);mRead()}
 stage.addEventListener('pointerup',up);stage.addEventListener('pointercancel',up);
 const clampS=s=>Math.max(.02,Math.min(s,40));
 stage.addEventListener('wheel',e=>{if(!plan)return;e.preventDefault();const k=Math.exp(-e.deltaY*(e.ctrlKey?.01:.0015)),s=clampS(view.s*k),wx=(e.offsetX-view.x)/view.s,wy=(e.offsetY-view.y)/view.s;view={s,x:e.offsetX-wx*s,y:e.offsetY-wy*s};fastView()},{passive:false});
@@ -754,7 +758,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v70',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v71',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
