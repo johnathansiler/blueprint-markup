@@ -533,7 +533,7 @@ $('#detTypes').innerHTML=DGRP.map(([n,ks],i)=>`<div class="detGrp"><label class=
 const grpSync=()=>document.querySelectorAll('#detTypes [data-grp]').forEach(h=>{const bs=[...h.closest('.detGrp').querySelectorAll('input[value]:not([disabled])')],n=bs.filter(b=>b.checked).length;h.checked=n&&n===bs.length;h.indeterminate=n>0&&n<bs.length});
 $('#detTypes').addEventListener('change',e=>{const h=e.target.dataset.grp!=null?e.target:null;if(h)h.closest('.detGrp').querySelectorAll('input[value]:not([disabled])').forEach(b=>b.checked=h.checked);grpSync()});
 const detBoxes=()=>[...document.querySelectorAll('#detTypes input[value]:not([disabled])')];
-$('#detAll').onclick=()=>{detBoxes().forEach(b=>b.checked=true);grpSync()};$('#detNone').onclick=()=>{detBoxes().forEach(b=>b.checked=false);grpSync()};
+$('#detGoTop').onclick=()=>$('#detGo').click();$('#detAll').onclick=()=>{detBoxes().forEach(b=>b.checked=true);grpSync()};$('#detNone').onclick=()=>{detBoxes().forEach(b=>b.checked=false);grpSync()};
 $('#detBtn').onclick=async()=>{if(!plan)return alert('Open a PDF plan first.');if(!pdf)return alert('Detect devices works on vector PDF plans only (not photos or scans).');if(det)return;
  const saved=(await get('meta','detectSel'))||{groups:[],all:false};detBoxes().forEach(b=>b.checked=false);grpSync();
  learnInfoUpd();$('#detForm').elements.scope.value=saved.all?'all':'page';$('#detScope label:last-child').lastChild.textContent=` All ${plan.pages} pages of this plan`;$('#detDlg').showModal()};
@@ -760,7 +760,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v95',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v96',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
