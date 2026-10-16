@@ -185,3 +185,5 @@ label.btn:has(.tl),.btn:has(>.tl){display:inline-flex;flex-direction:column;alig
 #mdL{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:0;overscroll-behavior:contain;padding-bottom:env(safe-area-inset-bottom)}
 #mdL summary{position:sticky;top:0;background:#1e293b;padding:8px 6px;font-weight:700;cursor:pointer;z-index:1;border-bottom:1px solid #334155}#mdL summary small{color:#94a3b8;font-weight:400}
 .mdI{display:flex;flex-direction:column;align-items:flex-start;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid #1e293b;color:inherit;padding:8px 10px;min-height:44px}.mdI small{color:#94a3b8}.mdI.on{background:#1d4ed8}.mdE{padding:10px;color:#cbd5e1}
+
+#ivCov{background:#fef3c7;color:#78350f;font-size:.8em;padding:4px 8px}.scB.covB{background:#fde68a;color:#78350f}
