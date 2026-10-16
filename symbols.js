@@ -70,7 +70,9 @@
   rv.showModal()}
  window.symReview=review;
  // bpm-v98: non-blocking chip instead of a modal on plan load (B1)
- function legendChip(c,pl){let h=document.getElementById('legChip');if(!h){h=ce('div','legChip');h.id='legChip';h.setAttribute('role','status');(document.getElementById('stage')||document.body).append(h)}
+ function legendChip(c,pl){let h=document.getElementById('legChip');if(!h){h=ce('div','legChip');h.id='legChip';h.setAttribute('role','status');(document.getElementById('stage')||document.body).append(h);
+   // bpm-v100: sit below the selection bar so the chip never covers Multi/Box/Deselect
+   const sb=document.getElementById('selBar');if(sb){const pos=()=>{h.style.top=(sb.hidden||!sb.offsetHeight?8:sb.offsetTop+sb.offsetHeight+6)+'px'};new ResizeObserver(pos).observe(sb);new MutationObserver(pos).observe(sb,{attributes:true,attributeFilter:['hidden'],childList:true});pos()}}
   h.innerHTML=`<button type="button" class="btn" id="legRev">🔣 ${c.length} new legend symbol${c.length>1?'s':''} · <b>Review</b></button><button type="button" class="btn" id="legX" title="Dismiss" aria-label="Dismiss">✕</button>`;h.hidden=false;
   h.querySelector('#legRev').onclick=()=>{h.hidden=true;if(plan===pl)review(c,`Legend found: ${c.length} new symbol${c.length>1?'s':''}`)};h.querySelector('#legX').onclick=()=>h.hidden=true}
  window.legendChip=legendChip;

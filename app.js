@@ -240,6 +240,7 @@ stage.addEventListener('pointerdown',e=>{if(!plan||e.target!==cv)return;stage.se
  const w=toW(e.offsetX,e.offsetY);const start={sx:e.offsetX,sy:e.offsetY,moved:false};
  if(tool==='pan'||e.button===1){gesture={type:'pan',...start,v:{...view}};return}
  if(tool==='select'){if(sel?.kind==='m'){const hi=handleHit(sel.o,e.offsetX,e.offsetY);if(hi>=0){gesture={type:'resize',h:hi,...start,orig:structuredClone(sel.o)};return}}
+  if(deselOn){gesture={type:'box',des:1,...start,moved:false,w0:w,w1:w};showBox();return} // bpm-v100: Deselect box starts anywhere (never drags a pin)
   {const h0=hit(w),onP=msel.filter(o=>o.page===page);if(h0&&msel.includes(h0.o)){sel=null;gesture={type:'mmove',...start,v:{...view},items:onP,orig:onP.map(o=>structuredClone(o)),tapO:h0.o};return}
    if(!h0&&boxOn){gesture={type:'box',...start,moved:false,w0:w,w1:w};showBox();return}
    if(multiOn){gesture=h0?{type:'mtap',...start,v:{...view},o:h0.o}:{type:'pan',...start,v:{...view}};return}}
@@ -265,7 +266,7 @@ stage.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.s
 async function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);clearTimeout(lpT);const g=gesture;if(g?.type==='pinch'){if(ptrs.size===0){gesture=null;requestDraw()}return}gesture=null;if(!g)return;if(g.type==='pan')requestDraw();
  const w=toW(e.offsetX,e.offsetY);
  if(!g.moved){const now=Date.now(),T=lastTap;lastTap={t:now,x:e.offsetX,y:e.offsetY};if(T&&now-T.t<350&&Math.hypot(e.offsetX-T.x,e.offsetY-T.y)<30){lastTap=null;draft=null;sel=null;msel=[];renderSelBar();draw();return}}else lastTap=null;
- if(g.type==='box'){boxSelect(g.w0,g.w1);return}
+ if(g.type==='box'){boxSelect(g.w0,g.w1,g.des);return}
  if(g.type==='mmove'){if(g.moved){const L=g.items.map((o,i)=>({store:'x1'in o?'markups':'pins',id:o.id,before:g.orig[i],after:structuredClone(o)}));await changeMulti(L);toast(`Moved ${L.length} item${L.length>1?'s':''}`,true)}else toggleMsel(g.tapO);return}
  if(g.type==='mtap'){if(!g.moved)toggleMsel(g.o);else requestDraw();return}
  if(pasteArm&&!g.moved&&g.type!=='pinch'){pasteArm=false;draft=null;await doPaste(w);return}
@@ -635,17 +636,17 @@ function selItems(){return msel.length?msel:sel?[sel.o]:[]}
 function toggleMsel(o){if(sel&&sel.o!==o&&!msel.includes(sel.o))msel.push(sel.o);const i=msel.indexOf(o);if(i>=0)msel.splice(i,1);else msel.push(o);sel=null;renderSelBar();requestDraw(false)}
 function bb(o){if(isPinO(o)){let[,w,h]=pshOf(o);if(o.ang){const C=Math.abs(Math.cos(o.ang)),S=Math.abs(Math.sin(o.ang));[w,h]=[w*C+h*S,w*S+h*C]}const pad=pinLW(o)/2+OUT(o),f=(OFFMAP||SCRNOFF)&&(OFFMAP||SCRNOFF).get(o.id),x=o.x+(f?f.dx:0),y=o.y+(f?f.dy:0);return{x:x-w/2-pad,y:y-h/2-pad,X:x+w/2+pad,Y:y+h/2+pad}}return isPinO(o)?0:{x:Math.min(o.x1,o.x2),y:Math.min(o.y1,o.y2),X:Math.max(o.x1,o.x2),Y:Math.max(o.y1,o.y2)}}
 function drawMsel(c){if(!msel.length)return;c.save();c.setLineDash([5,4]);c.strokeStyle='#38bdf8';c.lineWidth=1.5;const p=pinR()*.6;for(const o of msel){if(o.page!==page)continue;const b=bb(o);c.strokeRect(b.x-p,b.y-p,b.X-b.x+2*p,b.Y-b.y+2*p)}c.restore()}
-function showBox(){let d=$('#selBox');if(!d){d=document.createElement('div');d.id='selBox';stage.append(d)}const g=gesture;if(!g||g.type!=='box'){d.remove();return}
+function showBox(){let d=$('#selBox');if(!d){d=document.createElement('div');d.id='selBox';stage.append(d)}const g=gesture;if(!g||g.type!=='box'){d.remove();return}d.classList.toggle('des',!!g.des);
  const a=toS(g.w0.x,g.w0.y),b=toS(g.w1.x,g.w1.y);Object.assign(d.style,{left:Math.min(a.x,b.x)+'px',top:Math.min(a.y,b.y)+'px',width:Math.abs(b.x-a.x)+'px',height:Math.abs(b.y-a.y)+'px'})}
-function boxSelect(a,b){$('#selBox')?.remove();const x=Math.min(a.x,b.x),X=Math.max(a.x,b.x),y=Math.min(a.y,b.y),Y=Math.max(a.y,b.y),inn=o=>{const q=bb(o),cx=(q.x+q.X)/2,cy=(q.y+q.Y)/2;return cx>=x&&cx<=X&&cy>=y&&cy<=Y};
- const L=[...markups.filter(m=>m.page===page&&mVis(m)&&inn(m)),...pins.filter(p=>p.page===page&&pVis(p)&&inn(p))];for(const o of L)if(!msel.includes(o))msel.push(o);sel=null;renderSelBar();requestDraw(false);toast(`${msel.length} selected`)}
-let clipPins=false,multiOn=false,boxOn=false;
+function boxSelect(a,b,des){$('#selBox')?.remove();const x=Math.min(a.x,b.x),X=Math.max(a.x,b.x),y=Math.min(a.y,b.y),Y=Math.max(a.y,b.y),inn=o=>{const q=bb(o),cx=(q.x+q.X)/2,cy=(q.y+q.Y)/2;return cx>=x&&cx<=X&&cy>=y&&cy<=Y};
+ const L=[...markups.filter(m=>m.page===page&&mVis(m)&&inn(m)),...pins.filter(p=>p.page===page&&pVis(p)&&inn(p))];if(des){const n0=msel.length;msel=msel.filter(o=>!L.includes(o));if(sel&&L.includes(sel.o))sel=null;renderSelBar();requestDraw(false);toast(`${n0-msel.length} removed · ${msel.length} still selected`);return}for(const o of L)if(!msel.includes(o))msel.push(o);sel=null;renderSelBar();requestDraw(false);toast(`${msel.length} selected`)}
+let clipPins=false,multiOn=false,boxOn=false,deselOn=false;
 function renderSelBar(){const b=$('#selBar'),it=tool==='select'?selItems():msel,ST0=tool==='select'&&plan;if(walk||(!it.length&&!clip&&!ST0)){b.hidden=true;b.innerHTML='';return}const np=it.filter(isPinO).length;
- b.innerHTML=(ST0?`<button type="button" class="btn${multiOn?' on':''}" id="multiBtn" title="Multi-select: tap items to add/remove them">${multiOn?'☑':'☐'} Multi</button><button type="button" class="btn${boxOn?' on':''}" id="boxBtn" title="Box select: drag on empty space to select everything inside">▭ Box</button><select id="selAll" title="Select all on this page"><option value="">All…</option><option value="all">All on page</option><option value="m">Markups</option><option value="p">Pins</option></select>`:'')
+ b.innerHTML=(ST0?`<button type="button" class="btn${multiOn?' on':''}" id="multiBtn" title="Multi-select: tap items to add/remove them">${multiOn?'☑':'☐'} Multi</button><button type="button" class="btn${boxOn?' on':''}" id="boxBtn" title="Box select: drag on empty space to select everything inside">▭ Box</button><button type="button" class="btn${deselOn?' on':''}" id="deselBtn" title="Deselect box: drag a box to REMOVE everything inside it from the selection">⊟ Deselect</button><select id="selAll" title="Select all on this page"><option value="">All…</option><option value="all">All on page</option><option value="m">Markups</option><option value="p">Pins</option></select>`:'')
   +(it.length?`<b>${it.length} sel.</b><button type="button" class="btn" id="cpBtn">⧉ Copy</button><button type="button" class="btn" id="cutBtn">✂ Cut</button>${np?`<label><input type="checkbox" id="cpPins" ${clipPins?'checked':''}> incl. ${np} pin${np>1?'s':''}</label>`:''}<button type="button" class="btn" id="bulkEd" title="Edit color, size, pin status/type">✎ Edit</button><button type="button" class="btn danger" id="bulkDel" title="Delete selected">🗑</button><button type="button" class="btn" id="selX" title="Clear selection">✕</button>`:'')
   +(clip?`<button type="button" class="btn pri" id="pasteBtn" title="Paste at the same plan position">📋 Paste ${clip.m.length+clip.p.length}</button><button type="button" class="btn" id="pasteAt" title="Paste centred on the next point you tap">📍 at tap</button><button type="button" class="btn" id="clipX" title="Clear clipboard">✕</button>`:'');
  b.hidden=false;const q=x=>b.querySelector(x);
- if(q('#multiBtn'))q('#multiBtn').onclick=()=>{multiOn=!multiOn;if(multiOn&&sel){if(!msel.includes(sel.o))msel.push(sel.o);sel=null}renderSelBar();requestDraw(false)};if(q('#boxBtn'))q('#boxBtn').onclick=()=>{boxOn=!boxOn;renderSelBar()};
+ if(q('#multiBtn'))q('#multiBtn').onclick=()=>{multiOn=!multiOn;if(multiOn&&sel){if(!msel.includes(sel.o))msel.push(sel.o);sel=null}renderSelBar();requestDraw(false)};if(q('#boxBtn'))q('#boxBtn').onclick=()=>{boxOn=!boxOn;if(boxOn)deselOn=false;renderSelBar()};if(q('#deselBtn'))q('#deselBtn').onclick=()=>{deselOn=!deselOn;if(deselOn){boxOn=false;if(sel&&!msel.includes(sel.o)){msel.push(sel.o);sel=null}}renderSelBar();requestDraw(false)};
  if(q('#selAll'))q('#selAll').onchange=e=>selectAll(e.target.value);if(q('#bulkDel'))q('#bulkDel').onclick=bulkDelete;if(q('#bulkEd'))q('#bulkEd').onclick=openBulk;
  if(q('#cpPins'))q('#cpPins').onchange=e=>clipPins=e.target.checked;
  if(q('#cpBtn'))q('#cpBtn').onclick=()=>doCopy(false);if(q('#cutBtn'))q('#cutBtn').onclick=()=>doCopy(true);if(q('#selX'))q('#selX').onclick=()=>{msel=[];sel=null;renderSelBar();draw()};
@@ -677,8 +678,9 @@ function startWalk(type=''){if(!plan)return uiAlert('Open a plan first.');if(!pi
  const c=toW(stage.clientWidth/2,stage.clientHeight/2),L=walkLeft(),here=L.filter(p=>p.page===page);
  const first=sel?.kind==='p'&&untested(sel.o)?sel.o:nearestFrom(here.length?here:L,here.length?{page,...c}:null);walkGo(first)}
 function exitWalk(){walk=null;$('#walk').hidden=true;$('#walkBtn').classList.remove('pri');renderGhostBar();renderSelBar();draw()}
-async function walkGo(p,back){if(!walk)return;walk.hist??=[];if(!back&&walk.p&&p&&walk.p.id!==p.id){walk.hist.push(walk.p.id);if(walk.hist.length>200)walk.hist.shift()}walk.p=p;walk.fail=false;renderWalk();if(!p){draw();return}if(p.page!==page)await gotoPage(p.page);
- const W=stage.clientWidth,Hh=stage.clientHeight-$('#walk').offsetHeight,s=walk.zoomed?view.s:Math.max(view.s,Math.min(W,stage.clientHeight)/320),v0={...view};walk.zoomed=true;centerOn(p.x,p.y,s,W/2,Math.max(60,Hh/2));const v1={...view};view=v0;sel={kind:'p',o:p};await prefetchPath(v0,v1);if(walk?.p!==p)return;await slideTo(v1)}
+async function walkGo(p,back){if(!walk)return;walk.hist??=[];if(!back&&walk.p&&p&&walk.p.id!==p.id){walk.hist.push(walk.p.id);if(walk.hist.length>200)walk.hist.shift()}walk.p=p;walk.fail=false;renderWalk();if(!p){draw();return}const sKeep=view.s,pgChg=p.page!==page;if(pgChg)await gotoPage(p.page); // bpm-v100: keep the zoom across pages (gotoPage re-fits the view)
+ const W=stage.clientWidth,Hh=stage.clientHeight-$('#walk').offsetHeight,s=walk.zoomed?sKeep:Math.max(view.s,Math.min(W,stage.clientHeight)/320),v0={...view};walk.zoomed=true;centerOn(p.x,p.y,s,W/2,Math.max(60,Hh/2));const v1={...view};sel={kind:'p',o:p};if(pgChg){draw();scheduleRender();return} // new page: land directly at the kept zoom (no zoom-out-then-in)
+ view=v0;await prefetchPath(v0,v1);if(walk?.p!==p)return;await slideTo(v1)}
 function walkNext(){if(!walk)return;const cur=walk.p;walkGo(nearestFrom(walkLeft().filter(p=>p!==cur),cur))}
 function walkAfterDialog(){if(!walk||!walk.p)return;const p=pins.find(x=>x.id===walk.p.id);if(!p){walkNext();return}walk.p=p;if(!untested(p))walkNext();else renderWalk()}
 function renderWalk(){const w=$('#walk');if(!walk){w.hidden=true;return}const S=walkSet(),N=S.length,done=S.filter(p=>!untested(p)).length,p=walk.p&&pins.find(x=>x.id===walk.p.id)||walk.p;
@@ -779,7 +781,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v99',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v100',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
