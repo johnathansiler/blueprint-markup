@@ -758,7 +758,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v74',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v75',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -1267,14 +1267,14 @@ function walkGoto(){if(!walk)return;let d=$('#wGotoDlg');if(!d){d=document.creat
  d.querySelector('#wgX').onclick=()=>d.close();d.querySelector('#wgF').oninput=e=>{f=e.target.value.trim().toLowerCase();draw_()};d.querySelector('#wgU').onchange=e=>{only=e.target.checked;draw_()};draw_();d.showModal()}
 
 // ---------- bpm-v72: device model numbers per type (seeded + remembered custom entries) ----------
-// bpm-v74: Siemens Fire Safety models only (each verified on a Siemens datasheet / Siemens doc portal / distributor page); other makes via "Custom…"
+// bpm-v75: smoke/heat/module/relay/pull lists supplied by the user (authoritative); others from bpm-v74: Siemens Fire Safety models only (each verified on a Siemens datasheet / Siemens doc portal / distributor page); other makes via "Custom…"
 const MODELS={
- smoke:['HFP-11','FP-11','FDO421','FDOT421','FDOOT441','FDOOTC441','OP921','OH921','OOH941','OOHC941'],
- heat:['HFPT-11','FPT-11','FDT421','HI921'],
+ smoke:['FP-11','FPO-11','FPT-11','HFP-11','HFPO-11','HFPT-11','OP921','OOT941','OOH941','FDO421','FDOT421','FDT421','FDOOT441'],
+ heat:['FP-11','FPO-11','FPT-11','HFP-11','HFPO-11','HFPT-11','OP921','OOT941','OOH941','FDO421','FDOT421','FDT421','FDOOT441'],
  duct:['FDBZ492','FDBZ492-HR','FDBZ492-R','FDBZ492-PR','AD2-P','AD2-PR'],
- pull:['HMS-S','HMS-D','MS-51'],
- module:['HTRI-S','HTRI-D','HTRI-R','HTRI-SZ','HTRI-DZ','HTRI-RZ','TRI-S','TRI-D','TRI-R','FDCIO422'],
- relay:['HTRI-R','HTRI-RZ','TRI-R','FDCIO422','DB-HR','DB2-HR'],
+ pull:['MSI-10B','MSI-20B','HMS-S','HMS-D','HMS-M','XMS-51','XMS-52','XMS-M'],
+ module:['TRI-S','TRI-D','TRI-R','HTRI-S','HTRI-D','HTRI-R','XTRI-S','XTRI-D','XTRI-M','XTRI-R','HLIM','SBGA-34'],
+ relay:['TRI-S','TRI-D','TRI-R','HTRI-S','HTRI-D','HTRI-R','XTRI-S','XTRI-D','XTRI-M','XTRI-R','HLIM','SBGA-34'],
  horn:['SC-HS-WR-F','SC-HS-WW-F','SC-HN-WR-N','SC-HN-WW-N'],
  strobe:['SC-ST-WR-F','SC-ST-WW-F'],
  spkstrobe:['SC-SS-WW-F','SC-SS-CW-F','SC-SP-WW-F','SC-SP-CW-F','SL24XSPS-FW'],
