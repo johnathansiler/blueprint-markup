@@ -758,7 +758,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v76',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v77',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -1282,7 +1282,7 @@ const MODELS={
 let MODELS_C=null;async function customModels(){if(!MODELS_C)MODELS_C=(await get('meta','models:custom'))||{};return MODELS_C}
 async function rememberModel(t,m){m=String(m||'').trim();if(!m||(MODELS[t]||[]).some(x=>x===m||x.endsWith(' '+m)))return;const c=await customModels();if((c[t]||[]).includes(m))return;c[t]=[...(c[t]||[]),m];await put('meta',c,'models:custom')}
 async function modelOpts(t){const c=await customModels(),S=MODELS[t]||[],C=(c[t]||[]).filter(m=>!S.includes(m)),v=form.elements.model.value,sel=$('#dModelSel');
- const op=(m,l)=>`<option value="${esc(m)}"${m===v?' selected':''}>${esc(l||m)}</option>`;
+ const op=(m,l)=>`<option value="${esc(m)}"${m===v?' selected':''}>${esc(l||(MODEL_DESC[m]?m+' — '+MODEL_DESC[m]:m))}</option>`;
  sel.innerHTML=op('','— none —')+(S.length?`<optgroup label="Siemens">${S.map(m=>op(m)).join('')}</optgroup>`:'')+(C.length?`<optgroup label="My models">${C.map(m=>op(m)).join('')}</optgroup>`:'')+(v&&!S.includes(v)&&!C.includes(v)?`<optgroup label="Saved on this pin">${op(v)}</optgroup>`:'')+'<option value="__custom">Custom…</option>';
  $('#dModelCL').hidden=true;$('#dModelC').value='';if(typeof dsBtnSync==='function')dsBtnSync();return[...S,...C]}
 $('#dModelSel').addEventListener('change',e=>{const c=e.target.value==='__custom';$('#dModelCL').hidden=!c;if(c){$('#dModelC').value='';form.elements.model.value='';$('#dModelC').focus()}else form.elements.model.value=e.target.value});
@@ -1305,14 +1305,148 @@ const DATASHEETS=(()=>{const d={},a=(ms,u)=>ms.split(' ').forEach(m=>d[m]=u);
  a('SL24XSPS-FW','https://www.lifesafetycom.com/product/siemens-sl24xsps-fw-weatherproof-speakers-strobe-surface-mount-only-fire-text-white/');
  a('FC2025 FC2050',DS_SID+'A6V10356081');a('FC922 FC924',DS_SID+'A6V10349710');
  a('FireFinder XLS','https://cache.industry.siemens.com/dl/files/579/109787579/att_1044333/v2/A6V10238846.pdf');return d})();
+// v77 Siemens parts catalog: [category, pin type ('' = catalog only), model, description, datasheet key]. Keys map to URLs fetched and confirmed; '' = Siemens search.
+const CAT_U={ov:DS_SID+'A6V11208902',fcm:DS_SID+'A6V11231592',cc:DS_SID+'A6V11213138',xdlc:DS_SID+'A6V11208904',xnlc:DS_KH+'uRmDqKgrbOleI293U~TO8w/content',mlc:DS_SID+'A6V11231601',nic:DS_SID+'A6V10238879',xinc:DS_SID+'A6V14140236',psc:DS_SID+'A6V13769998',zic4:DS_KH+'2HOrSXngkpLUUiIukfvkjA/content',zic8:DS_SID+'A6V11231586',ocm:DS_SID+'A6V11208913',ctl:DS_SID+'A6V11208911',cdc:DS_KH+'Q2qsp7Bp~E2CVg3CCFlhgA/content',xvcc:DS_SID+'A6V14425981',tzc:DS_SID+'A6V10238877',fmt:DS_KH+'sGHj2pzkHKJmKx5nLGNv5w/content',rni:DS_KH+'3HT0Ck813zdgaOmfZFV9_w/content',rpm:'https://cache.industry.siemens.com/dl/files/804/109790804/att_1047567/v2/A6V11213148.pdf',encl:DS_KH+'L9pMs4_2NfBGjL3pseaDmA/content',zac:DS_SID+'A6V11231575',zam:DS_KH+'B0vT7QK37~2mUBsT7EjDDA/content',voice:DS_SID+'A6V10426899',dac:DS_SID+'A6V11231565',aic:DS_SID+'A6V11213144',fn13:DS_SID+'A6V10238819',fn06:DS_SID+'A6V10356080',sls:'https://cache.industry.siemens.com/dl/files/066/109791066/att_1047827/v4/A6V11396486.pdf',slsp:'https://cache.industry.siemens.com/dl/files/070/109791070/att_1047831/v4/A6V11401076.pdf',sl2:'https://rybbfirealarm.com/wp-content/uploads/SL2HSWW-F.pdf',sl2mt:DS_KH+'k51GC56QCEPkbqWwsNDvWQ/content',sl2fc:DS_KH+'1snudx0EQyppj8uR9N1w6A/content',sl2fw:DS_KH+'D5U7kdUIq2mSK56dnuLh1A/content',hs:DS_KH+'xT12dkdCvpVUJLJw5Wmfqg/content',as:DS_SID+'A6V10238714',mth:DS_KH+'KCp3v9jtaP8Oxs9y5plOqA/content',mnt:DS_SID+'A6V10238721',zb:DS_SID+'A6V10238720',pad:DS_SID+'A6V11231624',fca:DS_SID+'A6V10356071'};
+const CATALOG=`Panel cards & modules|panel|FCM2041-U2|Desigo Modular Operator Interface|fcm
+Panel cards & modules|panel|CC-5|5-slot card cage|cc
+Panel cards & modules|panel|CC-2|2-slot card cage|cc
+Panel cards & modules|panel|XDLC|Class X device loop card|xdlc
+Panel cards & modules|panel|XNLC|Class X notification loop card|xnlc
+Panel cards & modules|panel|MLC|MXL line card|mlc
+Panel cards & modules|panel|PSC-12M|Power supply/charger|psc
+Panel cards & modules|panel|PSX-12M|Power supply extender|psc
+Panel cards & modules|panel|ZIC-4A|Zone indicating card|zic4
+Panel cards & modules|panel|ZIC-8B|Zone indicating card|zic8
+Panel cards & modules|panel|ZIC-2C|Zone indicating card|zic8
+Panel cards & modules|panel|OCM-16|Output control|ocm
+Panel cards & modules|panel|SCM-8|Switch control|ctl
+Panel cards & modules|panel|LCM-8|LED control|ctl
+Panel cards & modules|panel|FCM-6|Fan control|ctl
+Panel cards & modules|panel|SIM-16|Supervised input|ov
+Panel cards & modules|panel|CDC-4|Conventional detector card|cdc
+Panel cards & modules|panel|XVCC|Voice control card|xvcc
+Panel cards & modules|panel|TZC-8B|Telephone zone card|tzc
+Panel cards & modules|panel|FMT|Firefighters' master telephone|fmt
+Panel cards & modules|panel|RNI|Remote network interface|rni
+Panel cards & modules|panel|RPM|Remote printer module|rpm
+Panel cards & modules|panel|SSD|System status display|ov
+Amplifiers|panel|ZAC-40|Zone amplifier card|zac
+Amplifiers|panel|ZAM-180|Zone amplifier module|zam
+Amplifiers|panel|ZAM-300|Zone amplifier module|
+Amplifiers|panel|ZAC-40-70|Zone amplifier card (70 V)|
+Amplifiers|panel|EBA2004-A1|Booster amplifier|voice
+Amplifiers|panel|DAC-NET|Digital audio card – network|dac
+Amplifiers|panel|AIC|Audio input card|aic
+Panel cards & modules|panel|NIC-C|Network interface card|nic
+Panel cards & modules|panel|XINC|Network ring card|xinc
+Network/Fiber|panel|FN2012-A1|Ethernet switch|voice
+Network/Fiber|panel|FN2013-U1|Single-mode fiber module|fn13
+Network/Fiber|panel|FN2014-U1|Multi-mode fiber module|fn13
+Network/Fiber|panel|FN2006-U1|Single-mode X-NET fiber module|fn06
+Network/Fiber|panel|FN2007-U1|Multi-mode X-NET fiber module|fn06
+Network/Fiber|panel|VN2001|Ethernet module, electrical|voice
+Network/Fiber|panel|VN2002|Ethernet module, multi-mode optical|voice
+Network/Fiber|panel|VN2003|Ethernet module, single-mode optical|voice
+Enclosures & Doors|panel|CAB1|One-row enclosure|encl
+Enclosures & Doors|panel|CAB1R|One-row enclosure, red|encl
+Enclosures & Doors|panel|CAB2-BB|Two-row back box, black|encl
+Enclosures & Doors|panel|CAB2-BD|Two-row inner & outer door set, black|encl
+Enclosures & Doors|panel|CAB2-XBD|Two-row transponder door, black|encl
+Enclosures & Doors|panel|CAB2-RD|Two-row inner & outer door set, red|encl
+Enclosures & Doors|panel|CAB2-XRD|Two-row transponder door, red|encl
+Enclosures & Doors|panel|CAB2-RB|Two-row back box, red|encl
+Enclosures & Doors|panel|CAB3-BB|Three-row back box, black|encl
+Enclosures & Doors|panel|CAB3-BD|Three-row inner & outer door set, black|encl
+Enclosures & Doors|panel|CAB3-XBD|Three-row transponder door, black|encl
+Enclosures & Doors|panel|CAB3-RD|Three-row inner & outer door set, red|encl
+Enclosures & Doors|panel|CAB3-XRD|Three-row transponder door, red|encl
+Enclosures & Doors|panel|CAB3-RB|Three-row back box, red|encl
+Enclosures & Doors|panel|CAB-MP|Cabinet mounting plate|encl
+Enclosures & Doors|panel|COM-BRK|Communication module bracket|fn06
+Enclosures & Doors|panel|ID-MP|Inner door mounting plate|encl
+Enclosures & Doors|panel|ID-SP|Inner door spacer plate|encl
+Enclosures & Doors|panel|OD-LP|Outer door lens plate|encl
+Enclosures & Doors|panel|OD-BP|Outer door blank plate|encl
+Enclosures & Doors|panel|OD-BP-R|Outer door blank plate, red|encl
+Enclosures & Doors|panel|OD-GP|Outer door grill plate|encl
+Enclosures & Doors|panel|OD-GP-R|Outer door grill plate, red|encl
+Enclosures & Doors|panel|BCM|Blank control module|encl
+Enclosures & Doors|panel|CAB-BATT|Battery enclosure|encl
+Enclosures & Doors|panel|CAB-BATT-R|Battery enclosure, red|encl
+Enclosures & Doors|panel|ENCL-01|Enclosure|encl
+Enclosures & Doors|panel|REMBOX2|Remote enclosure, 2 module|encl
+Enclosures & Doors|panel|REMBOX2R|Remote enclosure, 2 module, red|encl
+Enclosures & Doors|panel|REMBOX2-MP|REMBOX2 mounting plate|encl
+Enclosures & Doors|panel|REMBOX4|Remote enclosure, 4 module|encl
+Enclosures & Doors|panel|REMBOX4-MP|REMBOX4 mounting plate|encl
+Enclosures & Doors|panel|XLS-MLE6-ADPT|MLE-6 enclosure adapter|encl
+Enclosures & Doors|panel|XLS-MLE6R-ADPT|MLE-6R enclosure adapter|encl
+Enclosures & Doors|panel|XLS-MME3-ADPT|MME-3 enclosure adapter|encl
+Enclosures & Doors|panel|XLS-MME3R-ADPT|MME-3R enclosure adapter|encl
+Enclosures & Doors|panel|XLS-MSE2-ADPT|MSE-2 enclosure adapter|encl
+Enclosures & Doors|panel|XLS-MSE2R-ADPT|MSE-2R enclosure adapter|encl
+Enclosures & Doors|panel|XLS-MSE3-ADPT|MSE-3 enclosure adapter|encl
+Enclosures & Doors|panel|XLS-MSE3R-ADPT|MSE-3R enclosure adapter|encl
+Enclosures & Doors|panel|XLS-RCC13F-ADPT|RCC-1F/3F enclosure adapter|encl
+Enclosures & Doors|panel|XLS-RCC13FR-ADPT|RCC-1FR/3FR enclosure adapter|encl
+Notification non-ACEND|strobe|SLSWW-F|Wall strobe|sls
+Notification non-ACEND|strobe|SLSWR-F|Wall strobe|sls
+Notification non-ACEND|spkstrobe|SLSPSWW-F|Wall speaker strobe|slsp
+Notification non-ACEND|spkstrobe|SLSPSWR-F|Wall speaker strobe|slsp
+Notification non-ACEND|strobe|SL2SWW-F|Wall strobe|sl2
+Notification non-ACEND|horn|SL2MTSWR-F|Multi-tone strobe|sl2mt
+Notification non-ACEND|horn|SL2FSSCR-F|Ceiling low-frequency sounder strobe|sl2fc
+Notification non-ACEND|horn|SL2FSSWR-F|Wall low-frequency sounder strobe|sl2fw
+Notification non-ACEND|horn|HS-MC-R|Horn strobe|hs
+Notification non-ACEND|horn|HS-MC-W|Horn strobe|hs
+Notification non-ACEND|horn|HS-HMC-R|Horn strobe|hs
+Notification non-ACEND|horn|AS-MC-R|Audible strobe|as
+Notification non-ACEND|horn|AS-MC-W|Audible strobe|as
+Notification non-ACEND|horn|AS-HMC-R-WP|Weatherproof horn strobe|as
+Notification non-ACEND|horn|AS-HMC-CR-WP|Weatherproof horn strobe|as
+Notification non-ACEND|horn|AS-HMC-CW-WP|Weatherproof horn strobe|as
+Notification non-ACEND|horn|MTH-HMC-CR-WP|Weatherproof multi-tone horn strobe|mth
+Backboxes & Trim||SHBBS-R|Back box|mnt
+Backboxes & Trim||SHBBS-W|Back box|mnt
+Backboxes & Trim||SBBS|Back box|mnt
+Backboxes & Trim||DBBS|Back box|mnt
+Backboxes & Trim||SPSB-R|Back box|mnt
+Backboxes & Trim||WPSBBS-R|Back box|mnt
+Backboxes & Trim||WPSBBS-W|Back box|mnt
+Backboxes & Trim||MT-SUR-BOX-W|Back box|mnt
+Backboxes & Trim||ZB-R|Back box|zb
+Backboxes & Trim||WBBS|Back box|mnt
+Backboxes & Trim||FHA2043-R1|Trim kit|voice
+Backboxes & Trim||CAB1-TK|Trim kit|encl
+Backboxes & Trim||CAB1R-TK|Trim kit|encl
+Backboxes & Trim||CAB2-TK|Trim kit|encl
+Backboxes & Trim||CAB2R-TK|Trim kit|encl
+Backboxes & Trim||CAB3-TK|Trim kit|encl
+Backboxes & Trim||CAB3R-TK|Trim kit|encl
+PAD-5 & Dialers|panel|PAD5-6A|PAD-5 power supply|pad
+PAD-5 & Dialers|panel|PAD5-6A-R|PAD-5 power supply|pad
+PAD-5 & Dialers|panel|PAD5-9A|PAD-5 power supply|pad
+PAD-5 & Dialers|panel|PAD5-9A-R|PAD-5 power supply|pad
+PAD-5 & Dialers|panel|PAD-5-MB|PAD-5 main board|pad
+PAD-5 & Dialers|panel|PAD-5-CLSA|PAD-5 Class A/B expansion|pad
+PAD-5 & Dialers|panel|PAD-5-CDC|PAD-5 conventional detector card|pad
+PAD-5 & Dialers|dact|XDACT-ASSY|DACT mounting assembly|ov
+PAD-5 & Dialers|dact|FCA2015-U1|DACT|fca
+PAD-5 & Dialers|panel|CAB-100-BRKT|Battery bracket|encl
+PAD-5 & Dialers|panel|CAB-55-BRKT|Battery bracket|encl`.split('\n').map(l=>{const[c,t,m,d,k]=l.split('|');return{c,t,m,d,u:k?CAT_U[k]:''}});
+const MODEL_DESC={};CATALOG.forEach(p=>{MODEL_DESC[p.m]=p.d;if(p.u)DATASHEETS[p.m]=p.u;if(p.t&&!(MODELS[p.t]||[]).includes(p.m))(MODELS[p.t]=MODELS[p.t]||[]).push(p.m)});
+const CAT_SET=new Set(CATALOG.map(p=>p.m));
 function dsUrl(m){m=String(m||'').trim();return DATASHEETS[m]||'https://sid.siemens.com/search?q='+encodeURIComponent(m)}
 function openDs(m){if(String(m||'').trim())window.open(dsUrl(m),'_blank','noopener')}
 function dsBtnSync(){const m=form.elements.model.value.trim(),b=$('#dDsBtn');b.hidden=!m;b.title=m?(DATASHEETS[m]?'Open '+m+' datasheet':'Search Siemens for '+m):''}
 $('#dDsBtn').onclick=()=>openDs(form.elements.model.value);
 ['change','input'].forEach(ev=>{$('#dModelSel').addEventListener(ev,dsBtnSync);$('#dModelC').addEventListener(ev,dsBtnSync)});
 async function dsList(){const c=await customModels(),q=$('#dsQ').value.trim().toLowerCase();let h='';
- for(const t in TYPES){const ms=[...new Set([...(MODELS[t]||[]),...(c[t]||[])])].filter(m=>!q||m.toLowerCase().includes(q)||TYPES[t].n.toLowerCase().includes(q));if(!ms.length)continue;
-  h+=`<details open class="dsGrp" data-type="${t}"><summary>${esc(TYPES[t].n)} <small>(${ms.length})</small></summary>`+ms.map(m=>`<button type="button" class="btn dsM" data-m="${esc(m)}" title="${DATASHEETS[m]?'Datasheet':'Siemens search'}">${esc(m)} ${DATASHEETS[m]?'📄':'🔎'}</button>`).join('')+'</details>'}
+ const hit=(m,g)=>!q||m.toLowerCase().includes(q)||g.toLowerCase().includes(q)||(MODEL_DESC[m]||'').toLowerCase().includes(q);
+ const btn=m=>`<button type="button" class="btn dsM" data-m="${esc(m)}" title="${DATASHEETS[m]?'Datasheet':'Siemens search'}">${esc(m)} ${DATASHEETS[m]?'📄':'🔎'}${MODEL_DESC[m]?`<small class="dsD">${esc(MODEL_DESC[m])}</small>`:''}</button>`;
+ const grp=(key,attr,name,ms)=>{ms=ms.filter(m=>hit(m,name));if(ms.length)h+=`<details open class="dsGrp" ${attr}="${esc(key)}"><summary>${esc(name)} <small>(${ms.length})</small></summary>`+ms.map(btn).join('')+'</details>'};
+ for(const t in TYPES)grp(t,'data-type',TYPES[t].n,[...new Set([...(MODELS[t]||[]).filter(m=>!CAT_SET.has(m)),...(c[t]||[])])]);
+ for(const k of [...new Set(CATALOG.map(p=>p.c))])grp(k,'data-cat',k,CATALOG.filter(p=>p.c===k).map(p=>p.m));
  $('#dsBody').innerHTML=h||'<small style="color:#94a3b8">No models match.</small>'}
 $('#dsBody').onclick=e=>{const b=e.target.closest('.dsM');if(b)openDs(b.dataset.m)};
 $('#dsQ').oninput=dsList;
