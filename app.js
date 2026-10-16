@@ -140,7 +140,7 @@ function updZoom(){const el=$('#zoomPct');if(!el)return;el.textContent=plan&&pag
 // crisp re-render: render the page at current zoom*dpr, capped by pixel budget
 // Perf: a small full-page base bitmap is rendered once per page; zoomed-in views render only the visible
 // region (plus margin) at screen resolution, capped by a pixel budget. Markups live on a separate overlay canvas.
-let SUPER=0;const MAXPX=matchMedia('(pointer:coarse)').matches?16e6:24e6,BASEPX=4e6,FIRSTPX=1.2e6;
+let SUPER=0,RGEN=0;/* bpm-v97: SUPER now holds the render generation that was superseded, so a late-cancelled older render can't abort the newer one (blank plan after reload) */const MAXPX=matchMedia('(pointer:coarse)').matches?16e6:24e6,BASEPX=4e6,FIRSTPX=1.2e6;
 function wantScale(){return Math.min(view.s*dpr(),10)}
 function visRect(){const W=stage.clientWidth,H=stage.clientHeight,P=[toW(0,0),toW(W,0),toW(0,H),toW(W,H)],xs=P.map(p=>p.x),ys=P.map(p=>p.y),x=Math.min(...xs),y=Math.min(...ys);return{x,y,w:Math.max(...xs)-x,h:Math.max(...ys)-y}}
 function covered(t){const v=visRect();return Math.max(0,v.x)>=t.x-1&&Math.max(0,v.y)>=t.y-1&&Math.min(pageW,v.x+v.w)<=t.x+t.w+1&&Math.min(pageH,v.y+v.h)<=t.y+t.h+1}
@@ -152,23 +152,23 @@ function wantRect(s){const v=visRect();let m=.5,w,h;for(;;){w=v.w*(1+2*m);h=v.h*
  const x=Math.max(0,v.x-v.w*m),y=Math.max(0,v.y-v.h*m);return{x,y,w:Math.max(1,Math.min(pageW-x,w)),h:Math.max(1,Math.min(pageH-y,h))}}
 // Mobile canvas limits: keep every canvas under ~16.7 MP and 8192 px per side; a null context falls back to a smaller size.
 const SAFE_AREA=16e6,SAFE_SIDE=8192;
-async function raster(pg,s,r,showProg){s=Math.max(s,.02);const k=Math.min(1,Math.sqrt(SAFE_AREA/(r.w*r.h*s*s)),SAFE_SIDE/(r.w*s),SAFE_SIDE/(r.h*s));s*=k;
+async function raster(pg,s,r,showProg){const g0=RGEN;s=Math.max(s,.02);const k=Math.min(1,Math.sqrt(SAFE_AREA/(r.w*r.h*s*s)),SAFE_SIDE/(r.w*s),SAFE_SIDE/(r.h*s));s*=k;
  const vp=pg.getViewport({scale:s}),c=document.createElement('canvas');c.width=Math.max(1,Math.ceil(r.w*s));c.height=Math.max(1,Math.ceil(r.h*s));
  const cx=c.getContext('2d',{alpha:false});if(!cx)return null;
  let t;try{t=pg.render({canvasContext:cx,viewport:vp,transform:[1,0,0,1,-r.x*s,-r.y*s],background:'#fff'})}catch(e){console.warn('render failed',e);return null}renderTask=t;
  // pdf.js has no render-progress API: phase % (40% = page ready) plus a live count of drawing operations received
  if(showProg)t.onContinue=cont=>{let n=0;try{for(const st of pg._intentStates?.values()||[])n=Math.max(n,st.operatorList?.fnArray?.length||0)}catch{}if(n)$('#busyPct').textContent=`40% · ${n>=1e4?Math.round(n/1e3)+'k':n} ops`;cont()};
  const to=setTimeout(()=>{if(renderTask===t){t.cancel();t.timedOut=1}},45000);
- try{await t.promise}catch(e){if(!/cancel/i.test(e?.name+e?.message))console.warn('render failed',e);return null}finally{clearTimeout(to)}if(renderTask!==t){SUPER=1;return null}renderTask=null;if(showProg)prog(1);c._s=s;return c}
-async function renderPage(first){if(!pdf){draw();return}SUPER=0;const pn=page,seq=opSeq;if(renderTask){renderTask.cancel();renderTask=null}
+ try{await t.promise}catch(e){if(!/cancel/i.test(e?.name+e?.message))console.warn('render failed',e);return null}finally{clearTimeout(to)}if(renderTask!==t){SUPER=g0;return null}renderTask=null;if(showProg)prog(1);c._s=s;return c}
+async function renderPage(first){if(!pdf){draw();return}const gen=++RGEN;SUPER=0;const pn=page,seq=opSeq;if(renderTask){renderTask.cancel();renderTask=null}
  const pg=await pdf.getPage(pn);if(pn!==page||seq!==opSeq)return;
- if(!baseBm){const full=Math.min(wantScale(),Math.sqrt(BASEPX/(pageW*pageH)));let s=first?Math.min(full,Math.sqrt(FIRSTPX/(pageW*pageH))):full,c=null;for(let i=0;i<6&&!c;i++,s/=2){c=await raster(pg,s,{x:0,y:0,w:pageW,h:pageH},first);if(pn!==page||seq!==opSeq||SUPER)return}
-  if(!c){const r=visRect(),R={x:Math.max(0,r.x),y:Math.max(0,r.y),w:Math.max(1,Math.min(pageW,r.x+r.w)-Math.max(0,r.x)),h:Math.max(1,Math.min(pageH,r.y+r.h)-Math.max(0,r.y))};for(let q=Math.min(wantScale(),Math.sqrt(4e6/(R.w*R.h))),i=0;i<4&&!c;i++,q/=2){c=await raster(pg,q,R);if(pn!==page||seq!==opSeq||SUPER)return}if(c){tile={c,s:c._s,...R};bmpScale=c._s;errClr();draw();return}return false}
+ if(!baseBm){const full=Math.min(wantScale(),Math.sqrt(BASEPX/(pageW*pageH)));let s=first?Math.min(full,Math.sqrt(FIRSTPX/(pageW*pageH))):full,c=null;for(let i=0;i<6&&!c;i++,s/=2){c=await raster(pg,s,{x:0,y:0,w:pageW,h:pageH},first);if(pn!==page||seq!==opSeq||gen!==RGEN||SUPER===gen)return}
+  if(!c){const r=visRect(),R={x:Math.max(0,r.x),y:Math.max(0,r.y),w:Math.max(1,Math.min(pageW,r.x+r.w)-Math.max(0,r.x)),h:Math.max(1,Math.min(pageH,r.y+r.h)-Math.max(0,r.y))};for(let q=Math.min(wantScale(),Math.sqrt(4e6/(R.w*R.h))),i=0;i<4&&!c;i++,q/=2){c=await raster(pg,q,R);if(pn!==page||seq!==opSeq||gen!==RGEN||SUPER===gen)return}if(c){tile={c,s:c._s,...R};bmpScale=c._s;errClr();draw();return}return false}
   errClr();baseBm={c,s:c._s};bmpScale=c._s;pcPut(pn,baseBm);draw();
   // progressive: sharpen the full-page base in the background once the first paint is up
   if(c._s<full*.87){setTimeout(()=>upgradeBase(pn,seq,full),60);return}}
  const want=wantScale();if(baseOK(want)){tile=null;draw();return}
- const r=wantRect(want);let c=await raster(pg,want,r);if(!c&&!SUPER&&pn===page)c=await raster(pg,want/2,r);if(!c||pn!==page)return;tile={c,s:c._s,...r};bmpScale=c._s;errClr();draw()}
+ const r=wantRect(want);let c=await raster(pg,want,r);if(!c&&SUPER!==RGEN&&pn===page)c=await raster(pg,want/2,r);if(!c||pn!==page)return;tile={c,s:c._s,...r};bmpScale=c._s;errClr();draw()}
 function errClr(){if(!$('#err').hidden&&/Could not render|Stopped rendering/.test($('#errTxt').textContent))hideErr()}
 function busy(b,txt){$('#busy').hidden=!b;if(b){$('#busyTxt').textContent=txt||'Working';prog(null)}}
 function prog(f){const pc=f==null?null:Math.round(Math.max(0,Math.min(1,f))*100);$('#busyBar').style.width=(pc||0)+'%';$('#busyPct').textContent=pc==null?'…':pc+'%'}
@@ -760,7 +760,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v96',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v97',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
