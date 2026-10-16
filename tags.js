@@ -27,16 +27,28 @@ async function ocrWords(pg,x,y,r,glyph){const S=4,vp=pg.getViewport({scale:S,off
  return out}
 // words near a point: text layer first, then OCR
 async function wordsNear(pg,n,x,y,size,useOcr){const r=Math.max(18,size*1.6),T=await textOf(pg,n),near=T.filter(t=>Math.abs(t.x-x)<r+t.w/2&&Math.abs(t.y-y)<r).map(t=>({s:t.s,x:t.x,y:t.y}));
- if(near.some(t=>/[A-Za-z]/.test(t.s)))return{words:near,src:'text'};if(!useOcr)return{words:near,src:'text'};try{return{words:await ocrWords(pg,x,y,r,size*1.05),src:'ocr'}}catch(e){console.warn('ocr',e);return{words:near,src:'none'}}}
+ if(near.some(t=>/[A-Za-z]/.test(t.s)))return{words:near,src:'text'};
+ // bpm-v99 (speed): OCR never runs inside Detect; a background pass (ocrPass) reads only glyphs with no text-layer word nearby, cached per spot
+ if(!useOcr)return{words:near,src:'text'};const ck=(plan?.id||'')+':'+n+':'+Math.round(x)+':'+Math.round(y)+':'+Math.round(r);if(OC.has(ck))return OC.get(ck);
+ let res;try{res={words:await ocrWords(pg,x,y,r,size*1.05),src:'ocr'}}catch(e){console.warn('ocr',e);res={words:near,src:'none'}}OC.set(ck,res);return res}
+const OC=new Map();
 window.tagsNear=async(pg,n,x,y,size)=>parseTags((await wordsNear(pg,n,x,y,size,true)).words.map(w=>w.s));
 const OCR_G=new Set(Object.values(RETYPE).flatMap(v=>v.from));
 // mutate items in place: g/type/tags/plan status only
 // bpm-v98 (B4b): each label token belongs to its NEAREST glyph only (nearest-owner), so a WP/RI/R beside one symbol can't bleed onto a neighbour
-window.applyTags=async(pg,n,items,groups)=>{let k=0;const cand=items.filter(it=>OCR_G.has(it.g)||it.master),toks=[],src=new Map();
- for(const it of cand){const sz=Math.max(it.bw||0,it.bh||0)||13,r=await wordsNear(pg,n,it.x,it.y,sz,true);src.set(it,r.src);for(const w of r.words)if(!toks.some(o=>o.s===w.s&&Math.hypot(o.x-w.x,o.y-w.y)<3))toks.push(w)}
+window.applyTags=async(pg,n,items,groups,useOcr=false,only=null)=>{let k=0;const cand=items.filter(it=>(OCR_G.has(it.g)||it.master)&&(!only||only.has(it))),toks=[],src=new Map();
+ for(const it of cand){const sz=Math.max(it.bw||0,it.bh||0)||13,r=await wordsNear(pg,n,it.x,it.y,sz,useOcr);src.set(it,r.src);for(const w of r.words)if(!toks.some(o=>o.s===w.s&&Math.hypot(o.x-w.x,o.y-w.y)<3))toks.push(w)}
  const own=new Map(cand.map(it=>[it,[]]));
  for(const t of toks){let best=null,bd=1e9;for(const it of items){const d=Math.hypot(it.x-t.x,it.y-t.y)/(Math.max(it.bw||0,it.bh||0)||13);if(d<bd){bd=d;best=it}}if(best&&own.has(best))own.get(best).push(t.s)}
  for(const it of cand){const t=parseTags(own.get(it));it.tags=t.mods;it.plan=t.status;it.tagSrc=src.get(it);
-  for(const m of t.mods){const R=RETYPE[m];if(R&&R.from.includes(it.g)&&(!groups||groups.includes(R.to))){it.fromG=it.g;it.g=R.to;it.type=R.det;k++;break}}}
+  if(only&&!t.mods.length&&!t.status)continue;for(const m of t.mods){const R=RETYPE[m];if(R&&R.from.includes(it.g)&&(!groups||groups.includes(R.to))){it.fromG=it.g;it.g=R.to;it.type=R.det;k++;break}}}
  return k};
+// bpm-v99: background OCR pass after Detect. Only Detect suggestions (ghosts) whose glyph had no text-layer word nearby; retype is type-only and flagged low='ocr-tag'.
+window.ocrPass=async(pages,groups,pl)=>{const G=ocrPass.gen=(ocrPass.gen||0)+1;let k=0;for(const n of pages){if(plan!==pl||G!==ocrPass.gen)return k;const gh=ghosts.filter(g=>g.page===n);
+  const need=new Set(gh.filter(g=>(OCR_G.has(g.g))&&!(g.tags&&g.tags.length)&&g.tagSrc!=='text-word'));if(!need.size)continue;const pg=await pdf.getPage(n),T=await textOf(pg,n);
+  for(const g of [...need]){const r=Math.max(18,(Math.max(g.bw||0,g.bh||0)||13)*1.6);if(T.some(t=>Math.abs(t.x-g.x)<r+t.w/2&&Math.abs(t.y-g.y)<r&&/[A-Za-z]/.test(t.s)))need.delete(g)}if(!need.size)continue;
+  const items=gh.map(g=>({ref:g,x:g.x,y:g.y,bw:g.bw,bh:g.bh,g:g.g,type:g.det})),only=new Set(items.filter(i=>need.has(i.ref)));
+  try{await applyTags(pg,n,items,groups,true,only)}catch(e){console.warn('ocr pass',e);continue}
+  for(const i of only){const g=i.ref;if(plan!==pl)return k;if(i.tags?.length)g.tags=i.tags;if(i.plan)g.plan=i.plan;if(i.g!==g.g){g.fromG=g.g;g.shp=DG[g.g]?.t;g.g=i.g;g.det=i.type;g.low=g.low||'ocr-tag';k++}}}
+ if(k&&plan===pl){try{draw();renderGhostBar()}catch{}toast(`Labels read: ${k} suggestion${k===1?'':'s'} re-typed (marked ? to check)`)}return k};
 })();

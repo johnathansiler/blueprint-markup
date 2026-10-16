@@ -90,14 +90,34 @@
   for(let y=Math.max(0,y0);y<=Math.min(y1,G.h-T.h);y++)for(let x=Math.max(0,x0);x<=Math.min(x1,W-T.w);x++){const s=box(I,x,y),s2=box(I2,x,y),vr=s2-s*s/n;if(vr<n*40)continue;let cc=0;for(let j=0;j<T.h;j++){const o=(y+j)*W+x,t=j*T.w;for(let i=0;i<T.w;i++)cc+=G.g[o+i]*T.g[t+i]}const r=cc/(Math.sqrt(vr)*T.sd);if(r>=th)hits.push({x,y,r})}return hits}
  const half=A=>{const w=A.w>>1,h=A.h>>1,g=new Float32Array(w*h);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=2*y*A.w+2*x;g[y*w+x]=(A.g[i]+A.g[i+1]+A.g[i+A.w]+A.g[i+A.w+1])/4}return{g,w,h}};
  const med=a=>{a=a.filter(v=>v>0).sort((x,y)=>x-y);return a.length?a[a.length>>1]:0};
+
+ // bpm-v99: phantom-pin guard. A master-template hit must (1) score NCC >= MT.r, (2) sit on real dark ink that matches the
+ // template's own ink (faint grey watermark/background art, blank paper and table lines are rejected), and (3) not sit on
+ // word text (room names, titles, title-block) or in the legend. Only removes candidates; geometry of kept items untouched.
+ const MT={r:.86,dark:128,hit:.6,cover:.45};window.MT=MT;
+ function realInk(G,T,h){let tN=0,tHit=0,gN=0,gCov=0,mx=0;let tm=0;for(const v of T.g)tm=Math.max(tm,v);const W=G.w;
+  for(let j=0;j<T.h;j++)for(let i=0;i<T.w;i++){const g=G.g[(h.y+j)*W+h.x+i],t=T.g[j*T.w+i]>tm*.3;if(g>mx)mx=g;const dk=g>=MT.dark;if(t){tN++;if(dk)tHit++}if(dk){gN++;let near=false;for(let dj=-1;dj<=1&&!near;dj++)for(let di=-1;di<=1;di++){const jj=j+dj,ii=i+di;if(jj>=0&&jj<T.h&&ii>=0&&ii<T.w&&T.g[jj*T.w+ii]>tm*.3){near=true;break}}if(near)gCov++}}
+  return mx>=160&&tN>0&&tHit/tN>=MT.hit&&gN>0&&gCov/gN>=MT.cover}
+ const TXC=new Map();async function textBoxes(pg){const k=(plan?.id||'')+':'+pg.pageNumber;if(TXC.has(k))return TXC.get(k);const vp=pg.getViewport({scale:1});let tc;try{tc=await pg.getTextContent()}catch{tc={items:[]}}
+  const out=[];for(const t of tc.items){const s=(t.str||'').trim();if(s.replace(/[^A-Za-z0-9]/g,'').length<3)continue;const m=pdfjsLib.Util.transform(vp.transform,t.transform),fh=Math.hypot(m[2],m[3])||Math.hypot(m[0],m[1]),w=(t.width||0)*(fh/(Math.hypot(t.transform[2],t.transform[3])||1)),vert=Math.abs(m[1])>Math.abs(m[0]);
+   const x0=m[4],y0=m[5];let b=vert?{x0:x0-fh*.2,x1:x0+fh*1.1,y0:Math.min(y0,y0+(m[1]>0?w:-w)),y1:Math.max(y0,y0+(m[1]>0?w:-w))}:{x0:Math.min(x0,x0+w),x1:Math.max(x0,x0+w),y0:y0-fh,y1:y0+fh*.25};out.push({x0:b.x0-2,x1:b.x1+2,y0:b.y0-2,y1:b.y1+2})}
+  TXC.set(k,out);return out}
+ function nccAt(G,T,x0,y0,x1,y1){const W=G.w,n=T.w*T.h;let best=null;if(!T.sd)return null;for(let y=Math.max(0,y0);y<=Math.min(y1,G.h-T.h);y++)for(let x=Math.max(0,x0);x<=Math.min(x1,W-T.w);x++){let s=0,s2=0,cc=0;for(let j=0;j<T.h;j++){const o=(y+j)*W+x,t=j*T.w;for(let i=0;i<T.w;i++){const v=G.g[o+i];s+=v;s2+=v*v;cc+=v*T.g[t+i]}}const vr=s2-s*s/n;if(vr<n*40)continue;const r=cc/(Math.sqrt(vr)*T.sd);if(!best||r>best.r)best={x,y,r}}return best&&best.r>=.8?best:null}
+ // dark-ink connected components (8-px dilation not needed: symbols are drawn closed), skipping word text; capped size
+ function inkBlobs(G,TX){const W=G.w,H=G.h,seen=new Uint8Array(W*H),out=[],st=new Int32Array(W*H>>2);for(let i=0;i<W*H;i++){if(seen[i]||G.g[i]<MT.dark)continue;let sp=0;st[sp++]=i;seen[i]=1;let x0=W,y0=H,x1=0,y1=0,cnt=0,big=false;
+   while(sp){const j=st[--sp],x=j%W,y=(j/W)|0;cnt++;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;if(x1-x0>80||y1-y0>80)big=true;
+    for(const k of [j-1,j+1,j-W,j+W,j-W-1,j-W+1,j+W-1,j+W+1]){if(k<0||k>=W*H||seen[k]||G.g[k]<MT.dark)continue;const kx=k%W;if(Math.abs(kx-x)>1)continue;seen[k]=1;if(sp<st.length)st[sp++]=k}}
+   if(big||x1-x0<5||y1-y0<5)continue;const cx=(x0+x1)/2,cy=(y0+y1)/2;if(TX&&TX.some(b=>cx>b.x0&&cx<b.x1&&cy>b.y0&&cy<b.y1))continue;out.push({x0,y0,x1,y1})}return out}
  window.masterItems=async(pg,n,vp,existing)=>{const L=(await load()).filter(m=>m.tpl&&dgOf(m.type)&&detOf(dgOf(m.type)));if(!L.length)return[];
   // scale: plan symbols are usually drawn smaller than the legend; estimate from Detect's own sized items on this page (same type first, else all)
   const tw=m=>m.tpl.w/m.tpl.s,sized=existing.filter(i=>i.bw>0),allR=med(sized.map(i=>i.bw))/(med(L.map(tw))||1);
-  const c=await render(pg,1),G=integ(grayOf(c)),G2=integ(half(G)),out=[];
+  const c=await render(pg,1),G=grayOf(c),out=[],TX=await textBoxes(pg),LR=await legendRects(pg,n).catch(()=>null),BL=inkBlobs(G,TX);
   for(const m of L){const same=sized.filter(i=>i.type===detOf(dgOf(m.type))),k=same.length?med(same.map(i=>i.bw))/tw(m):allR,ks=k>0?[Math.min(1,k)]:[1,.75,.55,.4];
-   for(const kk of ks){const T=tplAt(m,kk),T2=tplAt(m,kk/2);if(T.w*T.h>6000||T.w<8||T.h<6)continue;const cand=ncc(G2,T2,.6).sort((a,b)=>b.r-a.r).slice(0,400),keep=[];
-    for(const h of cand){const best=ncc(G,T,.8,h.x*2-3,h.y*2-3,h.x*2+3,h.y*2+3).sort((a,b)=>b.r-a.r)[0];if(!best)continue;if(keep.some(q=>Math.abs(q.x-best.x)<T.w*.7&&Math.abs(q.y-best.y)<T.h*.7))continue;keep.push(best)}
-    for(const h of keep){const x=h.x+T.w/2,y=h.y+T.h/2;if(m.bb&&m.planId===plan?.id&&m.page===n&&x>m.bb.x-2&&x<m.bb.x+m.bb.w+2&&y>m.bb.y-2&&y<m.bb.y+m.bb.h+2)continue;
+   for(const kk of ks){const T=tplAt(m,kk),T2=tplAt(m,kk/2);if(T.w*T.h>6000||T.w<8||T.h<6)continue;const keep=[];
+    // bpm-v99 (speed): test only real dark-ink blobs about the template's size, never a full-page sliding window
+    for(const bl of BL){const bw=bl.x1-bl.x0+1,bh=bl.y1-bl.y0+1;if(bw<T.w*.6||bw>T.w*1.5||bh<T.h*.6||bh>T.h*1.5)continue;const cx=Math.round((bl.x0+bl.x1+1-T.w)/2),cy=Math.round((bl.y0+bl.y1+1-T.h)/2);
+     const best=nccAt(G,T,cx-3,cy-3,cx+3,cy+3);if(!best)continue;if(keep.some(q=>Math.abs(q.x-best.x)<T.w*.7&&Math.abs(q.y-best.y)<T.h*.7))continue;keep.push(best)}
+    for(const h of keep){const x=h.x+T.w/2,y=h.y+T.h/2;if(h.r<MT.r||!realInk(G,T,h)||(TX&&TX.some(b=>x>b.x0&&x<b.x1&&y>b.y0&&y<b.y1))||(LR&&LR.some(b=>x>b.x&&x<b.x+b.w&&y>b.y&&y<b.y+b.h)))continue;if(m.bb&&m.planId===plan?.id&&m.page===n&&x>m.bb.x-2&&x<m.bb.x+m.bb.w+2&&y>m.bb.y-2&&y<m.bb.y+m.bb.h+2)continue;
      if([...existing,...out].some(o=>Math.hypot(o.x-x,o.y-y)<Math.max(10,T.w*.6)))continue;if(window.tagsNear){let t='';try{t=(await tagsNear(pg,n,x,y,Math.max(T.w,T.h))).mods.join('+')}catch{}if(t!==(m.tag||''))continue}out.push({type:detOf(dgOf(m.type)),x,y,fp:{s:'master',gl:m.name.slice(0,12),v:[0,0,0,0,0,0,0]},master:m.id})}}}
   return out};
  // ---- Symbols guide ----

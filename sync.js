@@ -24,7 +24,7 @@ window.mergePins=mergePins;window.mergeLog=mergeLog;
  const _cm=changeMulti;changeMulti=async function(list){for(const e of list)if(e.store==='pins')await stamp(e.before,e.after);return _cm.call(this,list)};
 
  async function shareOrSave(blob,name){const f=new File([blob],name,{type:'application/octet-stream'});
-  if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:name});return'shared'}catch(e){if(e.name==='AbortError')return'cancel'}}dl(blob,name);return'saved'}
+  if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:name});return'shared'}catch(e){if(e.name==='AbortError')return'cancel';if(e.name==='NotAllowedError'&&await uiConfirm(name+' is ready.',{ok:'Share file',cancel:'Save to device'})){try{await navigator.share({files:[f],title:name});return'shared'}catch(e2){if(e2.name==='AbortError')return'cancel'}}}}dl(blob,name);return'saved'}
  window.buildSplit=async function(sel){const all=await readBpm(await buildBpm(project.id)),man=all.man,z=all.z,ids=new Set(sel.map(p=>p.id)),plIds=new Set(sel.map(p=>p.planId));
   const plans=man.plans.filter(p=>plIds.has(p.id)),media=man.media.filter(m=>ids.has(m.pinId)),files=[];
   for(const p of plans)if(p.file)files.push({name:p.file,blob:z.get(p.file).blob});for(const m of media){if(m.file)files.push({name:m.file,blob:z.get(m.file).blob});if(m.annotFile)files.push({name:m.annotFile,blob:z.get(m.annotFile).blob})}
@@ -53,7 +53,7 @@ window.mergePins=mergePins;window.mergeLog=mergeLog;
  window.openSplit=openSplit;
 
  window.mergeFile=async function(file){if(!project)throw new Error('open the project first');const{z,man}=await readBpm(file),pid=man.split?.projectId||man.project?.split?.projectId||man.project?.id;
-  if(pid!==project.id&&!confirm('This file was split from a different project. Merge anyway (pins match by ID only)?'))return null;
+  if(pid!==project.id){busy(0);const ok=await uiConfirm('This file was split from a different project. Merge anyway (pins match by ID only)?',{ok:'Merge anyway',cancel:'Cancel'});if(!ok)return null;busy(1,'Merging…')}
   const remote=man.pins,keys=new Set(remote.map(p=>p.srcPin||p.id)),local=[];for(const pl of (await all('plans')).filter(p=>p.projectId===project.id))for(const p of await byIdx('pins','planId',pl.id))if(keys.has(p.id))local.push(p);
   const res=mergePins(local,remote);res.file={z,man};return res};
  async function applyMerge(res,picks){const{z,man}=res.file,byKey=new Map(man.pins.map(p=>[p.srcPin||p.id,p])),L=new Map();for(const pl of (await all('plans')).filter(p=>p.projectId===project.id))for(const p of await byIdx('pins','planId',pl.id))L.set(p.id,p);
@@ -71,6 +71,6 @@ window.mergePins=mergePins;window.mergeLog=mergeLog;
   d.innerHTML=`<h3 style="margin:4px 0">⇄ ${res.conflicts.length} conflict${res.conflicts.length>1?'s':''}</h3><small style="color:#cbd5e1">Tested on both phones. Pick the result to keep. ${res.apply.length} other result(s) merge automatically.</small><div id="mrgL">${res.conflicts.map(c=>`<div class="mc"><h4>${esc(TYPES[c.local.type]?.n||c.local.type)} ${esc(c.local.address||'')}</h4><label><input type="radio" name="m_${c.id}" value="local" checked> This phone<br>${fmtR(c.local)}</label><label><input type="radio" name="m_${c.id}" value="remote"> Their phone<br>${fmtR(c.remote)}</label></div>`).join('')}</div><div class="row"><button type="button" class="btn" id="mrgX">Cancel</button><span class="sp"></span><button type="button" class="btn pri" id="mrgGo">Merge</button></div>`;
   d.querySelector('#mrgX').onclick=()=>d.close();d.querySelector('#mrgGo').onclick=async()=>{const p={};res.conflicts.forEach(c=>p[c.id]=d.querySelector(`[name="m_${c.id}"]:checked`).value);d.close();await fin(p)};d.showModal()}
  window.mergeUI=mergeUI;
- $('#splitBtn').onclick=()=>openSplit();
+ $('#splitBtn').onclick=()=>openSplit().catch(e=>{console.error(e);uiAlert('Split could not open: '+e.message)});
  $('#mergeBtn').onclick=()=>{const i=ce('input',{type:'file',accept:'.marker,.bpm,application/zip,application/octet-stream'});i.onchange=()=>i.files[0]&&mergeUI(i.files[0]);i.click()};
 })();
