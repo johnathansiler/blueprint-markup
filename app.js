@@ -758,7 +758,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v81',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v82',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -1290,23 +1290,27 @@ $('#dModelC').addEventListener('input',e=>{form.elements.model.value=e.target.va
 // Datasheet links: only URLs fetched and confirmed (v76). Anything else -> Siemens SID search.
 const DS_SID='https://sid.siemens.com/v/u/',DS_KH='https://sid.siemens.com/api/khub/documents/',DS_AC='https://assets.new.siemens.com/siemens/assets/api/uuid:';
 const DATASHEETS=(()=>{const d={},a=(ms,u)=>ms.split(' ').forEach(m=>d[m]=u);
- a('FPT-11',DS_SID+'A6V10238830');a('HFP-11','https://9780611.app.netsuite.com/core/media/media.nl?_xt=.pdf&c=9780611&h=n-VEmNcdQ_8kFNd4PBl0s5sgSpUm2iUUHsP97zBIH0fbb01t&id=234528');
- a('HFPO-11','https://www.hvacusa.com/media/datasheetfiles/500-034800-signed.pdf');a('OP921',DS_SID+'A6V10343336');
- a('FDO421',DS_KH+'UhSLkJaUKyKGTpTlxDf0FA/content');a('FDOT421','https://www.lifesafetycom.com/wp-content/uploads/2026/04/FDOT421-datasheet.pdf');
- a('XTRI-S XTRI-D XTRI-R',DS_SID+'A6V11208901');a('XTRI-M',DS_SID+'A6V11208900');
- a('HTRI-S HTRI-D HTRI-R',DS_KH+'LEPOlbqcsqPhXHEbnbuNTQ/content');a('TRI-S TRI-D TRI-R',DS_KH+'YEk5wrCLxSWQBeE7xQi08Q/content');
- a('HLIM',DS_SID+'A6V10232957');a('SBGA-34',DS_KH+'VfrrVAS0OK7TfcQyoibs1A/content');
- a('MSI-10B MSI-20B',DS_KH+'2L0T3dOweTffu525JxJvaQ/content');a('HMS-M','https://rybbfirealarm.com/wp-content/uploads/HMS-M.pdf');
- a('XMS-51 XMS-M',DS_KH+'dy2QFEOq0EJ6fFC0Rz3HDw/content');
- a('FDBZ492 FDBZ492-HR FDBZ492-R FDBZ492-PR',DS_SID+'A6V10366084');a('AD2-P AD2-PR',DS_KH+'7qk3MfjN~hRS42WxKAPXcQ/content');
- a('SC-HS-WR-F SC-HS-WW-F SC-HN-WR-N SC-HN-WW-N SC-ST-WR-F SC-ST-WW-F',DS_AC+'14c84802-dfa9-47e9-a021-667bbec94bd1/ACEND-Horn-Strobes-Wall-Mount-Appliances-Data-Sheet.pdf');
- a('SC-SS-WW-F SC-SP-WW-F',DS_AC+'7186dedb-33b1-44bb-8383-ac048b587539/ACEND-Speaker-Strobes-Wall-Mount-Appliances-Data-Sheet.pdf');
- a('SC-SS-CW-F SC-SP-CW-F',DS_AC+'691c0196-400c-499f-b922-649712c74317/ACEND-Speaker-Strobes-Ceiling-Mount-Appliances-Data-Sheet.pdf');
- a('SL24XSPS-FW','https://www.lifesafetycom.com/product/siemens-sl24xsps-fw-weatherproof-speakers-strobe-surface-mount-only-fire-text-white/');
- a('FC2025 FC2050',DS_SID+'A6V10356081');a('FC922 FC924',DS_SID+'A6V10349710');
- a('FireFinder XLS','https://cache.industry.siemens.com/dl/files/579/109787579/att_1044333/v2/A6V10238846.pdf');return d})();
+// v82: kept only English docs with a wiring diagram (install instructions preferred); others fall back to Siemens search.
+ a('HFP-11 HFPT-11','https://cache.industry.siemens.com/dl/files/642/109787642/att_1044396/v1/A6V10239116.pdf');
+ a('HFPO-11','https://sid.siemens.com/v/u/A6V10239132');
+ a('OP921','https://sid.siemens.com/v/u/A6V10323928');
+ a('FDO421','https://sid.siemens.com/v/u/A6V10323926');
+ a('FDOT421','https://sid.siemens.com/v/u/A6V10323934');
+ a('XTRI-S XTRI-D XTRI-R','https://cache.industry.siemens.com/dl/files/341/109787341/att_1044095/v2/A6V101055479.pdf');
+ a('XTRI-M','https://sid.siemens.com/r/A6V101055487');
+ a('HTRI-S HTRI-D HTRI-R','https://cache.industry.siemens.com/dl/files/678/109787678/att_1044432/v1/A6V10239161.pdf');
+ a('TRI-S TRI-D TRI-R','https://sid.siemens.com/v/u/A6V10239164');
+ a('MSI-10B MSI-20B','https://sid.siemens.com/v/u/A6V10239237');
+ a('XMS-M','https://cache.industry.siemens.com/dl/files/195/109791195/att_1047960/v2/A6V11439600.pdf');
+ a('FDBZ492 FDBZ492-HR FDBZ492-R','https://cache.industry.siemens.com/dl/files/050/109789050/att_1045808/v2/A6V10336866.pdf');
+ a('SC-HS-WR-F SC-HS-WW-F SC-HN-WR-N SC-HN-WW-N SC-ST-WR-F SC-ST-WW-F','https://sid.siemens.com/v/u/A6V12744828');
+ a('SC-SS-WW-F SC-SP-WW-F','https://sid.siemens.com/api/khub/documents/p6sGlAW5pizs~sbClODkPQ/content');
+ a('SC-SS-CW-F SC-SP-CW-F','https://sid.siemens.com/api/khub/documents/5IQd0hk4ENyLndsan~803w/content');
+ a('FC2025 FC2050','https://cache.industry.siemens.com/dl/files/052/109789052/att_1045810/v1/A6V10337045.pdf');
+ a('FC922 FC924','https://sid.siemens.com/v/u/A6V10356958');
+ a('SBGA-34',DS_KH+'VfrrVAS0OK7TfcQyoibs1A/content');a('AD2-P AD2-PR',DS_KH+'7qk3MfjN~hRS42WxKAPXcQ/content');return d})();
 // v77 Siemens parts catalog: [category, pin type ('' = catalog only), model, description, datasheet key]. Keys map to URLs fetched and confirmed; '' = Siemens search.
-const CAT_U={ov:DS_SID+'A6V11208902',fcm:DS_SID+'A6V11231592',cc:DS_SID+'A6V11213138',xdlc:DS_SID+'A6V11208904',xnlc:DS_KH+'uRmDqKgrbOleI293U~TO8w/content',mlc:DS_SID+'A6V11231601',nic:DS_SID+'A6V10238879',xinc:DS_SID+'A6V14140236',psc:DS_SID+'A6V13769998',zic4:DS_KH+'2HOrSXngkpLUUiIukfvkjA/content',zic8:DS_SID+'A6V11231586',ocm:DS_SID+'A6V11208913',ctl:DS_SID+'A6V11208911',cdc:DS_KH+'Q2qsp7Bp~E2CVg3CCFlhgA/content',xvcc:DS_SID+'A6V14425981',tzc:DS_SID+'A6V10238877',fmt:DS_KH+'sGHj2pzkHKJmKx5nLGNv5w/content',rni:DS_KH+'3HT0Ck813zdgaOmfZFV9_w/content',rpm:'https://cache.industry.siemens.com/dl/files/804/109790804/att_1047567/v2/A6V11213148.pdf',encl:DS_KH+'L9pMs4_2NfBGjL3pseaDmA/content',zac:DS_SID+'A6V11231575',zam:DS_KH+'B0vT7QK37~2mUBsT7EjDDA/content',voice:DS_SID+'A6V10426899',dac:DS_SID+'A6V11231565',aic:DS_SID+'A6V11213144',fn13:DS_SID+'A6V10238819',fn06:DS_SID+'A6V10356080',sls:'https://cache.industry.siemens.com/dl/files/066/109791066/att_1047827/v4/A6V11396486.pdf',slsp:'https://cache.industry.siemens.com/dl/files/070/109791070/att_1047831/v4/A6V11401076.pdf',sl2:'https://rybbfirealarm.com/wp-content/uploads/SL2HSWW-F.pdf',sl2mt:DS_KH+'k51GC56QCEPkbqWwsNDvWQ/content',sl2fc:DS_KH+'1snudx0EQyppj8uR9N1w6A/content',sl2fw:DS_KH+'D5U7kdUIq2mSK56dnuLh1A/content',hs:DS_KH+'xT12dkdCvpVUJLJw5Wmfqg/content',as:DS_SID+'A6V10238714',mth:DS_KH+'KCp3v9jtaP8Oxs9y5plOqA/content',mnt:DS_SID+'A6V10238721',zb:DS_SID+'A6V10238720',pad:DS_SID+'A6V11231624',fca:DS_SID+'A6V10356071'};
+const CAT_U={ov2:'',pscx:'',iled:'https://sid.siemens.com/r/A6V101055484',fdootc:'https://sid.siemens.com/v/u/A6V10324657',oohc:'https://sid.siemens.com/v/u/A6V10324661',oh921:'https://sid.siemens.com/r/A6V10323936',hi921:'https://sid.siemens.com/r/A6V10323932',db11:DS_SID+'A6V10370259',dbx:DS_SID+'A6V10239267',adbh:'https://cache.industry.siemens.com/dl/files/567/109787567/att_1044321/v2/A6V10238832.pdf',abhw4b:'https://sid.siemens.com/r/A6V10405587',abhw4s:'https://cache.industry.siemens.com/dl/files/914/109789914/att_1046673/v3/A6V10427545.pdf',abhw4sz:'https://rybbfirealarm.com/wp-content/uploads/ABHW-4SZ-Datasheet.pdf',htri:'https://cache.industry.siemens.com/dl/files/678/109787678/att_1044432/v1/A6V10239161.pdf',hzm:'',hcp:'https://sid.siemens.com/api/khub/documents/np5V1RORxjmefAsV9Md07Q/content',fdcio:'https://sid.siemens.com/r/A6V10324662',tsm:'',hms2:'https://sid.siemens.com/api/khub/documents/tsLNu~O9hufODJLyCgpuFg/content',xms:'https://cache.industry.siemens.com/dl/files/195/109791195/att_1047960/v2/A6V11439600.pdf',encl2:'',ov:'',fcm:'https://sid.siemens.com/r/A6V11231623',cc:'https://sid.siemens.com/api/khub/documents/HQuoNUqMgBIOnpv4z2OR~g/content',xdlc:'https://sid.siemens.com/r/A6V101040156',xnlc:'https://sid.siemens.com/r/A6V14373883',mlc:'',nic:'',xinc:'https://sid.siemens.com/r/A6V12412368',psc:'https://cache.industry.siemens.com/dl/files/996/109813996/att_1116888/v3/A6V12021370.pdf',zic4:'https://sid.siemens.com/r/A6V10239104',zic8:'',ocm:'https://sid.siemens.com/r/A6V10239108',ctl:'',cdc:'https://sid.siemens.com/r/A6V10239127',xvcc:'',tzc:'https://sid.siemens.com/r/A6V10239124',fmt:'',rni:'',rpm:'',encl:'',zac:'https://sid.siemens.com/v/u/A6V10259392',zam:'https://sid.siemens.com/v/u/A6V10259333',voice:'',dac:'https://sid.siemens.com/v/u/A6V10259397',aic:'https://sid.siemens.com/r/A6V10239138',fn13:'',fn06:'https://sid.siemens.com/v/u/A6V10315048',sls:'https://sid.siemens.com/api/khub/documents/k~R8zBq~05eNxGSuJPDuog/content',slsp:'',sl2:'',sl2mt:'',sl2fc:'https://sid.siemens.com/api/khub/documents/to3i3L7wI9hXxTu8PUBcPw/content',sl2fw:'https://sid.siemens.com/api/khub/documents/to3i3L7wI9hXxTu8PUBcPw/content',hs:'',as:'https://parcelsfolder.portlandmaine.gov/Files/048/048%20%20D010/54%20Grant%20St/AS-MC%20P83947-007B.pdf',mth:'',mnt:'',zb:'',pad:'https://cache.industry.siemens.com/dl/files/335/109787335/att_1044089/v3/A6V101030358.pdf',fca:''};
 const CATALOG=`Panel cards & modules|panel|FCM2041-U2|Desigo Modular Operator Interface|fcm
 Panel cards & modules|panel|CC-5|5-slot card cage|cc
 Panel cards & modules|panel|CC-2|2-slot card cage|cc
@@ -1402,9 +1406,9 @@ Notification non-ACEND|horn|HS-MC-W|Horn strobe|hs
 Notification non-ACEND|horn|HS-HMC-R|Horn strobe|hs
 Notification non-ACEND|horn|AS-MC-R|Audible strobe|as
 Notification non-ACEND|horn|AS-MC-W|Audible strobe|as
-Notification non-ACEND|horn|AS-HMC-R-WP|Weatherproof horn strobe|as
-Notification non-ACEND|horn|AS-HMC-CR-WP|Weatherproof horn strobe|as
-Notification non-ACEND|horn|AS-HMC-CW-WP|Weatherproof horn strobe|as
+Notification non-ACEND|horn|AS-HMC-R-WP|Weatherproof horn strobe|
+Notification non-ACEND|horn|AS-HMC-CR-WP|Weatherproof horn strobe|
+Notification non-ACEND|horn|AS-HMC-CW-WP|Weatherproof horn strobe|
 Notification non-ACEND|horn|MTH-HMC-CR-WP|Weatherproof multi-tone horn strobe|mth
 Backboxes & Trim||SHBBS-R|Back box|mnt
 Backboxes & Trim||SHBBS-W|Back box|mnt
@@ -1433,7 +1437,123 @@ PAD-5 & Dialers|panel|PAD-5-CDC|PAD-5 conventional detector card|pad
 PAD-5 & Dialers|dact|XDACT-ASSY|DACT mounting assembly|ov
 PAD-5 & Dialers|dact|FCA2015-U1|DACT|fca
 PAD-5 & Dialers|panel|CAB-100-BRKT|Battery bracket|encl
-PAD-5 & Dialers|panel|CAB-55-BRKT|Battery bracket|encl`.split('\n').map(l=>{const[c,t,m,d,k]=l.split('|');return{c,t,m,d,u:k?CAT_U[k]:''}});
+PAD-5 & Dialers|panel|CAB-55-BRKT|Battery bracket|encl
+Panel cards & modules|panel|NRC|Network ring card (legacy)|ov
+Panel cards & modules|panel|IIC|Interface isolation card, NRC-NIC bridge (legacy)|ov
+Panel cards & modules|panel|CRC-6|Six-relay module|ov
+Panel cards & modules|panel|CSB|CAN sounder board|ov
+Panel cards & modules|panel|CCL|see datasheet|ov
+Panel cards & modules|panel|VPM|VESDA peripheral module|ov
+Panel cards & modules|panel|VPM-MP|VPM mounting plate|ov
+Panel cards & modules|panel|VESDA-HLI-KIT|VESDA HLI card + socket card|ov
+Panel cards & modules|panel|XDMC|Digital message card (legacy)|ov
+Panel cards & modules|panel|XMI|Desigo-to-MDACT interface (legacy)|
+Panel cards & modules|panel|MOM2-XMP|MOM-2 mounting plate (legacy)|
+Panel cards & modules|panel|K-CBL|Printer interface cable|
+Panel cards & modules|panel|SNU-ASSY|Single-node upload module (legacy)|ov
+Panel cards & modules|panel|SNU-KIT|SNU sales kit (legacy)|ov
+Panel cards & modules|panel|PMI-1 UPLD-CBL|PMI upload cable (legacy)|ov
+Panel cards & modules||DPU|Device programming/test unit|
+Panel cards & modules||GPMI-3|Graphical PMI software|ov
+Panel cards & modules||GPMI-HW-KEY|GPMI hardware key|ov
+Power supplies|panel|PSFA|Power supply filter assembly|psc
+Power supplies|panel|PSC-ISO-CBL|Extender cable for 2× PSC-12M|psc
+Power supplies|panel|PS-5A|see datasheet|ov
+Power supplies||AC-ADPT|Technician laptop power connector|psc
+Power supplies|panel|PSC-12|XLS power supply/charger (legacy)|pscx
+Power supplies|panel|PSX-12|XLS power supply extender (legacy)|pscx
+Voice / Audio & Telephone|panel|LVM|Live voice module (paging microphone)|ov
+Voice / Audio & Telephone|panel|LPB|Local page board|dac
+Voice / Audio & Telephone|panel|ALCC|Audio level conversion card|
+Amplifiers|panel|ZAM-80|Zone amplifier, 80 W (legacy)|
+Voice / Audio & Telephone|panel|FMT-A-ADPT|FMT Class A riser module|ov
+Voice / Audio & Telephone|panel|DFM|Fiber converter for DNET (legacy)|
+Voice / Audio & Telephone|panel|DFM-BRK|DFM bracket for DNET (legacy)|
+Voice / Audio & Telephone||FTS|Remote telephone station|ov
+Voice / Audio & Telephone||FTS-P|Remote telephone station|ov
+Voice / Audio & Telephone||FTS-C|Remote telephone station|ov
+Voice / Audio & Telephone||FTS-CL|Remote telephone station|ov
+Voice / Audio & Telephone||FTS-PCL|Remote telephone station|ov
+Voice / Audio & Telephone||FB-300|Telephone station flush back box|ov
+Voice / Audio & Telephone||FB-301S|Telephone station surface back box|ov
+Voice / Audio & Telephone||FC-300S|Key-lock cover with break glass|ov
+Voice / Audio & Telephone||FT-GLS|Replacement glass for FC-300S|ov
+Voice / Audio & Telephone||MTE-2|Telephone enclosure|ov
+Voice / Audio & Telephone||PFT|Portable firefighter phone|ov
+Voice / Audio & Telephone||PFT-P|Portable firefighter phone, push-to-talk|ov
+Voice / Audio & Telephone||FJ-303|Telephone jack plate|ov
+Voice / Audio & Telephone||FJ-303SS|Telephone jack plate, stainless|ov
+Voice / Audio & Telephone||FJ-304|Telephone jack plate|ov
+Voice / Audio & Telephone||FJ-304SS|Telephone jack plate, stainless|ov
+Annunciators|rai|SSD-C|System status display with controls|ov
+Annunciators|rai|SSD-C-REM|SSD-C, remote locked cabinet|ov
+Annunciators|rai|SSD-INT|System status display, internal|ov
+Annunciators|rai|SSD-C-INT|SSD-C, internal|ov
+Annunciators|rai|ILED-XC|Addressable remote LED, round plate|iled
+Annunciators|rai|ILED-XW|Addressable remote LED, rectangular plate|iled
+Annunciators|rai|RL-HW|Remote alarm lamp, wall|
+Annunciators|rai|RL-HC|Remote alarm lamp, ceiling|
+Network/Fiber|panel|FN2016-U1|XINC Ethernet copper media adapter|xinc
+Network/Fiber|panel|FN2017-U1|XINC multi-mode fiber media adapter|xinc
+Network/Fiber|panel|FN2018-U1|XINC single-mode fiber media adapter|xinc
+Network/Fiber|panel|LDC|Long-distance copper module for XINC|xinc
+Detectors|smoke|FDOOTC441|Desigo dual optical/heat + CO detector|fdootc
+Detectors|smoke|OOHC941|Cerberus PRO dual optical/heat + CO detector|oohc
+Detectors|smoke|OH921|Cerberus PRO optical/heat detector|oh921
+Detectors|heat|HI921|Cerberus PRO heat detector|hi921
+Detectors|smoke|SFP-11|Canadian H-series optical/heat detector|
+Detectors|heat|SFPT-11|Canadian H-series heat detector|
+Detectors|smoke|SFPO-11|Canadian H-series optical detector|
+Bases||DB-11|Detector mounting base|db11
+Bases||DB-11E|Detector mounting base, small|db11
+Bases||DB-HR|Relay base, H-series (legacy)|db11
+Bases||DB-X11RS|Detector base with relay (legacy)|dbx
+Bases||ADBH-11|Audible base, H-series|adbh
+Bases||ABHW-4B|Audible base|abhw4b
+Bases||ABHW-4S|Audible base, 520 Hz|abhw4s
+Bases||ABHW-4SZ|Audible base, 520 Hz, sleeping areas|abhw4sz
+Detectors|duct|AD-11P|H-series air duct housing (legacy)|
+Detectors|duct|AD-HR|H-series air duct housing with relay (legacy)|
+Modules & Stations|module|HTRI-SZ|Single input module, US origin|htri
+Modules & Stations|relay|HTRI-RZ|Single input module with relay, US origin|htri
+Modules & Stations|module|HTRI-DZ|Dual input module, US origin|htri
+Modules & Stations||USCG-HPLATE|Marine metal cover plate for HTRI|htri
+Modules & Stations|module|HZM|Remote conventional zone module|hzm
+Modules & Stations|module|HCP|Intelligent control point|hcp
+Modules & Stations|module|FDCIO422|Addressable input/output module|fdcio
+Modules & Stations|module|TSM-1X|Intelligent test switch|tsm
+Modules & Stations|pull|HMS-2S|Manual station, two-stage|hms2
+Modules & Stations|pull|HMS-SA|Manual station with aux contacts|hms2
+Modules & Stations|pull|XMS-S|Class X manual station, single action|xms
+Modules & Stations|pull|XMS-D|Class X manual station, double action|xms
+Modules & Stations||HMSFD|Double-action adapter for HMS-M|
+Modules & Stations||SB-5R|Surface box for HMS|
+Modules & Stations|relay|RPR-1|Remote relay|
+Enclosures & Doors|panel|CAB2-X|Two-row transponder box + door kit (legacy)|encl2
+Enclosures & Doors|panel|CAB3-X|Three-row transponder box + door kit (legacy)|encl2
+Enclosures & Doors|panel|XLS-RCC13-ADPT|RCC-1/RCC-3 to SSD adapter (legacy)|ov
+Enclosures & Doors|panel|XLS-RCC1-ADPT|RCC-1 to SSD adapter (legacy)|ov
+Enclosures & Doors|panel|XLS-EXT-CABLE-PKG|Adapter extension cable kit (legacy)|ov
+Enclosures & Doors|panel|REMBOX4R|REMBOX4, red|encl
+Enclosures & Doors|panel|MLE-6|Legacy MXL enclosure (legacy)|ov
+Enclosures & Doors|panel|MLE-6R|Legacy MXL enclosure, red (legacy)|ov
+Enclosures & Doors|panel|MME-3|Legacy MXL enclosure (legacy)|ov
+Enclosures & Doors|panel|MME-3R|Legacy MXL enclosure, red (legacy)|ov
+Enclosures & Doors|panel|MBR-2|Legacy MXL enclosure (legacy)|ov
+Enclosures & Doors|panel|MBR-2R|Legacy MXL enclosure, red (legacy)|ov
+Enclosures & Doors|panel|MSE-2|Legacy MXL enclosure (legacy)|ov
+Enclosures & Doors|panel|MSE-2R|Legacy MXL enclosure, red (legacy)|ov
+Enclosures & Doors|panel|MSE-3|Legacy MXL enclosure (legacy)|ov
+Enclosures & Doors|panel|MSE-3R|Legacy MXL enclosure, red (legacy)|ov
+Enclosures & Doors|panel|MSE-3L|Legacy MXL-IQ enclosure (legacy)|ov
+Enclosures & Doors|panel|MSE-3LR|Legacy MXL-IQ enclosure, red (legacy)|ov
+Enclosures & Doors|panel|MSE-3M|Legacy MXL-IQ enclosure (legacy)|ov
+Enclosures & Doors|panel|MSE-3MR|Legacy MXL-IQ enclosure, red (legacy)|ov
+Enclosures & Doors|panel|RCC-1|Legacy remote enclosure (legacy)|ov
+Enclosures & Doors|panel|RCC-1F|Legacy remote enclosure, flush (legacy)|ov
+Enclosures & Doors|panel|RCC-1FR|Legacy remote enclosure, flush red (legacy)|ov
+Enclosures & Doors|panel|RCC-3F|Legacy remote enclosure, flush (legacy)|ov
+Enclosures & Doors|panel|RCC-3FR|Legacy remote enclosure, flush red (legacy)|ov`.split('\n').map(l=>{const[c,t,m,d,k]=l.split('|');return{c,t,m,d,u:k?CAT_U[k]:''}});
 const MODEL_DESC={};CATALOG.forEach(p=>{MODEL_DESC[p.m]=p.d;if(p.u)DATASHEETS[p.m]=p.u;if(p.t&&!(MODELS[p.t]||[]).includes(p.m))(MODELS[p.t]=MODELS[p.t]||[]).push(p.m)});
 const CAT_SET=new Set(CATALOG.map(p=>p.m));
 function dsUrl(m){m=String(m||'').trim();return DATASHEETS[m]||'https://sid.siemens.com/search?q='+encodeURIComponent(m)}
@@ -1441,13 +1561,19 @@ function openDs(m){if(String(m||'').trim())window.open(dsUrl(m),'_blank','noopen
 function dsBtnSync(){const m=form.elements.model.value.trim(),b=$('#dDsBtn');b.hidden=!m;b.title=m?(DATASHEETS[m]?'Open '+m+' datasheet':'Search Siemens for '+m):''}
 $('#dDsBtn').onclick=()=>openDs(form.elements.model.value);
 ['change','input'].forEach(ev=>{$('#dModelSel').addEventListener(ev,dsBtnSync);$('#dModelC').addEventListener(ev,dsBtnSync)});
-async function dsList(){const c=await customModels(),q=$('#dsQ').value.trim().toLowerCase();let h='';
- const hit=(m,g)=>!q||m.toLowerCase().includes(q)||g.toLowerCase().includes(q)||(MODEL_DESC[m]||'').toLowerCase().includes(q);
+// bpm-v82: category/type keywords (notification, NAC, horn, strobe, speaker…) match every notification device; rank part number > category > description
+const DS_NOTIF_T=new Set(['horn','spkstrobe','strobe','linearray']),DS_NOTIF_KW=['notification','nac','horn','strobe','speaker','chime','visual','audible','appliance','sounder','acend'];
+const dsNotifGrp=(isT,key)=>isT?DS_NOTIF_T.has(key):/notification/i.test(key);
+async function dsList(){const c=await customModels(),q=$('#dsQ').value.trim().toLowerCase();let G=[];
+ const nq=q.length>=3&&DS_NOTIF_KW.some(k=>k.startsWith(q)||q.startsWith(k));
+ const acend=m=>/^SC-/.test(m)||CATALOG.some(p=>p.m===m&&/acend/i.test(p.c));
+ const score=(m,g,notif)=>{if(!q)return 0;if(m.toLowerCase().includes(q))return 1;if(g.toLowerCase().includes(q))return 2;if(nq&&(notif||acend(m)))return 2;if((MODEL_DESC[m]||'').toLowerCase().includes(q))return 3;return 9};
  const btn=m=>`<button type="button" class="btn dsM" data-m="${esc(m)}" title="${DATASHEETS[m]?'Datasheet':'Siemens search'}">${esc(m)} ${DATASHEETS[m]?'📄':'🔎'}${MODEL_DESC[m]?`<small class="dsD">${esc(MODEL_DESC[m])}</small>`:''}</button>`;
- const grp=(key,attr,name,ms)=>{ms=ms.filter(m=>hit(m,name));if(ms.length)h+=`<details open class="dsGrp" ${attr}="${esc(key)}"><summary>${esc(name)} <small>(${ms.length})</small></summary>`+ms.map(btn).join('')+'</details>'};
+ const grp=(key,attr,name,ms)=>{const notif=dsNotifGrp(attr==='data-type',key);const r=ms.map((m,i)=>({m,i,s:score(m,name,notif)})).filter(x=>x.s<9).sort((x,y)=>x.s-y.s||x.i-y.i);if(r.length)G.push({s:r[0].s,o:G.length,h:`<details open class="dsGrp" ${attr}="${esc(key)}"><summary>${esc(name)} <small>(${r.length})</small></summary>`+r.map(x=>btn(x.m)).join('')+'</details>'})};
  for(const t in TYPES)grp(t,'data-type',TYPES[t].n,[...new Set([...(MODELS[t]||[]).filter(m=>!CAT_SET.has(m)),...(c[t]||[])])]);
  for(const k of [...new Set(CATALOG.map(p=>p.c))])grp(k,'data-cat',k,CATALOG.filter(p=>p.c===k).map(p=>p.m));
- $('#dsBody').innerHTML=h||'<small style="color:#94a3b8">No models match.</small>'}
+ G.sort((x,y)=>x.s-y.s||x.o-y.o);
+ $('#dsBody').innerHTML=G.map(g=>g.h).join('')||'<small style="color:#94a3b8">No models match.</small>'}
 $('#dsBody').onclick=e=>{const b=e.target.closest('.dsM');if(b)openDs(b.dataset.m)};
 $('#dsQ').oninput=dsList;
 $('#dsBtn').onclick=async()=>{$('#dsQ').value='';await dsList();$('#dsDlg').showModal()};
