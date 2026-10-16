@@ -148,3 +148,4 @@ label.opac span{font-size:11px;color:#94a3b8;min-width:28px;text-align:right}
 #ivBody .ivPg{margin:8px auto;background:#fff;box-shadow:0 1px 4px #0006}#ivBody canvas{display:block;width:100%;height:100%}
 #ivBody .ivMsg{color:#fff;padding:20px;text-align:center}
 .myB{background:#7c3aed}
+.mdlRow{display:flex;gap:4px;align-items:center}.mdlRow select{flex:1;min-width:0}
