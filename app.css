@@ -178,3 +178,10 @@ body.walking #walk{padding:5px 8px calc(5px + env(safe-area-inset-bottom));gap:4
 #ptx .pxR{left:50%;top:-42px;margin-left:-8px;width:16px;height:16px;border-radius:50%;cursor:grab;background:#0284c7;border-color:#fff}
 #ptx .pxA{position:absolute;left:100%;top:100%;margin:12px 0 0 6px;background:#0f172ae6;color:#e0f2fe;font:11px/1.2 sans-serif;padding:1px 4px;border-radius:4px;white-space:nowrap}
 label.btn:has(.tl),.btn:has(>.tl){display:inline-flex;flex-direction:column;align-items:center;justify-content:center;padding-top:2px;padding-bottom:2px}
+/* bpm-v88 model picker */
+#dModelBtn{flex:1;min-width:0;justify-content:space-between;text-align:left;display:inline-flex;align-items:center}#dModelBtn .mdV{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#mdlDlg{width:min(560px,96vw);max-height:90dvh;padding:10px;display:none;flex-direction:column;gap:8px}#mdlDlg[open]{display:flex}
+#mdlDlg .mdH{display:flex;align-items:center;gap:6px}#mdQ{width:100%;min-height:42px;font-size:16px}
+#mdL{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:0;overscroll-behavior:contain;padding-bottom:env(safe-area-inset-bottom)}
+#mdL summary{position:sticky;top:0;background:#1e293b;padding:8px 6px;font-weight:700;cursor:pointer;z-index:1;border-bottom:1px solid #334155}#mdL summary small{color:#94a3b8;font-weight:400}
+.mdI{display:flex;flex-direction:column;align-items:flex-start;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid #1e293b;color:inherit;padding:8px 10px;min-height:44px}.mdI small{color:#94a3b8}.mdI.on{background:#1d4ed8}.mdE{padding:10px;color:#cbd5e1}
