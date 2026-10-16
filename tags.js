@@ -23,15 +23,20 @@ async function ocrWords(pg,x,y,r,glyph){const S=4,vp=pg.getViewport({scale:S,off
  const ch=bx.filter(b=>{const h=b.y1-b.y0+1,w=b.x1-b.x0+1;return h>=4*S/2&&h<=14*S&&w<=12*S});const words=[];for(const b of ch.sort((a,b)=>a.x0-b.x0)){const h=b.y1-b.y0+1,wd=words.find(w=>Math.min(w.y1,b.y1)-Math.max(w.y0,b.y0)>.5*Math.min(h,w.y1-w.y0+1)&&b.x0-w.x1<h*1.1&&b.x0>=w.x0);if(wd){wd.x1=Math.max(wd.x1,b.x1);wd.y0=Math.min(wd.y0,b.y0);wd.y1=Math.max(wd.y1,b.y1)}else words.push({...b})}
  const w=await ocr(),out=[];for(const q of words.slice(0,8)){const ww=q.x1-q.x0+1,hh=q.y1-q.y0+1,z=Math.max(1,Math.min(4,48/hh)),o=document.createElement('canvas');o.width=Math.ceil(ww*z)+32;o.height=Math.ceil(hh*z)+32;const og=o.getContext('2d'),D=og.createImageData(o.width,o.height);D.data.fill(255);
   for(let y=0;y<o.height;y++)for(let x=0;x<o.width;x++){const sx=q.x0+Math.floor((x-16)/z),sy=q.y0+Math.floor((y-16)/z);if(sx>=q.x0&&sx<=q.x1&&sy>=q.y0&&sy<=q.y1&&ink[sy*W+sx]){const i=(y*o.width+x)*4;D.data[i]=D.data[i+1]=D.data[i+2]=0}}og.putImageData(D,0,0);
-  const{data}=await w.recognize(o);const t=(data.text||'').trim().replace(/\s+/g,' '),cf=data.confidence|0;if(t&&cf>=45)out.push(t)}
+  const{data}=await w.recognize(o);const t=(data.text||'').trim().replace(/\s+/g,' '),cf=data.confidence|0;if(t&&cf>=45)out.push({s:t,x:x-r+(q.x0+q.x1)/2/S,y:y-r+(q.y0+q.y1)/2/S})}
  return out}
 // words near a point: text layer first, then OCR
-async function wordsNear(pg,n,x,y,size,useOcr){const r=Math.max(18,size*1.6),T=await textOf(pg,n),near=T.filter(t=>Math.abs(t.x-x)<r+t.w/2&&Math.abs(t.y-y)<r).map(t=>t.s);
- if(near.some(s=>/[A-Za-z]/.test(s)))return{words:near,src:'text'};if(!useOcr)return{words:near,src:'text'};try{return{words:await ocrWords(pg,x,y,r,size*1.05),src:'ocr'}}catch(e){console.warn('ocr',e);return{words:near,src:'none'}}}
-window.tagsNear=async(pg,n,x,y,size)=>parseTags((await wordsNear(pg,n,x,y,size,true)).words);
+async function wordsNear(pg,n,x,y,size,useOcr){const r=Math.max(18,size*1.6),T=await textOf(pg,n),near=T.filter(t=>Math.abs(t.x-x)<r+t.w/2&&Math.abs(t.y-y)<r).map(t=>({s:t.s,x:t.x,y:t.y}));
+ if(near.some(t=>/[A-Za-z]/.test(t.s)))return{words:near,src:'text'};if(!useOcr)return{words:near,src:'text'};try{return{words:await ocrWords(pg,x,y,r,size*1.05),src:'ocr'}}catch(e){console.warn('ocr',e);return{words:near,src:'none'}}}
+window.tagsNear=async(pg,n,x,y,size)=>parseTags((await wordsNear(pg,n,x,y,size,true)).words.map(w=>w.s));
 const OCR_G=new Set(Object.values(RETYPE).flatMap(v=>v.from));
 // mutate items in place: g/type/tags/plan status only
-window.applyTags=async(pg,n,items,groups)=>{let k=0;for(const it of items){if(!OCR_G.has(it.g)&&!it.master)continue;const sz=Math.max(it.bw||0,it.bh||0)||13,{words,src}=await wordsNear(pg,n,it.x,it.y,sz,true),t=parseTags(words);it.tags=t.mods;it.plan=t.status;it.tagSrc=src;
+// bpm-v98 (B4b): each label token belongs to its NEAREST glyph only (nearest-owner), so a WP/RI/R beside one symbol can't bleed onto a neighbour
+window.applyTags=async(pg,n,items,groups)=>{let k=0;const cand=items.filter(it=>OCR_G.has(it.g)||it.master),toks=[],src=new Map();
+ for(const it of cand){const sz=Math.max(it.bw||0,it.bh||0)||13,r=await wordsNear(pg,n,it.x,it.y,sz,true);src.set(it,r.src);for(const w of r.words)if(!toks.some(o=>o.s===w.s&&Math.hypot(o.x-w.x,o.y-w.y)<3))toks.push(w)}
+ const own=new Map(cand.map(it=>[it,[]]));
+ for(const t of toks){let best=null,bd=1e9;for(const it of items){const d=Math.hypot(it.x-t.x,it.y-t.y)/(Math.max(it.bw||0,it.bh||0)||13);if(d<bd){bd=d;best=it}}if(best&&own.has(best))own.get(best).push(t.s)}
+ for(const it of cand){const t=parseTags(own.get(it));it.tags=t.mods;it.plan=t.status;it.tagSrc=src.get(it);
   for(const m of t.mods){const R=RETYPE[m];if(R&&R.from.includes(it.g)&&(!groups||groups.includes(R.to))){it.fromG=it.g;it.g=R.to;it.type=R.det;k++;break}}}
  return k};
 })();

@@ -88,7 +88,8 @@ let markups=[],pins=[],view={s:1,x:0,y:0},tool='pan',sel=null,draft=null,ghosts=
 let MK_SNAP=true; // markup geometry snap (lines/arrows/shapes/clouds)
 const LAY0={shapes:true,clouds:true,text:true,pins:true,labels:true,ghosts:true,only:'',dim:false,exp:false};let lay={...LAY0};
 const dpr=()=>window.devicePixelRatio||1;
-let lastW=0,lastH=0;function resize(){const w=stage.clientWidth,h=stage.clientHeight;if(lastW&&pageW){const cx=(lastW/2-view.x)/view.s,cy=(lastH/2-view.y)/view.s;view.x=w/2-cx*view.s;view.y=h/2-cy*view.s}const wide=innerWidth>=800;if(wide!==resize.wide){resize.wide=wide;$('#panel').hidden=!wide;renderList()}lastW=w;lastH=h;cv.width=ov.width=w*dpr();cv.height=ov.height=h*dpr();draw();scheduleRender()}
+/* bpm-v98 (B3): wide layout follows the same media query as the CSS; the Pins toggle is remembered so a resize/rotate can't fight it */const WIDE_MQ=matchMedia('(min-width:800px)');let PANEL_CLOSED=false;const panelBtnSync=()=>{const b=$('#listBtn');if(b){const on=!$('#panel').hidden;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)}};WIDE_MQ.addEventListener?.('change',()=>resize());
+let lastW=0,lastH=0;function resize(){const w=stage.clientWidth,h=stage.clientHeight;if(lastW&&pageW){const cx=(lastW/2-view.x)/view.s,cy=(lastH/2-view.y)/view.s;view.x=w/2-cx*view.s;view.y=h/2-cy*view.s}const wide=WIDE_MQ.matches;if(wide!==resize.wide){resize.wide=wide;$('#panel').hidden=wide?PANEL_CLOSED:true;renderList();panelBtnSync()}lastW=w;lastH=h;cv.width=ov.width=w*dpr();cv.height=ov.height=h*dpr();draw();scheduleRender()}
 new ResizeObserver(()=>resize()).observe(stage);
 window.addEventListener('resize',resize);
 let VR=0,ROTS={};
@@ -134,7 +135,7 @@ async function gotoPage(n,seq){if(!plan)return;const own=seq===undefined;if(own)
  catch(e){if(seq===opSeq)showErr('Could not show page '+n+': '+(e&&e.message||e))}
  finally{if(own&&seq===opSeq)busy(0)}}
 function fit(){if(!pageW)return;const D=dispWH(),w=stage.clientWidth,h=stage.clientHeight,s=Math.min(w/D.w,h/D.h)*.95*1.6;const sw=D.w*s;view={s,x:sw>w?8:(w-sw)/2,y:(h-D.h*s)/2};draw()} // bpm-v86: wider than the stage → left edge stays visible; bpm-v34: page-change/fit zoom 60% closer (×1.6)
-$('#fit').onclick=fit;
+/* bpm-v98 (B5): the Fit button shows the WHOLE page (page-open keeps the v34 closer zoom) */function fitAll(){if(!pageW)return;const D=dispWH(),w=stage.clientWidth,h=stage.clientHeight,s=Math.min(w/D.w,h/D.h)*.96;view={s,x:(w-D.w*s)/2,y:(h-D.h*s)/2};draw();scheduleRender()}window.fitAll=fitAll;$('#fit').onclick=fitAll;
 // bpm-v35: live zoom percentage (100% = 1 CSS px per plan point)
 function updZoom(){const el=$('#zoomPct');if(!el)return;el.textContent=plan&&pageW?Math.round(view.s*100)+'%':'—'}
 // crisp re-render: render the page at current zoom*dpr, capped by pixel budget
@@ -328,7 +329,7 @@ const PK=['type','address','model','location','status','notes','reason','reasonT
 let ckl=[];async function openPin(p){cur=p;modelOpts(p.type);if(!Array.isArray(cur.codes))cur.codes=[];for(const k of PK)form.elements[k].value=p[k]||(k==='severity'?'Non-critical':'');autoR=false;ckl=structuredClone(p.checks||checkItems(p.type));renderChecks();failUI();rtUpd();renderCodes();$('#testedInfo').textContent=testedTxt(p);await showMedia();dlg.showModal()}
 const fmtT=t=>{const d=new Date(t),z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`};
 const testedTxt=p=>p.testedAt?`${p.status} ${fmtT(p.testedAt)}${p.tester?' by '+p.tester:''}`:'';
-let tester=null;async function getTester(force){if(tester===null)tester=(await get('meta','tester'))||'';if(!tester||force){const n=prompt('Tester name (asked once, saved on this device):',tester);if(n!==null&&n.trim()){tester=n.trim();await put('meta',tester,'tester')}}return tester}
+let tester=null,testerAsked=null;async function getTester(force){if(tester===null)tester=(await get('meta','tester'))||'';if(testerAsked===null)testerAsked=!!(await get('meta','testerAsked'));/* bpm-v98: ask once (even if left blank); edit any time with 👤 Tester */if((!tester&&!testerAsked)||force){const n=await uiPrompt('Tester name (asked once, saved on this device; change it any time with 👤 Tester):',tester,{ok:'Save',cancel:'Skip'});testerAsked=true;await put('meta',1,'testerAsked');if(n!==null){tester=n.trim();await put('meta',tester,'tester')}}return tester}
 async function showMedia(){urls.forEach(URL.revokeObjectURL);urls=[];const ms=await byIdx('media','pinId',cur.id);$('#media').innerHTML='';
  for(const m of ms.sort((a,b)=>a.created-b.created)){const u=URL.createObjectURL(m.blob);urls.push(u);const d=document.createElement('div');d.className='m';
   if(m.kind==='photo'){const show=m.annot&&!m.showOrig?m.annot:m.blob,uu=show===m.blob?u:URL.createObjectURL(show);if(uu!==u)urls.push(uu);d.innerHTML=`<img src="${uu}">`;
@@ -342,7 +343,7 @@ $('#addPhoto').onchange=e=>{for(const f of e.target.files)addMedia('photo',f,f.n
 $('#addVideo').onchange=e=>{for(const f of e.target.files)addMedia('video',f,f.name);e.target.value=''};
 let rec=null;$('#rec').onclick=async()=>{const b=$('#rec');if(rec){rec.stop();return}
  try{const st=await navigator.mediaDevices.getUserMedia({audio:true});const ch=[];rec=new MediaRecorder(st);rec.ondataavailable=e=>ch.push(e.data);
-  rec.onstop=()=>{st.getTracks().forEach(t=>t.stop());addMedia('audio',new Blob(ch,{type:rec.mimeType||'audio/webm'}),'voice note');rec=null;b.textContent='🎙 Record'};rec.start();b.textContent='⏹ Stop'}catch(err){alert('Microphone unavailable: '+err.message)}};
+  rec.onstop=()=>{st.getTracks().forEach(t=>t.stop());addMedia('audio',new Blob(ch,{type:rec.mimeType||'audio/webm'}),'voice note');rec=null;b.textContent='🎙 Record'};rec.start();b.textContent='⏹ Stop'}catch(err){uiAlert('Microphone unavailable: '+err.message)}};
 function failUI(){$('#failBox').hidden=form.elements.status.value!=='failed';if(!$('#failBox').hidden){codeHintUpd();suggestCodes()}}form.elements.status.addEventListener('change',failUI);form.elements.severity.addEventListener('change',codeHintUpd);
 const CV={pass:'Pass',fail:'Fail',na:'N/A'};let autoR=false;const rtUpd=()=>{$('#reasonTextL').hidden=form.elements.reason.value!=='Other'};form.elements.reason.addEventListener('change',()=>{autoR=false;rtUpd();suggestCodes();codeHintUpd()});form.elements.reasonText.addEventListener('input',()=>autoR=false);
 function renderChecks(){const n=ckl.filter(c=>c.v).length;$('#ckHead').textContent=`Checklist ${n}/${ckl.length}`;
@@ -354,16 +355,16 @@ $('#checks').addEventListener('click',e=>{const b=e.target.closest('button[data-
 $('#passAll').onclick=()=>{for(const c of ckl)if(!c.v)c.v='pass';checksChanged()};
 form.elements.type.addEventListener('change',()=>{modelOpts(form.elements.type.value);if(!ckl.some(c=>c.v)){ckl=checkItems(form.elements.type.value);renderChecks()}});
 form.addEventListener('submit',async e=>{if(e.submitter?.value!=='save')return;
- if(form.elements.status.value==='failed'&&!form.elements.reason.value){e.preventDefault();alert('Pick a fail reason for this failed device.');form.elements.reason.focus();return}
- if(form.elements.status.value==='failed'&&form.elements.severity.value==='Critical'&&!(cur.codes&&cur.codes.length)){e.preventDefault();if(confirm('Critical deficiency needs a code reference. Open the code picker?'))openCodePicker();else alert('Add at least one code reference for a Critical deficiency.');return}
+ if(form.elements.status.value==='failed'&&!form.elements.reason.value){e.preventDefault();uiAlert('Pick a fail reason for this failed device.');form.elements.reason.focus();return}
+ if(form.elements.status.value==='failed'&&form.elements.severity.value==='Critical'&&!(cur.codes&&cur.codes.length)){e.preventDefault();if(await uiConfirm('Critical deficiency needs a code reference. Open the code picker?'))openCodePicker();else uiAlert('Add at least one code reference for a Critical deficiency.');return}
  dlgSave=(async()=>{const b=structuredClone(cur),a={...b};for(const k of PK)a[k]=form.elements[k].value;if(ckl.some(c=>c.v)||b.checks)a.checks=structuredClone(ckl);if(a.status!=='failed'){a.reason='';a.reasonText='';a.severity='';delete a.codes}else if(cur.codes?.length)a.codes=structuredClone(cur.codes);else delete a.codes
  if(a.status!==b.status){a.testedAt=Date.now();a.tester=await getTester()}if(b.fp&&a.type!==b.type){const ng=groupFor(a.type,b.detG);a.detG=ng;learn(b.fp,ng)}if(a.model)rememberModel(a.type,a.model);if(JSON.stringify(a)!==JSON.stringify(b))await change('pins',b,a);cur=pins.find(x=>x.id===a.id)})()});
 // bpm-v66: wait for the async Save to land before the walk re-reads the pin (it used to re-render with the pre-save pin)
 let dlgSave=null;dlg.addEventListener('close',()=>{if(rec)rec.stop();const w=dlgSave;dlgSave=null;Promise.resolve(w).catch(()=>{}).then(()=>{if(walk)setTimeout(walkAfterDialog,0)})});
-$('#pinDel').onclick=async()=>{if(!confirm('Delete this pin and its media?'))return;await deletePin(cur);dlg.close()};
+$('#pinDel').onclick=async()=>{if(!await uiConfirm('Delete this pin and its media?'))return;await deletePin(cur);dlg.close()};
 async function deletePin(p){await change('pins',p,null,await byIdx('media','pinId',p.id))}
 // ---------- list ----------
-$('#listBtn').onclick=()=>{$('#panel').hidden=!$('#panel').hidden;renderList()};$('#closeList').onclick=()=>$('#panel').hidden=true;
+$('#listBtn').onclick=()=>{const P=$('#panel');P.hidden=!P.hidden;if(WIDE_MQ.matches)PANEL_CLOSED=P.hidden;renderList();panelBtnSync()};$('#closeList').onclick=()=>{$('#panel').hidden=true;if(WIDE_MQ.matches)PANEL_CLOSED=true;panelBtnSync()};
 ['#q','#fType','#fStat','#fLoop','#allPages'].forEach(s=>$(s).oninput=renderList);
 function renderList(){if($('#panel').hidden)return;const q=$('#q').value.toLowerCase(),ft=$('#fType').value,fs=$('#fStat').value,fl=$('#fLoop').value,ap=$('#allPages').checked;
  const loops=[...new Set(pins.map(p=>p.loop||''))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));$('#fLoop').innerHTML='<option value="">All loops</option>'+loops.map(l=>`<option value="${esc(l||'\u2205')}">${l?'Loop '+esc(l):'No loop'}</option>`).join('');$('#fLoop').value=loops.includes(fl==='\u2205'?'':fl)?fl:'';
@@ -446,15 +447,15 @@ async function loadProject(id){let ps=await refreshProjects();project=ps.find(p=
  const mine=(await all('plans')).filter(p=>p.projectId===project.id).sort((a,b)=>b.added-a.added);if(!mine.length)return;
  let last=await get('meta','last:'+project.id);if(!mine.some(p=>p.id===last))last=mine[0].id;const lp=await get('meta','lastPage');await openPlan(last,lp&&lp.plan===last?lp.page:1)}
 $('#projSel').onchange=e=>loadProject(e.target.value);
-$('#projNew').onclick=async()=>{const n=prompt('New project name:','Project '+(($('#projSel').options.length||0)+1));if(!n||!n.trim())return;const p={id:'p'+uid(),name:n.trim(),created:Date.now()};await put('projects',p);await loadProject(p.id)};
-$('#projRen').onclick=async()=>{if(!project)return;const n=prompt('Rename project:',project.name);if(!n||!n.trim())return;project.name=n.trim();await put('projects',project);await refreshProjects()};
+$('#projNew').onclick=async()=>{const n=await uiPrompt('New project name:','Project '+(($('#projSel').options.length||0)+1));if(!n||!n.trim())return;const p={id:'p'+uid(),name:n.trim(),created:Date.now()};await put('projects',p);await loadProject(p.id)};
+$('#projRen').onclick=async()=>{if(!project)return;const n=await uiPrompt('Rename project:',project.name);if(!n||!n.trim())return;project.name=n.trim();await put('projects',project);await refreshProjects()};
 async function deletePlanData(id){for(const m of await byIdx('markups','planId',id))await del('markups',m.id);for(const p of await byIdx('pins','planId',id)){for(const m of await byIdx('media','pinId',p.id))await del('media',m.id);await del('pins',p.id)}await del('plans',id)}
 $('#planDel').onclick=async()=>{if(!plan)return;const cur=plan,mine=(await all('plans')).filter(x=>x.projectId===cur.projectId),dups=mine.filter(x=>x.id!==cur.id&&x.name===cur.name&&x.blob?.size===cur.blob?.size);
- if(!confirm(`Delete plan "${cur.name}" and its markups, pins and media? This cannot be undone.`))return;let ids=[cur.id];
- if(dups.length&&confirm(`Also delete ${dups.length} duplicate upload(s) of this same file (same name and size), including any markups on them?`))ids=ids.concat(dups.map(x=>x.id));
+ if(!await uiConfirm(`Delete plan "${cur.name}" and its markups, pins and media? This cannot be undone.`))return;let ids=[cur.id];
+ if(dups.length&&await uiConfirm(`Also delete ${dups.length} duplicate upload(s) of this same file (same name and size), including any markups on them?`))ids=ids.concat(dups.map(x=>x.id));
  stopAll();hideErr();for(const id of ids)await deletePlanData(id);await loadProject(project.id)};
 $('#projDel').onclick=async()=>{if(!project)return;const mine=(await all('plans')).filter(p=>p.projectId===project.id);
- if(!confirm(`Delete project "${project.name}" and its ${mine.length} plan(s), markups, pins and media? This cannot be undone.`))return;
+ if(!await uiConfirm(`Delete project "${project.name}" and its ${mine.length} plan(s), markups, pins and media? This cannot be undone.`))return;
  stopAll();for(const pl of mine)await deletePlanData(pl.id);
  await del('projects',project.id);await del('meta','last:'+project.id);project=null;await loadProject(null)};
 // ---------- boot ----------
@@ -474,8 +475,8 @@ function annShape(c,s){c.save();c.strokeStyle=c.fillStyle=s.c;c.lineWidth=s.lw;c
  else if(s.t==='text'){c.font=`bold ${s.lw*5}px sans-serif`;c.textBaseline='top';c.lineWidth=s.lw*1.5;c.strokeStyle='#fff';c.strokeText(s.text,s.x1,s.y1);c.fillText(s.text,s.x1,s.y1)}c.restore()}
 function annDraw(){actx.drawImage(ann.img,0,0,acv.width,acv.height);for(const s of ann.shapes)annShape(actx,s);if(ann.drag)annShape(actx,ann.drag);$('#annUndo').disabled=!ann.shapes.length}
 const annPt=e=>{const r=acv.getBoundingClientRect();return[(e.clientX-r.left)*acv.width/r.width,(e.clientY-r.top)*acv.height/r.height]};
-acv.addEventListener('pointerdown',e=>{acv.setPointerCapture(e.pointerId);const[x,y]=annPt(e),c=$('#annColor').value,lw=annLW();
- if(ann.tool==='text'){const t=prompt('Text:');if(t&&t.trim()){ann.shapes.push({t:'text',text:t.trim(),x1:x,y1:y,x2:x,y2:y,c,lw});annDraw()}return}
+acv.addEventListener('pointerdown',async e=>{acv.setPointerCapture(e.pointerId);const[x,y]=annPt(e),c=$('#annColor').value,lw=annLW();
+ if(ann.tool==='text'){const t=await uiPrompt('Text:');if(t&&t.trim()){ann.shapes.push({t:'text',text:t.trim(),x1:x,y1:y,x2:x,y2:y,c,lw});annDraw()}return}
  ann.drag={t:ann.tool,x1:x,y1:y,x2:x,y2:y,c,lw,pts:[[x,y]]}});
 acv.addEventListener('pointermove',e=>{if(!ann.drag)return;const[x,y]=annPt(e);ann.drag.x2=x;ann.drag.y2=y;if(ann.drag.t==='pen')ann.drag.pts.push([x,y]);annDraw()});
 const annUp=()=>{const d=ann.drag;ann.drag=null;if(d&&(d.t==='pen'?d.pts.length>1:Math.hypot(d.x2-d.x1,d.y2-d.y1)>4)){if(d.t!=='pen')delete d.pts;ann.shapes.push(d)}annDraw()};acv.addEventListener('pointerup',annUp);acv.addEventListener('pointercancel',annUp);
@@ -531,14 +532,14 @@ const detLbl=k=>{const g=DG[k];return`<label${g.x?' title="No auto-detect yet �
 const inGrp=new Set(DGRP.flatMap(g=>g[1]));
 $('#detTypes').innerHTML=DGRP.map(([n,ks],i)=>`<div class="detGrp"><label class="detGh"><input type="checkbox" data-grp="${i}"><b>${esc(n)}</b></label>${ks.map(detLbl).join('')}</div>`).join('')+`<div class="detGrp"><div class="detGh"><b>Other (not grouped)</b></div>${Object.keys(DG).filter(k=>!DG[k].x&&!inGrp.has(k)).map(detLbl).join('')}</div>`;
 const grpSync=()=>document.querySelectorAll('#detTypes [data-grp]').forEach(h=>{const bs=[...h.closest('.detGrp').querySelectorAll('input[value]:not([disabled])')],n=bs.filter(b=>b.checked).length;h.checked=n&&n===bs.length;h.indeterminate=n>0&&n<bs.length});
-$('#detTypes').addEventListener('change',e=>{const h=e.target.dataset.grp!=null?e.target:null;if(h)h.closest('.detGrp').querySelectorAll('input[value]:not([disabled])').forEach(b=>b.checked=h.checked);grpSync()});
+$('#detTypes').addEventListener('change',e=>{$('#detMsg').hidden=true;const h=e.target.dataset.grp!=null?e.target:null;if(h)h.closest('.detGrp').querySelectorAll('input[value]:not([disabled])').forEach(b=>b.checked=h.checked);grpSync()});
 const detBoxes=()=>[...document.querySelectorAll('#detTypes input[value]:not([disabled])')];
-$('#detGoTop').onclick=()=>$('#detGo').click();$('#detAll').onclick=()=>{detBoxes().forEach(b=>b.checked=true);grpSync()};$('#detNone').onclick=()=>{detBoxes().forEach(b=>b.checked=false);grpSync()};
-$('#detBtn').onclick=async()=>{if(!plan)return alert('Open a PDF plan first.');if(!pdf)return alert('Detect devices works on vector PDF plans only (not photos or scans).');if(det)return;
- const saved=(await get('meta','detectSel'))||{groups:[],all:false};detBoxes().forEach(b=>b.checked=false);grpSync();
+$('#detGoTop').onclick=()=>$('#detGo').click();$('#detAll').onclick=()=>{detBoxes().forEach(b=>b.checked=true);grpSync();$('#detMsg').hidden=true};$('#detNone').onclick=()=>{detBoxes().forEach(b=>b.checked=false);grpSync()};
+$('#detBtn').onclick=async()=>{if(!plan)return uiAlert('Open a PDF plan first.');if(!pdf)return uiAlert('Detect devices works on vector PDF plans only (not photos or scans).');if(det)return;
+ const saved=(await get('meta','detectSel'))||{groups:[],all:false};detBoxes().forEach(b=>b.checked=false);grpSync();$('#detMsg').hidden=true;
  learnInfoUpd();$('#detForm').elements.scope.value=saved.all?'all':'page';$('#detScope label:last-child').lastChild.textContent=` All ${plan.pages} pages of this plan`;$('#detDlg').showModal()};
 $('#detForm').addEventListener('submit',async e=>{if(e.submitter?.value!=='go')return;const groups=detBoxes().filter(b=>b.checked).map(b=>b.value);
- if(!groups.length){e.preventDefault();alert('Tick at least one device type.');return}const all=$('#detForm').elements.scope.value==='all';
+ if(!groups.length){e.preventDefault();const m=$('#detMsg');m.hidden=false;m.scrollIntoView({block:'nearest'});return}$('#detMsg').hidden=true;const all=$('#detForm').elements.scope.value==='all';
  await put('meta',{groups,all},'detectSel');runDetect(groups,all)});
 const DOPS=['save','restore','transform','paintFormXObjectBegin','paintFormXObjectEnd','setStrokeRGBColor','setFillRGBColor','setStrokeColorN','setFillColorN','constructPath','stroke','closeStroke','fill','eoFill','fillStroke','eoFillStroke','closeFillStroke','closeEOFillStroke','endPath'];
 function cancelDetect(msg){if(!det)return;det.cancel=1;if(det.reject)det.reject(new Error('cancelled'));if(detW){detW.terminate();detW=null}det=null;busy(0);renderGhostBar();if(msg)showErr(msg)}
@@ -569,9 +570,13 @@ async function runDetect(groups,all){const want=groups.flatMap(g=>DG[g].d),pl=pl
    const rules=await learnedRules();let nl=0;const items=[];for(const it of r.items){let g=D2G[it.type],lr=null;const m=matchRule(rules,it.fp);if(m){lr=m.g;nl++;if(m.g==='none')continue;g=m.g}if(groups.includes(g)||(lr&&DG[g]?.x))items.push({...it,g,learned:!!lr})}
    // bpm-v29/v46: backfill measured bw/bh/ang + true outline center onto existing pins so re-Detect recenters angled pins
    for(const it of items){if(!(it.bw||it.vert))continue;const want=DG[it.g]&&DG[it.g].t;const p=pins.find(p=>p.page===n&&(!p.bw||(p.ang==null&&it.ang)||(it.ang&&Math.hypot(p.x-it.x,p.y-it.y)<8)||(it.g==='surge'&&p.type==='surge'&&Math.hypot(p.x-it.x,p.y-it.y)<8))&&Math.hypot(p.x-it.x,p.y-it.y)<36&&(PANEL_S.has(p.type)||(want&&p.type===want)));if(p){if(it.bw){p.bw=it.bw;p.bh=it.bh;p.x=it.x;p.y=it.y;if(it.ang)p.ang=it.ang;else if(it.ang===0||it.g==='surge')delete p.ang}else if(PANEL_S.has(p.type))p.vert=true;put('pins',p)}}
-   try{if(window.applyTags)await applyTags(pg,n,items,groups)}catch(e){console.warn('tags',e)} // bpm-v94: RI/WP/R text tags re-type only (after geometry backfill; x/y/ang/bw/bh untouched; shp keeps the glyph's original silhouette so size/outset stay identical)
+   try{if(window.applyTags)await applyTags(pg,n,items,groups)}catch(e){console.warn('tags',e)}
+   // bpm-v98 (B4): flag low-confidence suggestions; merge different types found on the SAME symbol into one flagged conflict (kept item's geometry untouched)
+   try{if(window.legendRects){const LR=await legendRects(pg,n);for(const it of items)if(LR.some(q=>it.x>q.x&&it.x<q.x+q.w&&it.y>q.y&&it.y<q.y+q.h))it.low='legend'}}catch(e){console.warn('legend rects',e)}
+   for(const it of items){if(!it.low&&it.fp?.s==='master')it.low='template';if(!it.low&&it.fromG&&it.tagSrc==='ocr')it.low='ocr-tag'}
+   {const keep=[];for(const it of items){const o=keep.find(k=>k.g!==it.g&&Math.hypot(k.x-it.x,k.y-it.y)<3);if(o){if(!(o.conflict||=[]).some(c=>c.g===it.g))o.conflict.push({g:it.g,det:it.type,fp:it.fp});continue}keep.push(it)}items.length=0;items.push(...keep)} // bpm-v94: RI/WP/R text tags re-type only (after geometry backfill; x/y/ang/bw/bh untouched; shp keeps the glyph's original silhouette so size/outset stay identical)
    // bpm-v49: SS surge box sits flush beside its AIM hex (~18pt); only an existing surge pin (or a pin right on it) suppresses it
-   const add=items.filter(it=>!(it.g==='surge'?pins.some(p=>p.page===n&&Math.hypot(p.x-it.x,p.y-it.y)<(p.type==='surge'?18*r.k:8)):near(it.x,it.y))).map(it=>({id:uid(),page:n,x:it.x,y:it.y,bw:it.bw,bh:it.bh,ang:it.ang,vert:it.vert,det:it.type,g:it.g,fp:it.fp,learned:it.learned,...(it.tags?.length?{tags:it.tags}:{}),...(it.plan?{plan:it.plan}:{}),...(it.fromG?{fromG:it.fromG,shp:DG[it.fromG].t}:{})}));ghosts.push(...add);found+=add.length;
+   const add=items.filter(it=>!(it.g==='surge'?pins.some(p=>p.page===n&&Math.hypot(p.x-it.x,p.y-it.y)<(p.type==='surge'?18*r.k:8)):near(it.x,it.y))).map(it=>({id:uid(),page:n,x:it.x,y:it.y,bw:it.bw,bh:it.bh,ang:it.ang,vert:it.vert,det:it.type,g:it.g,fp:it.fp,learned:it.learned,...(it.tags?.length?{tags:it.tags}:{}),...(it.plan?{plan:it.plan}:{}),...(it.fromG?{fromG:it.fromG,shp:DG[it.fromG].t}:{}),...(it.conflict?{conflict:it.conflict}:{}),...(it.low?{low:it.low}:{})}));ghosts.push(...add);found+=add.length;
    R.stats.push({page:n,ops:ol.fnArray.length,paths:r.paths,found:items.length,kept:add.length,skipped:items.length-add.length,learnedHits:nl,opsMs:Math.round(t1-t0),workerMs:Math.round(r.ms),totalMs:Math.round(performance.now()-t0),k:r.k});
    prog((i+1)/pages.length);if(n===page)draw();renderGhostBar()}
   window.__detStats=R.stats;if(!found)showErr(`No ${groups.length===Object.keys(DG).length?'':'matching '}device symbols found${all?'':' on this page'}. Detection works on CAD-exported vector plans with standard symbols.`)}
@@ -581,21 +586,29 @@ async function runDetect(groups,all){const want=groups.flatMap(g=>DG[g].d),pl=pl
 function gPin(g){const t=g.det==='JBOX_CEIL'?'jceil':(DG[g.g]&&DG[g.g].t||'other');return{type:t,bw:g.bw,bh:g.bh,ang:g.ang,vert:g.vert,...(g.shp?{shp:g.shp}:{})}}
 function drawGhosts(c){for(const g of ghosts){if(g.page!==page)continue;const T=gT(g),pin=gPin(g);c.save();const oo=OFFMAP&&OFFMAP.get(g.id||g);if(oo)drawLeader(c,g.x,g.y,g.x+oo.dx,g.y+oo.dy,T.c);c.translate(g.x+(oo?oo.dx:0),g.y+(oo?oo.dy:0));if(CR)c.rotate(-CR);if(isFinite(g.ang)&&g.ang)c.rotate(g.ang);
  c.globalAlpha=.55;c.fillStyle=T.c;c.strokeStyle=T.c;c.lineWidth=pinLW(pin);c.setLineDash([3,2]);pinFS(c,pin,1);c.setLineDash([]);
- c.globalAlpha=1;c.fillStyle='#111';c.strokeStyle='#fff';c.lineWidth=1;c.font='bold 8px sans-serif';c.textAlign='center';c.textBaseline='middle';const[,pw,ph]=pshOf(pin);c.beginPath();c.arc(pw/2+1,-ph/2-1,5,0,7);c.fillStyle='#fff';c.fill();c.strokeStyle=T.c;c.stroke();c.fillStyle='#111';c.fillText('?',pw/2+1,-ph/2-1);c.restore()}}
+ c.globalAlpha=1;c.fillStyle='#111';c.strokeStyle='#fff';c.lineWidth=1;c.font='bold 8px sans-serif';c.textAlign='center';c.textBaseline='middle';const[,pw,ph]=pshOf(pin);/* bpm-v98: badge shows review state: ! = type conflict (red), ? = low confidence (amber), · = normal */const bc=g.conflict?'#dc2626':g.low?'#f59e0b':'#fff',bt=g.conflict?'!':g.low?'?':'';c.beginPath();c.arc(pw/2+1,-ph/2-1,g.conflict||g.low?6:3.5,0,7);c.fillStyle=bc;c.fill();c.strokeStyle=g.conflict||g.low?'#111':T.c;c.stroke();c.fillStyle=g.conflict?'#fff':'#111';if(bt)c.fillText(bt,pw/2+1,-ph/2-1);c.restore()}}
 function ghostHit(w){if(!lay.ghosts)return null;let best=null,bd=1e9;for(const g of ghosts){if(g.page!==page)continue;const pr=Math.max(pinHalf(gPin(g))*1.3,14/view.s),o=SCRNOFF&&SCRNOFF.get(g.id||g),d=Math.min(Math.hypot(g.x-w.x,g.y-w.y),o?Math.hypot(g.x+o.dx-w.x,g.y+o.dy-w.y):1e9);if(d<pr&&d<bd){bd=d;best=g}}return best}
-let curG=null;function openGhost(g){curG=g;$('#ghType').value=g.g;ghInfoUpd();$('#ghDlg').showModal()}
+let curG=null;function openGhost(g){curG=g;$('#ghType').value=g.g;ghInfoUpd();let cf=$('#ghConf');if(!cf){cf=document.createElement('div');cf.id='ghConf';cf.className='ghConf';$('#ghInfo').after(cf)}
+ if(g.conflict){const opts=[g.g,...g.conflict.map(c=>c.g)];cf.innerHTML=`<b>⚠ Type conflict:</b> this symbol was detected as ${opts.length} types. Pick the right one:<div class="row">${opts.map(k=>`<button type="button" class="btn" data-pick="${k}">${esc(DG[k].n)}</button>`).join('')}</div>`;cf.hidden=false;cf.querySelectorAll('[data-pick]').forEach(b=>b.onclick=async()=>{const k=b.dataset.pick;if(k!==g.g){const alt=g.conflict.find(c=>c.g===k);if(alt){g.det=alt.det;g.fp=alt.fp}g.g=k}if(g.fp)learn(g.fp,g.g);$('#ghDlg').close();await acceptGhosts([g])})}
+ else if(g.low){cf.innerHTML=`<b>? Low confidence</b> (${g.low==='legend'?'inside the plan legend/symbol table':g.low==='template'?'matched from a master-legend template':'type set from an OCR-read label'}). Check it before accepting.`;cf.hidden=false}else cf.hidden=true;
+ $('#ghDlg').showModal()}
 function ghInfoUpd(){const g=curG;if(!g)return;const n=ghosts.filter(x=>x.g===$('#ghType').value).length;$('#ghHead').textContent='Suggested: '+DG[$('#ghType').value].n;$('#ghInfo').textContent=`Becomes a "${TYPES[DG[$('#ghType').value].t].n}" pin (blank address/loop, not tested). Detected as ${g.det.replace(/_/g,' ').toLowerCase()}, page ${g.page}.`;$('#ghAllType').textContent=`Accept all ${n} of this type`}
 $('#ghType').onchange=()=>{if(curG){curG.g=$('#ghType').value;if(curG.fp)learn(curG.fp,curG.g);ghInfoUpd();draw();renderGhostBar()}};
 $('#ghAcc').onclick=async()=>{const g=curG;$('#ghDlg').close();if(g)await acceptGhosts([g])};
 $('#ghRej').onclick=()=>{const g=curG;$('#ghDlg').close();if(g){if(g.fp)learn(g.fp,'none');ghosts=ghosts.filter(x=>x!==g);draw();renderGhostBar()}};
-$('#ghAllType').onclick=async()=>{const g=curG;$('#ghDlg').close();if(g)await acceptGhosts(ghosts.filter(x=>x.g===g.g))};
-async function acceptGhosts(list){if(!plan||!list.length)return;const out=[],used=[];for(const g of list){if(pins.some(p=>p.page===g.page&&Math.hypot(p.x-g.x,p.y-g.y)<14)||out.some(p=>p.page===g.page&&Math.hypot(p.x-g.x,p.y-g.y)<6)){used.push(g);continue}
+$('#ghAllType').onclick=async()=>{const g=curG;$('#ghDlg').close();if(g)await acceptGhosts(ghosts.filter(x=>x.g===g.g&&(!x.conflict||x===g)),true)};
+let CONFLICTS_RESOLVED=0;
+async function acceptGhosts(list,bulk){if(!plan||!list.length)return;const out=[],used=[];let skipPin=0,kept=0;if(bulk){const c=list.filter(g=>g.conflict);kept=c.length;list=list.filter(g=>!g.conflict)}else if(list.length===1&&list[0].conflict){CONFLICTS_RESOLVED++}
+ for(const g of list){if(pins.some(p=>p.page===g.page&&Math.hypot(p.x-g.x,p.y-g.y)<14)||out.some(p=>p.page===g.page&&Math.hypot(p.x-g.x,p.y-g.y)<6)){used.push(g);skipPin++;continue}
   const G=DG[g.g],boh=/_BOH/.test(g.det);out.push({id:uid(),planId:plan.id,page:g.page,x:g.x,y:g.y,type:G.t,address:'',loop:'',status:'not tested',notes:'',created:Date.now(),...(g.bw?{bw:g.bw,bh:g.bh}:{}),...(g.ang?{ang:g.ang}:{}),...(g.vert?{vert:true}:{}),detected:g.det,detG:g.g,fp:g.fp,opacity:PIN_OP,...(g.tags?{tags:g.tags}:{}),...(g.plan?{planStatus:g.plan}:{}),...(g.shp?{shp:g.shp}:{})});used.push(g)}
- const ids=new Set(used.map(g=>g.id));ghosts=ghosts.filter(g=>!ids.has(g.id));if(out.length)await changeBatch('pins',out,used);else{draw();renderGhostBar()}}
+ const ids=new Set(used.map(g=>g.id));ghosts=ghosts.filter(g=>!ids.has(g.id));if(out.length)await changeBatch('pins',out,used);else{draw();renderGhostBar()}
+ if(bulk||skipPin||kept)uiAlert(`Accepted ${out.length} pin${out.length===1?'':'s'}`+(skipPin?` · ${skipPin} skipped (a pin is already there)`:'')+(kept?` · ${kept} type conflict${kept>1?'s':''} kept for you to pick`:'')+(CONFLICTS_RESOLVED?` · ${CONFLICTS_RESOLVED} conflict${CONFLICTS_RESOLVED>1?'s':''} resolved`:''));else if(list.length===1&&list[0].conflict)uiAlert(`Conflict resolved as ${DG[list[0].g].n} · ${ghosts.filter(g=>g.conflict).length} left`)}
 function renderGhostBar(){const b=$('#ghBar');if(!ghosts.length||walk||!lay.ghosts){b.hidden=true;b.innerHTML='';return}const here=ghosts.filter(g=>g.page===page).length,cnt={};for(const g of ghosts)cnt[g.g]=(cnt[g.g]||0)+1;
- b.innerHTML=`<b>🔍 ${ghosts.length} suggestion${ghosts.length>1?'s':''}</b><small>${here} on this page</small>`+Object.entries(cnt).map(([k,n])=>`<button type="button" class="chip" data-g="${k}" style="border-color:${TYPES[DG[k].t].c}" title="Accept all ${esc(DG[k].n)}">${esc(DG[k].n)} ${n}</button>`).join('')+`<span class="sp"></span><button type="button" class="btn pri" id="ghAccAll">✔ Accept all</button><button type="button" class="btn danger" id="ghRejAll">✕ Reject all</button>`;
- b.hidden=false;b.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{const L=ghosts.filter(g=>g.g===c.dataset.g);if(confirm(`Accept all ${L.length} "${DG[c.dataset.g].n}" suggestions as pins?`))acceptGhosts(L)});
- $('#ghAccAll').onclick=()=>{if(confirm(`Accept all ${ghosts.length} suggestions as pins?`))acceptGhosts(ghosts.slice())};$('#ghRejAll').onclick=()=>{if(confirm(`Reject all ${ghosts.length} suggestions?`)){ghosts=[];draw();renderGhostBar()}}}
+ b.innerHTML=`<b>🔍 ${ghosts.length} suggestion${ghosts.length>1?'s':''}</b><small>${here} on this page</small>`+Object.entries(cnt).map(([k,n])=>`<button type="button" class="chip" data-g="${k}" style="border-color:${TYPES[DG[k].t].c}" title="Accept all ${esc(DG[k].n)}">${esc(DG[k].n)} ${n}</button>`).join('')+(()=>{const nc=ghosts.filter(g=>g.conflict).length,nl=ghosts.filter(g=>g.low&&!g.conflict).length;return(nc?`<button type="button" class="chip ghC" id="ghConfB" title="Same symbol detected as two types: pick one">⚠ ${nc} conflict${nc>1?'s':''}</button>`:'')+(nl?`<button type="button" class="chip ghL" id="ghLowB" title="Low-confidence suggestions to check">? ${nl} to check</button>`:'')})()+`<span class="sp"></span><button type="button" class="btn pri" id="ghAccAll">✔ Accept all</button><button type="button" class="btn danger" id="ghRejAll">✕ Reject all</button>`;
+ b.hidden=false;const nxt=f=>{const L=ghosts.filter(f),g=L.find(x=>x.page===page)||L[0];if(!g)return;const go=()=>{centerOn(g.x,g.y,Math.max(view.s,1),stage.clientWidth/2,stage.clientHeight/2);draw();scheduleRender();openGhost(g)};if(g.page!==page)gotoPage(g.page).then(go);else go()};
+ $('#ghConfB')&&($('#ghConfB').onclick=()=>nxt(g=>g.conflict));$('#ghLowB')&&($('#ghLowB').onclick=()=>nxt(g=>g.low&&!g.conflict));
+ b.querySelectorAll('.chip[data-g]').forEach(c=>c.onclick=async ()=>{const L=ghosts.filter(g=>g.g===c.dataset.g);if(await uiConfirm(`Accept all ${L.length} "${DG[c.dataset.g].n}" suggestions as pins?`))acceptGhosts(L,true)});
+ $('#ghAccAll').onclick=async ()=>{{const nc=ghosts.filter(g=>g.conflict).length;if(await uiConfirm(`Accept all ${ghosts.length-nc} suggestions as pins?`+(nc?`\n${nc} type conflict${nc>1?'s':''} stay as suggestions for you to pick.`:''),{ok:'Accept'}))acceptGhosts(ghosts.slice(),true)}};$('#ghRejAll').onclick=async ()=>{if(await uiConfirm(`Reject all ${ghosts.length} suggestions?`)){ghosts=[];draw();renderGhostBar()}}}
 
 // ---------- v9: layers / visibility (saved per plan) ----------
 const mKind=m=>m.type==='cloud'?'clouds':(m.type==='text'||m.type==='arrow'||m.type==='line')?'text':'shapes';
@@ -607,7 +620,7 @@ const layF=$('#layForm');
 function layToForm(){for(const k of['shapes','clouds','text','pins','labels','ghosts','dim','exp'])layF.elements[k].checked=!!lay[k];layF.elements.only.value=lay.only||''}
 function layMark(){const d=Object.keys(LAY0).some(k=>k!=='exp'&&lay[k]!==LAY0[k]);$('#layBtn').classList.toggle('pri',d)}
 async function laySave(){if(plan)await put('meta',lay,'layers:'+plan.id);layMark();sel=null;draw();renderGhostBar()}
-$('#layBtn').onclick=()=>{if(!plan)return alert('Open a plan first.');layToForm();$('#layDlg').showModal()};
+$('#layBtn').onclick=()=>{if(!plan)return uiAlert('Open a plan first.');layToForm();$('#layDlg').showModal()};
 layF.addEventListener('change',()=>{for(const k of['shapes','clouds','text','pins','labels','ghosts','dim','exp'])lay[k]=layF.elements[k].checked;lay.only=layF.elements.only.value;laySave()});
 $('#layReset').onclick=()=>{lay={...LAY0,exp:lay.exp};layToForm();laySave()};
 // ---------- v9: multi-select, copy / cut / paste ----------
@@ -653,7 +666,7 @@ function walkSet(){return pins.filter(p=>(!walk.type||p.type===walk.type)&&(!wal
 function walkLeft(){return walkSet().filter(p=>untested(p)&&!walk.skip.has(p.id))}
 function nearestFrom(L,from){if(!L.length)return null;if(!from)return L.slice().sort((a,b)=>a.page-b.page)[0];return L.slice().sort((a,b)=>(a.page===from.page?0:1)-(b.page===from.page?0:1)||Math.abs(a.page-from.page)-Math.abs(b.page-from.page)||Math.hypot(a.x-from.x,a.y-from.y)-Math.hypot(b.x-from.x,b.y-from.y))[0]}
 $('#walkBtn').onclick=()=>walk?exitWalk():walkPick();
-function startWalk(type=''){if(!plan)return alert('Open a plan first.');if(!pins.length)return alert('This plan has no pins yet. Place pins or use 🔍 Detect devices first.');
+function startWalk(type=''){if(!plan)return uiAlert('Open a plan first.');if(!pins.length)return uiAlert('This plan has no pins yet. Place pins or use 🔍 Detect devices first.');
  walk={type,types:arguments[1]||null,skip:new Set(),p:null,fail:false};msel=[];sel=null;renderSelBar();renderGhostBar();$('#walkBtn').classList.add('pri');
  const c=toW(stage.clientWidth/2,stage.clientHeight/2),L=walkLeft(),here=L.filter(p=>p.page===page);
  const first=sel?.kind==='p'&&untested(sel.o)?sel.o:nearestFrom(here.length?here:L,here.length?{page,...c}:null);walkGo(first)}
@@ -720,7 +733,7 @@ const FP_TH=.75;function matchRule(rules,fp){let best=null,bd=FP_TH;for(const r 
 async function learn(fp,g){if(!fp)return;const rules=await learnedRules(),m=matchRule(rules,fp);const r=m?{...m,g,updated:Date.now()}:{id:uid(),fp,g,created:Date.now()};await put('learned',r);lrCache=null;learnInfoUpd()}
 function groupFor(type,orig){if(DG[orig]?.t===type)return orig;const ks=Object.keys(DG);return ks.find(k=>DG[k].t===type&&!DG[k].x)||ks.find(k=>DG[k].t===type)||'oth'}
 async function learnInfoUpd(){const n=(await learnedRules()).length;$('#learnInfo').textContent=n?`🧠 Learned ${n} symbol${n>1?'s':''} from your corrections (used first).`:'🧠 No learned symbols yet. Rejecting or retyping a suggestion teaches the detector.';$('#learnReset').hidden=!n}
-$('#learnReset').onclick=async()=>{if(!confirm('Forget all learned symbols (in every project)?'))return;await tx('learned','readwrite',o=>o.clear());lrCache=null;learnInfoUpd()};
+$('#learnReset').onclick=async()=>{if(!await uiConfirm('Forget all learned symbols (in every project)?'))return;await tx('learned','readwrite',o=>o.clear());lrCache=null;learnInfoUpd()};
 
 // ---------- v10: multi-select tools ----------
 function selectAll(f){if(!plan||!f)return;const L=[...(f!=='p'?markups.filter(m=>m.page===page&&mVis(m)):[]),...(f!=='m'?pins.filter(p=>p.page===page&&pVis(p)):[])];msel=L;sel=null;if(L.length)multiOn=true;renderSelBar();requestDraw(false);toast(L.length?`${L.length} selected`:'Nothing visible on this page')}
@@ -760,7 +773,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v97',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v98',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -812,7 +825,7 @@ let opFile=null;$('#bpmFile').onchange=async e=>{const f=e.target.files[0];e.tar
  $('#opInfo').innerHTML=`<b>${esc(man.project?.name||f.name)}</b><br><small style="color:#94a3b8">${man.plans.length} plan(s), ${man.markups.length} markups, ${man.pins.length} pins, ${man.media.length} media · saved ${esc((man.saved||'').slice(0,16).replace('T',' '))} UTC${man.learned?.length?` · ${man.learned.length} learned rules (merged)`:''}</small>`;
  $('#opCur').textContent=project?`"${project.name}"`:'';document.querySelector('#openDlg [name=opMode][value=new]').checked=true;$('#openDlg').showModal()}catch(err){showErr(`Could not open "${f.name}": ${err.message}`)}};
 $('#opGo').onclick=async()=>{const f=opFile,rep=document.querySelector('#openDlg [name=opMode]:checked').value==='replace'&&project;if(!f)return;
- if(rep&&!confirm(`Replace project "${project.name}" with the contents of this file? Its current plans, markups, pins and media will be deleted.`))return;$('#openDlg').close();opFile=null;stopAll();busy(1,'Opening project');prog(0);
+ if(rep&&!await uiConfirm(`Replace project "${project.name}" with the contents of this file? Its current plans, markups, pins and media will be deleted.`))return;$('#openDlg').close();opFile=null;stopAll();busy(1,'Opening project');prog(0);
  try{const r=await importBpm(f,rep?project.id:null,prog);if(rep)project=null;busy(0);await loadProject(r.pid);toast(`Opened "${r.name}": ${r.plans} plan(s), ${r.pins} pins, ${r.markups} markups, ${r.media} media`)}catch(e){showErr('Opening the project failed: '+e.message)}finally{busy(0)}};
 // ---------- v10/v11: export all plans (vector overlay via pdf-lib) ----------
 async function planPdf(pl,onPage,outDoc=null){
@@ -919,11 +932,11 @@ async function addCode(c){if(!c||!cur)return;cur.codes=cur.codes||[];if(cur.code
  renderCodes();renderCodeFav();toast(fmtCodeLine(c)+' added')}
 function renderMyCodesList(){const box=$('#myCodeList');if(!box)return;box.innerHTML=MY_CODES.length?MY_CODES.map(c=>`<div class="row" style="align-items:flex-start;gap:6px;margin:4px 0"><button type="button" class="btn" data-use="${esc(c.id)}" style="flex:1;text-align:left;white-space:normal"><b>${esc(fmtCodeLine(c))}</b><br><small style="color:#94a3b8">${esc((c.text||c.sum||'').slice(0,120))}</small></button><button type="button" class="btn danger" data-del="${esc(c.id)}" title="Delete">🗑</button></div>`).join(''):'<small style="color:#64748b">No personal codes yet. Add entries from your NFPA 72 book below.</small>';
  box.querySelectorAll('[data-use]').forEach(b=>b.onclick=()=>addCodeById(b.dataset.use));
- box.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this personal code?'))return;await del('mycodes',b.dataset.del);MY_CODES=null;await loadCodes();renderMyCodesList();filterCodes($('#codeQ').value);suggestCodes()})}
+ box.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(!await uiConfirm('Delete this personal code?'))return;await del('mycodes',b.dataset.del);MY_CODES=null;await loadCodes();renderMyCodesList();filterCodes($('#codeQ').value);suggestCodes()})}
 $('#codeAdd').onclick=e=>{e.preventDefault();openCodePicker()};
 $('#codeQ').addEventListener('input',e=>filterCodes(e.target.value));
 $('#myCodeSave').onclick=async e=>{e.preventDefault();const code=($('#myCodeStd').value||'NFPA 72').trim(),section=$('#myCodeSec').value.trim(),title=$('#myCodeTitle').value.trim(),text=$('#myCodeText').value.trim();
- if(!section||!title){alert('Section number and title are required.');return}
+ if(!section||!title){uiAlert('Section number and title are required.');return}
  const reasons=[...$('#myCodeReasons').selectedOptions].map(o=>o.value),types=[...$('#myCodeTypes').selectedOptions].map(o=>o.value);
  const rec={id:'my-'+uid(),code,section,title,text,sum:text.slice(0,160),reasons,types,tags:['personal'],personal:true,created:Date.now()};
  await put('mycodes',rec);MY_CODES=null;await loadCodes();$('#myCodeSec').value='';$('#myCodeTitle').value='';$('#myCodeText').value='';
@@ -1041,7 +1054,7 @@ async function clrOpen(what){if(!project)return;clrWhat=what;$('#clrH').textCont
  document.querySelectorAll('#clrDlg [name=clr]').forEach(r=>{r.disabled=r.value!=='proj'&&!plan;r.onchange=clrInfoUpd});if(!plan)document.querySelector('#clrDlg [value=proj]').checked=true;clrInfoUpd();$('#clrDlg').showModal()}
 $('#clrBtn').onclick=()=>clrOpen('pins');$('#clrMBtn').onclick=()=>clrOpen('markups');
 $('#clrGo').onclick=async()=>{const v=document.querySelector('#clrDlg [name=clr]:checked').value,c=clrInfoUpd.n[v],P=clrWhat==='pins',st=clrWhat;
- if(!confirm(`Delete ${c} ${P?'pin(s) and their media':'markup(s)'}${v==='proj'?' across the whole project':v==='plan'?' on this plan':' on this page'}?`+(v==='proj'?` ${P?'Pins':'Markups'} on other plans cannot be undone.`:'')))return;$('#clrDlg').close();if(ted)tedEnd(false);busy(1,P?'Clearing pins':'Clearing markups');
+ if(!await uiConfirm(`Delete ${c} ${P?'pin(s) and their media':'markup(s)'}${v==='proj'?' across the whole project':v==='plan'?' on this plan':' on this page'}?`+(v==='proj'?` ${P?'Pins':'Markups'} on other plans cannot be undone.`:'')))return;$('#clrDlg').close();if(ted)tedEnd(false);busy(1,P?'Clearing pins':'Clearing markups');
  try{const arr=P?pins:markups,L=[];const mine=v==='page'?arr.filter(p=>p.page===page):plan?arr.slice():[];for(const p of mine)L.push(P?{store:'pins',id:p.id,before:p,after:null,media:await byIdx('media','pinId',p.id)}:{store:'markups',id:p.id,before:p,after:null});
   sel=null;msel=[];if(L.length)await changeMulti(L);let other=0;
   if(v==='proj'){const ids=await planIdsOf();for(const p of await all(st)){if(!ids.includes(p.planId)||p.planId===plan?.id)continue;if(P)for(const m of await byIdx('media','pinId',p.id))await del('media',m.id);await del(st,p.id);other++}}
@@ -1114,8 +1127,8 @@ let mLastTap=0;
 async function mPathTap(w){const now=Date.now(),last=MS.pts[MS.pts.length-1];if(last&&now-mLastTap<380&&Math.hypot(last[0]-w.x,last[1]-w.y)<20/view.s){mLastTap=0;await mPathDone();return}mLastTap=now;MS.pts.push([w.x,w.y]);MS.hover=null;draft=mPathDraft();mRead();renderMBar();requestDraw(false)}
 async function mPathDone(){const d=MS.pts.length>=2?(MS.hover=null,mPathDraft()):null;MS.pts=[];draft=null;if(d){delete d._live;d.id=uid();await change('markups',null,d);toast('Path saved: '+mLabel(d),true)}renderMBar();mRead();drawOverlay()}
 async function mCalibrate(d){const px=Math.hypot(d.x2-d.x1,d.y2-d.y1);if(px<4/view.s){toast('Drag along a known dimension to calibrate');return}
- const v=prompt('Real length of that line?\nExamples: 10\'  ·  10\' 6"  ·  10.5 ft  ·  126 in  ·  3.2 m','');if(v===null)return;const ft=parseLen(v);if(!ft||ft<=0){alert('Could not read that length. Try 10\' 6", 10.5 ft or 3.2 m.');return}
- const ppf=px/ft,cur=SCL[plan.id]||{def:null,pages:{}};const all_=pdf&&pdf.numPages>1?confirm(`Scale set: ${fmtLen(ft)} = ${px.toFixed(0)} pt.\n\nOK = use for ALL pages of this plan\nCancel = this page (${page}) only`):true;
+ const v=await uiPrompt('Real length of that line?\nExamples: 10\'  ·  10\' 6"  ·  10.5 ft  ·  126 in  ·  3.2 m','');if(v===null)return;const ft=parseLen(v);if(!ft||ft<=0){uiAlert('Could not read that length. Try 10\' 6", 10.5 ft or 3.2 m.');return}
+ const ppf=px/ft,cur=SCL[plan.id]||{def:null,pages:{}};const all_=pdf&&pdf.numPages>1?await uiConfirm(`Scale set: ${fmtLen(ft)} = ${px.toFixed(0)} pt.\n\nOK = use for ALL pages of this plan\nCancel = this page (${page}) only`):true;
  const nv={def:all_?ppf:cur.def,pages:{...cur.pages}};if(all_){nv.pages={}}else nv.pages[page]=ppf;SCL[plan.id]=nv;await put('meta',nv,'scale:'+plan.id);MS.cal=false;renderMBar();draw();toast(`Scale: ${fmtScale(ppf)}${all_?'':' (page '+page+')'}`)}
 function mRead(){const el=document.getElementById('mRead');if(!el)return;let m=draft&&['dim','darea','dpath','cal'].includes(draft.type)?draft:null;if(m){const ppf=ppfOf(plan.id,page);
   el.textContent=m.type==='cal'?`${Math.hypot(m.x2-m.x1,m.y2-m.y1).toFixed(0)} pt`:(ppf?mLabel(m)+(refNote(mRealLen(m))?' · '+refNote(mRealLen(m)):''):'⚠ calibrate first')}else el.textContent=MS.pts.length?`${MS.pts.length} pt(s) — tap to add, double-tap or ✔ to finish`:''}
@@ -1128,7 +1141,7 @@ function renderMBar(){const b=$('#mBar');if(tool!=='measure'||!plan){b.hidden=tr
  $('#mCal').onclick=()=>{MS.cal=!MS.cal;MS.pts=[];draft=null;renderMBar();if(MS.cal)toast('Drag along a dimension line or scale bar of known length')};
  $('#mUnit').onclick=async()=>{MS.unit=MS.unit==='m'?'ft':'m';await put('meta',MS.unit,'munit');renderMBar();draw()};$('#mSnapC').onchange=e=>MS.snap=e.target.checked;
  if($('#mDone'))$('#mDone').onclick=mPathDone;if($('#mX'))$('#mX').onclick=()=>{MS.pts=[];draft=null;renderMBar();drawOverlay()};
- if($('#mClr'))$('#mClr').onclick=async()=>{if(!confirm(pp?`Remove the page ${page} scale (falls back to the plan scale if set)?`:'Remove this plan\'s scale?'))return;const v=SCL[plan.id];if(pp)delete v.pages[page];else v.def=null;await put('meta',v,'scale:'+plan.id);renderMBar();draw()};
+ if($('#mClr'))$('#mClr').onclick=async()=>{if(!await uiConfirm(pp?`Remove the page ${page} scale (falls back to the plan scale if set)?`:'Remove this plan\'s scale?'))return;const v=SCL[plan.id];if(pp)delete v.pages[page];else v.def=null;await put('meta',v,'scale:'+plan.id);renderMBar();draw()};
  b.querySelectorAll('[data-ref]').forEach(x=>x.onclick=()=>{MS.refs[x.dataset.ref]=!MS.refs[x.dataset.ref];renderMBar();mRead()});mRead()}
 get('meta','munit').then(u=>{if(u==='m'||u==='ft')MS.unit=u}).catch(()=>{});
 
@@ -1153,11 +1166,11 @@ var SLIDING=0;
 stage.addEventListener('pointerdown',()=>{if(slideRaf){slideTok++;cancelAnimationFrame(slideRaf);slideRaf=0;SLIDING=0;requestDraw();scheduleRender()}},true);
 stage.addEventListener('wheel',()=>{if(slideRaf){slideTok++;cancelAnimationFrame(slideRaf);slideRaf=0;SLIDING=0}},{capture:true,passive:true});
 // ---------- v15: walk type picker ----------
-async function walkPick(){if(!plan)return alert('Open a plan first.');if(!pins.length)return alert('This plan has no pins yet. Place pins or use 🔍 Detect devices first.');
+async function walkPick(){if(!plan)return uiAlert('Open a plan first.');if(!pins.length)return uiAlert('This plan has no pins yet. Place pins or use 🔍 Detect devices first.');
  const last=(await get('meta','walkTypes'))||null,types=[...new Set(pins.map(p=>p.type))].sort((a,b)=>(TYPES[a]?.n||a).localeCompare(TYPES[b]?.n||b));
  $('#wkTypes').innerHTML=types.map(t=>{const all_=pins.filter(p=>p.type===t),un=all_.filter(untested).length;return`<label><input type="checkbox" value="${t}"${!last||last.includes(t)?' checked':''}><span class="dot" style="display:inline-block;background:${(TYPES[t]||TYPES.other).c}"></span> ${esc(TYPES[t]?.n||t)} <small style="color:#94a3b8">${un} untested / ${all_.length}</small></label>`}).join('');
  const bx=()=>[...document.querySelectorAll('#wkTypes input')];$('#wkAll').onclick=()=>bx().forEach(b=>b.checked=true);$('#wkNone').onclick=()=>bx().forEach(b=>b.checked=false);$('#wkProj').parentElement.hidden=true;
- $('#wkGo').onclick=async()=>{const sel_=bx().filter(b=>b.checked).map(b=>b.value);if(!sel_.length){alert('Tick at least one device type.');return}await put('meta',sel_,'walkTypes');$('#walkDlg').close();startWalk('',sel_.length===types.length?null:sel_)};$('#walkDlg').showModal()}
+ $('#wkGo').onclick=async()=>{const sel_=bx().filter(b=>b.checked).map(b=>b.value);if(!sel_.length){uiAlert('Tick at least one device type.');return}await put('meta',sel_,'walkTypes');$('#walkDlg').close();startWalk('',sel_.length===types.length?null:sel_)};$('#walkDlg').showModal()}
 // ---------- v15: page thumbnails ----------
 var THB={},thObs=null;
 function thumbsWanted(){return innerWidth>=800}
@@ -1197,7 +1210,7 @@ $('#ckSave').onclick=async()=>{document.querySelectorAll('#ckItems input').forEa
  if(!it.length||JSON.stringify(it)===JSON.stringify(def))delete CKT[ckEd.t];else CKT[ckEd.t]=it;await put('meta',{...CKT},'cktpl');toast(`Template saved for ${TYPES[ckEd.t]?.n||ckEd.t}`);ckOpen(ckEd.t);
  if(dlg.open&&cur&&cur.type===ckEd.t&&!ckl.some(c=>c.v)){ckl=checkItems(cur.type);renderChecks()}};
 $('#ckEdit').onclick=()=>ckOpen(form.elements.type.value||cur?.type||'smoke');
-$('#ckReset').onclick=()=>{if(ckl.some(c=>c.v)&&!confirm('Replace this pin\'s checklist with the current template? Answers on this pin are cleared.'))return;ckl=checkItems(form.elements.type.value);renderChecks()};
+$('#ckReset').onclick=async ()=>{if(ckl.some(c=>c.v)&&!await uiConfirm('Replace this pin\'s checklist with the current template? Answers on this pin are cleared.'))return;ckl=checkItems(form.elements.type.value);renderChecks()};
 
 // ---------- v15: inline text editing on the plan (no popup) ----------
 var ted=null;
@@ -1651,6 +1664,6 @@ async function dsList(){const c=await customModels(),q=$('#dsQ').value.trim().to
  for(const k of [...new Set(Object.values(UPARTS).map(v=>v.c||'My devices'))])grp(k,'data-my',k==='My devices'?k:k+' · My devices',Object.keys(UPARTS).filter(m=>(UPARTS[m].c||'My devices')===k));
  G.sort((x,y)=>x.s-y.s||x.o-y.o);
  $('#dsBody').innerHTML=G.map(g=>g.h).join('')||'<small style="color:#94a3b8">No models match.</small>'}
-$('#dsBody').onclick=async e=>{const r=e.target.closest('[data-rep]'),x=e.target.closest('[data-rm]'),b=e.target.closest('.dsM');if(r)return openQr(r.dataset.rep);if(x){if(confirm('Remove the scanned link for '+x.dataset.rm+'? The built-in link will be used again.')){await setUserLink(x.dataset.rm,null);dsList();dsBtnSync()}return}if(b)openDs(b.dataset.m)};
+$('#dsBody').onclick=async e=>{const r=e.target.closest('[data-rep]'),x=e.target.closest('[data-rm]'),b=e.target.closest('.dsM');if(r)return openQr(r.dataset.rep);if(x){if(await uiConfirm('Remove the scanned link for '+x.dataset.rm+'? The built-in link will be used again.')){await setUserLink(x.dataset.rm,null);dsList();dsBtnSync()}return}if(b)openDs(b.dataset.m)};
 $('#dsQ').oninput=dsList;
 $('#dsBtn').onclick=async()=>{$('#dsQ').value='';await userLinks();await userParts();await dsList();$('#dsDlg').showModal()};
