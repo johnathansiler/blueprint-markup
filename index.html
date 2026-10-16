@@ -39,7 +39,7 @@
  <button id="detBtn" class="tool" title="Detect devices (suggest pins from the plan's symbols)">🔍</button>
 </div>
 <main id="stage"><canvas id="cv"></canvas><canvas id="ov"></canvas><div id="empty">Open a PDF plan set (or image) with 📂</div><div id="busy" hidden><span id="busyTxt">Rendering</span> <b id="busyPct">…</b><div id="busyTrack"><div id="busyBar"></div></div><button type="button" class="btn" id="stop">Stop</button></div><div id="ghBar" hidden></div><div id="selBar" hidden></div><div id="mBar" hidden></div><div id="thumbs" hidden></div><div id="walk" hidden></div><div id="toast" hidden><span id="toastTxt"></span><button type="button" class="btn" id="toastUndo">↶ Undo</button></div><div id="err" hidden><span id="errTxt"></span><button type="button" class="btn" id="errX" title="Dismiss">✕</button></div></main>
-<aside id="panel" hidden><div class="ph"><button class="btn tab on" id="modePins">Pins</button><button class="btn tab" id="modeDefs">⚠ Deficiencies <b id="defCount"></b></button><span class="sp"></span><button class="btn" id="csvBtn" title="Export device list (CSV, whole project)">CSV</button><button class="btn" id="imBtn" title="Import panel device list (CSV) into pins">⇪ Import</button><button class="btn" id="testerBtn" title="Tester name">👤</button><button class="btn danger" id="clrBtn" title="Clear pins">🗑 Pins</button><button class="btn danger" id="clrMBtn" title="Clear markups (shapes, text, measurements)">🗑 Markups</button><button class="btn" id="closeList">✕</button></div>
+<aside id="panel" hidden><div class="ph"><button class="btn tab on" id="modePins">Pins</button><button class="btn tab" id="modeDefs">⚠ Deficiencies <b id="defCount"></b></button><span class="sp"></span><button class="btn" id="csvBtn" title="Export device list (CSV, whole project)">CSV</button><button class="btn" id="testerBtn" title="Tester name">👤</button><button class="btn danger" id="clrBtn" title="Clear pins">🗑 Pins</button><button class="btn danger" id="clrMBtn" title="Clear markups (shapes, text, measurements)">🗑 Markups</button><button class="btn" id="closeList">✕</button></div>
  <input id="q" placeholder="Search address, location, type, loop, notes…">
  <div class="row"><select id="fType"><option value="">All types</option></select>
  <select id="fStat"><option value="">All status</option><option>passed</option><option>failed</option><option>in progress</option><option>not tested</option></select>
@@ -160,14 +160,4 @@
   <div class="row"><span class="sp"></span><button type="button" class="btn pri" id="myCodeSave">Save to my library</button></div>
  </details>
  <div class="row"><span class="sp"></span><button class="btn" value="cancel">Done</button></div></form></dialog>
-<dialog id="imDlg"><form method="dialog"><h3 style="margin:4px 0">⇪ Import panel device list (CSV)</h3>
- <small style="color:#94a3b8">Match rows to existing pins by address (and loop), then fill in label, model and loop. Nothing changes until you press Apply.</small>
- <label>CSV file <input type="file" id="imFile" accept=".csv,text/csv,text/plain"></label>
- <label>Apply to <select id="imScope"><option value="page">This page</option><option value="plan">This plan (all pages)</option><option value="proj">Whole project (all plans)</option></select></label>
- <label>Match by <select id="imKey"><option value="addr">Address (+ loop when both have one)</option><option value="addrloop">Address and loop (both required)</option></select></label>
- <div id="imMap"></div>
- <label><input type="checkbox" id="imOver" style="width:auto"> Overwrite pin values that are already filled in</label>
- <div class="row"><button type="button" class="btn" id="imReview">Review</button><span class="sp"></span><button class="btn" value="cancel">Cancel</button></div>
- <div id="imRes"></div>
- <div class="row"><span class="sp"></span><button type="button" class="btn pri" id="imApply" disabled>Apply</button></div></form></dialog>
 <script src="vendor/pdf.min.js"></script><script src="vendor/jspdf.umd.min.js"></script><script src="vendor/pdf-lib.min.js"></script><script src="app.js"></script><script>addEventListener("load",function(){var s=document.getElementById("splash");if(!s)return;setTimeout(function(){s.style.opacity="0";setTimeout(function(){s.remove()},450)},300)})</script></body></html>
