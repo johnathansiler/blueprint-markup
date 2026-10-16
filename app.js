@@ -758,7 +758,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v73',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v74',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -1267,22 +1267,23 @@ function walkGoto(){if(!walk)return;let d=$('#wGotoDlg');if(!d){d=document.creat
  d.querySelector('#wgX').onclick=()=>d.close();d.querySelector('#wgF').oninput=e=>{f=e.target.value.trim().toLowerCase();draw_()};d.querySelector('#wgU').onchange=e=>{only=e.target.checked;draw_()};draw_();d.showModal()}
 
 // ---------- bpm-v72: device model numbers per type (seeded + remembered custom entries) ----------
+// bpm-v74: Siemens Fire Safety models only (each verified on a Siemens datasheet / Siemens doc portal / distributor page); other makes via "Custom…"
 const MODELS={
- smoke:['Notifier FSP-851','Notifier FSP-851T','Notifier FSP-951','Fire-Lite SD355','Fire-Lite SD355T','Simplex 4098-9714','EST SIGA-PD','EST SIGA-OSD','System Sensor 2W-B','System Sensor 2WT-B','System Sensor 4W-B'],
- heat:['Notifier FST-851','Notifier FST-851R','Fire-Lite H355','Fire-Lite H355R','Simplex 4098-9733','EST SIGA-HRS','System Sensor 5601P','System Sensor 5602'],
- pull:['Notifier NBG-12LX','Fire-Lite BG-12LX','EST SIGA-278','Edwards 270-SPO','Simplex 4099-9001'],
- horn:['System Sensor HR','System Sensor P2R','System Sensor P2W','System Sensor P4R'],
- strobe:['System Sensor SR','System Sensor SW','System Sensor SCR'],
- spkstrobe:['System Sensor SPSR','System Sensor SPSW'],
- duct:['System Sensor DNR','System Sensor DNRW','EST SIGA-SD'],
- module:['Notifier FMM-1','Notifier FMM-101','Notifier FZM-1','Fire-Lite MMF-300','Fire-Lite MMF-301','Fire-Lite MMF-302','EST SIGA-CT1','EST SIGA-CT2','Simplex 4090-9001'],
- relay:['XTRI-D','Notifier FRM-1','Notifier FCM-1','Fire-Lite CRF-300','Fire-Lite CMF-300','EST SIGA-CR','EST SIGA-CRR','Simplex 4090-9002'],
- flow:['Potter VSR','Potter VSR-F','System Sensor WFD20','System Sensor WFD40','System Sensor WFD60'],
- tamper:['Potter OSYSU-1','Potter OSYSU-2','Potter PIVS-U','System Sensor OSY2','System Sensor PIBV2'],
- panel:['Notifier NFS2-3030','Notifier NFS2-640','Notifier NFS-320','Fire-Lite MS-9200UDLS','Fire-Lite MS-9600UDLS','Fire-Lite ES-50X','Simplex 4100ES','Simplex 4010ES','Simplex 4007ES','EST EST3','EST EST4','EST iO64','EST iO1000','Siemens FC2025','Siemens FC2050'],
- dact:['Fire-Lite 411UDAC','Notifier UDACT-2'],
- doorholder:['Edwards 1504','Edwards 1505'],
- rai:['System Sensor RA100Z','System Sensor RA400Z']};
+ smoke:['HFP-11','FP-11','FDO421','FDOT421','FDOOT441','FDOOTC441','OP921','OH921','OOH941','OOHC941'],
+ heat:['HFPT-11','FPT-11','FDT421','HI921'],
+ duct:['FDBZ492','FDBZ492-HR','FDBZ492-R','FDBZ492-PR','AD2-P','AD2-PR'],
+ pull:['HMS-S','HMS-D','MS-51'],
+ module:['HTRI-S','HTRI-D','HTRI-R','HTRI-SZ','HTRI-DZ','HTRI-RZ','TRI-S','TRI-D','TRI-R','FDCIO422'],
+ relay:['HTRI-R','HTRI-RZ','TRI-R','FDCIO422','DB-HR','DB2-HR'],
+ horn:['SC-HS-WR-F','SC-HS-WW-F','SC-HN-WR-N','SC-HN-WW-N'],
+ strobe:['SC-ST-WR-F','SC-ST-WW-F'],
+ spkstrobe:['SC-SS-WW-F','SC-SS-CW-F','SC-SP-WW-F','SC-SP-CW-F','SL24XSPS-FW'],
+ panel:['FireFinder XLS','MXL','FC2025','FC2050','FC922','FC924','FC901','FC2005']};
 let MODELS_C=null;async function customModels(){if(!MODELS_C)MODELS_C=(await get('meta','models:custom'))||{};return MODELS_C}
 async function rememberModel(t,m){m=String(m||'').trim();if(!m||(MODELS[t]||[]).some(x=>x===m||x.endsWith(' '+m)))return;const c=await customModels();if((c[t]||[]).includes(m))return;c[t]=[...(c[t]||[]),m];await put('meta',c,'models:custom')}
-async function modelOpts(t){const c=await customModels(),L=[...(MODELS[t]||[]),...(c[t]||[]).filter(m=>!(MODELS[t]||[]).includes(m))];$('#modelList').innerHTML=L.map(m=>`<option value="${esc(m)}">`).join('');return L}
+async function modelOpts(t){const c=await customModels(),S=MODELS[t]||[],C=(c[t]||[]).filter(m=>!S.includes(m)),v=form.elements.model.value,sel=$('#dModelSel');
+ const op=(m,l)=>`<option value="${esc(m)}"${m===v?' selected':''}>${esc(l||m)}</option>`;
+ sel.innerHTML=op('','— none —')+(S.length?`<optgroup label="Siemens">${S.map(m=>op(m)).join('')}</optgroup>`:'')+(C.length?`<optgroup label="My models">${C.map(m=>op(m)).join('')}</optgroup>`:'')+(v&&!S.includes(v)&&!C.includes(v)?`<optgroup label="Saved on this pin">${op(v)}</optgroup>`:'')+'<option value="__custom">Custom…</option>';
+ $('#dModelCL').hidden=true;$('#dModelC').value='';return[...S,...C]}
+$('#dModelSel').addEventListener('change',e=>{const c=e.target.value==='__custom';$('#dModelCL').hidden=!c;if(c){$('#dModelC').value='';form.elements.model.value='';$('#dModelC').focus()}else form.elements.model.value=e.target.value});
+$('#dModelC').addEventListener('input',e=>{form.elements.model.value=e.target.value.trim()});
