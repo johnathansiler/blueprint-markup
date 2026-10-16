@@ -758,7 +758,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v72',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v73',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -1286,35 +1286,3 @@ const MODELS={
 let MODELS_C=null;async function customModels(){if(!MODELS_C)MODELS_C=(await get('meta','models:custom'))||{};return MODELS_C}
 async function rememberModel(t,m){m=String(m||'').trim();if(!m||(MODELS[t]||[]).some(x=>x===m||x.endsWith(' '+m)))return;const c=await customModels();if((c[t]||[]).includes(m))return;c[t]=[...(c[t]||[]),m];await put('meta',c,'models:custom')}
 async function modelOpts(t){const c=await customModels(),L=[...(MODELS[t]||[]),...(c[t]||[]).filter(m=>!(MODELS[t]||[]).includes(m))];$('#modelList').innerHTML=L.map(m=>`<option value="${esc(m)}">`).join('');return L}
-
-// ---------- bpm-v72: panel device list CSV import (review before apply) ----------
-function parseCSV(t){const R=[];let row=[],f='',q=false;t=t.replace(/^\uFEFF/,'');for(let i=0;i<t.length;i++){const ch=t[i];if(q){if(ch==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=ch}else if(ch==='"')q=true;else if(ch===','||ch===';'&&false||ch==='\t'){row.push(f);f=''}else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&t[i+1]==='\n')i++;row.push(f);f='';if(row.some(x=>x.trim()))R.push(row);row=[]}else f+=ch}row.push(f);if(row.some(x=>x.trim()))R.push(row);return R}
-const IM_F=[['address',/^(dev(ice)?\s*)?addr(ess)?|^point|^device\s*#?$|^dev\s*#|^sla|^no\.?$/i],['loop',/loop|slc|circuit/i],['label',/label|desc|custom|location|zone\s*label|name|text/i],['type',/type|kind|category/i],['model',/model|part|p\/n|catalog/i]];
-const imTypeOf=s=>{s=String(s||'').toLowerCase();if(!s)return'';for(const k of Object.keys(TYPES))if(s===k||s===TYPES[k].n.toLowerCase())return k;return /duct/.test(s)?'duct':/smoke|photo|ion|detector|sd\b|psd/.test(s)?'smoke':/heat|therm/.test(s)?'heat':/pull|manual|station/.test(s)?'pull':/flow/.test(s)?'flow':/tamper|valve|supv|supervis/.test(s)?'tamper':/relay|control|ctrl|output/.test(s)?'relay':/speaker/.test(s)?'spkstrobe':/strobe/.test(s)?'strobe':/horn/.test(s)?'horn':/monitor|module|input|zone/.test(s)?'module':''};
-const imNA=s=>String(s??'').trim().toLowerCase().replace(/^0+(?=\d)/,'').replace(/\s+/g,'');
-let IM={rows:[],head:[],plan:null};
-$('#imBtn').onclick=()=>{if(!plan)return alert('Open a plan first.');IM={rows:[],head:[]};$('#imFile').value='';$('#imMap').innerHTML='';$('#imRes').innerHTML='';$('#imApply').disabled=true;$('#imDlg').showModal()};
-$('#imFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;const R=parseCSV(await f.text());if(!R.length){$('#imMap').textContent='No rows found.';return}
- const h=R[0],hasHead=h.some(x=>IM_F.some(([,re])=>re.test(x.trim())))&&!h.every(x=>/^\d*$/.test(x.trim()));IM.head=hasHead?h.map((x,i)=>x.trim()||'Column '+(i+1)):h.map((_,i)=>'Column '+(i+1));IM.rows=hasHead?R.slice(1):R;
- const used=new Set(),guess={};for(const[k,re]of IM_F){const i=IM.head.findIndex((x,j)=>!used.has(j)&&re.test(x));if(i>=0){guess[k]=i;used.add(i)}}
- $('#imMap').innerHTML=`<b>Column mapping</b> <small style="color:#94a3b8">${IM.rows.length} row(s)</small>`+IM_F.map(([k])=>`<label>${k==='label'?'Label / description → pin Location':k[0].toUpperCase()+k.slice(1)} <select data-f="${k}"><option value="-1">(none)</option>${IM.head.map((x,i)=>`<option value="${i}"${guess[k]===i?' selected':''}>${esc(x)}</option>`).join('')}</select></label>`).join('');$('#imRes').innerHTML='';$('#imApply').disabled=true};
-async function imTargets(){const sc=$('#imScope').value;if(sc==='page')return pins.filter(p=>p.page===page);if(sc==='plan')return pins.slice();return(await projData()).flatMap(d=>d.pins)}
-async function imReview(){const M={};document.querySelectorAll('#imMap [data-f]').forEach(s=>M[s.dataset.f]=+s.value);if(!(M.address>=0))throw new Error('Map the Address column first.');
- const T=await imTargets(),key=$('#imKey').value,over=$('#imOver').checked,cell=(r,k)=>M[k]>=0?String(r[M[k]]??'').trim():'',out={match:[],un:[],conf:[]};
- for(const[ri,r]of IM.rows.entries()){const ad=imNA(cell(r,'address')),lp=imNA(cell(r,'loop'));if(!ad){out.un.push({ri,r,why:'no address'});continue}
-  const C=T.filter(p=>imNA(p.address)===ad&&(key==='addrloop'?lp&&imNA(p.loop)===lp:(!lp||!imNA(p.loop)||imNA(p.loop)===lp)));
-  const lab=cell(r,'label'),mo=cell(r,'model'),ty=imTypeOf(cell(r,'type'));
-  if(!C.length){out.un.push({ri,r,why:'no pin with this address'+(lp?' / loop '+lp:'')});continue}
-  if(C.length>1){out.conf.push({ri,r,why:`${C.length} pins share this address — add a loop column or narrow the scope`});continue}
-  const p=C[0],set={},why=[];if(lab&&lab!==(p.location||'')){if(p.location&&!over)why.push(`label "${p.location}" vs "${lab}"`);else set.location=lab}
-  if(mo&&mo!==(p.model||'')){if(p.model&&!over)why.push(`model "${p.model}" vs "${mo}"`);else set.model=mo}
-  if(lp&&!p.loop)set.loop=cell(r,'loop');if(ty&&ty!==p.type)why.push(`type ${TYPES[p.type]?.n||p.type} vs ${TYPES[ty].n}`);
-  (why.length?out.conf:out.match).push({ri,r,p,set,why:why.join('; ')})}
- return out}
-$('#imReview').onclick=async()=>{try{IM.res=await imReview();const R=IM.res,row=x=>`<li><small>row ${x.ri+1}:</small> ${esc(x.r.join(' · ').slice(0,90))}${x.p?` → <b>${esc(TYPES[x.p.type]?.n||x.p.type)} ${esc(x.p.address)}</b> pg ${x.p.page}`:''}${x.set&&Object.keys(x.set).length?` <small style="color:#4ade80">fill ${esc(Object.entries(x.set).map(([k,v])=>k+'='+v).join(', '))}</small>`:''}${x.why?` <small style="color:#fbbf24">${esc(x.why)}</small>`:''}</li>`;
- $('#imRes').innerHTML=`<h4 style="margin:6px 0">✔ Matched (${R.match.length})</h4><ul class="imL" id="imM">${R.match.map(row).join('')||'<li>none</li>'}</ul><h4 style="margin:6px 0">⚠ Conflicts (${R.conf.length}) <small style="color:#94a3b8">not applied unless ticked</small></h4><ul class="imL" id="imC">${R.conf.map((x,i)=>x.p?`<label style="display:flex;gap:6px"><input type="checkbox" data-c="${i}" style="width:auto">${row(x)}</label>`:row(x)).join('')||'<li>none</li>'}</ul><h4 style="margin:6px 0">✖ Unmatched (${R.un.length})</h4><ul class="imL" id="imU">${R.un.map(row).join('')||'<li>none</li>'}</ul>`;
- $('#imApply').disabled=!R.match.some(x=>Object.keys(x.set).length)&&!R.conf.some(x=>x.p)}catch(e){$('#imRes').textContent=e.message}};
-$('#imApply').onclick=async()=>{const R=IM.res;if(!R)return;const M={};document.querySelectorAll('#imMap [data-f]').forEach(s=>M[s.dataset.f]=+s.value);
- const pick=[...R.match,...[...document.querySelectorAll('#imC [data-c]:checked')].map(b=>{const x=R.conf[+b.dataset.c],r=x.r,c=k=>M[k]>=0?String(r[M[k]]??'').trim():'',set={...x.set};if(c('label'))set.location=c('label');if(c('model'))set.model=c('model');return{...x,set}})].filter(x=>x.p&&Object.keys(x.set).length);
- const here=[],other=[];for(const x of pick){const b=x.p,a={...structuredClone(b),...x.set};(b.planId===plan.id?here:other).push({store:'pins',id:a.id,before:structuredClone(b),after:a});if(a.model)await rememberModel(a.type,a.model)}
- if(here.length)await changeMulti(here);for(const o of other)await put('pins',o.after);$('#imDlg').close();toast(`CSV import: ${pick.length} pin(s) updated${other.length?` (${other.length} on other plans)`:''}`)};
