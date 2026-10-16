@@ -1,0 +1,13 @@
+/* bpm-v90 guides + symbols */
+#gDlg{width:min(760px,98vw);max-height:94dvh;padding:8px;display:none;flex-direction:column}#gDlg[open]{display:flex}
+.gHead{display:flex;align-items:center;gap:6px}.gTabs{display:flex;gap:4px;overflow-x:auto;padding:4px 0;flex:none}.gTabs .btn{flex:none;display:inline-flex;flex-direction:column;align-items:center;min-width:64px;font-size:18px}
+#gC{overflow-y:auto;flex:1;min-height:0;-webkit-overflow-scrolling:touch}.gBody{padding:4px 2px 20px;font-size:14px;line-height:1.4}.gBody h4{margin:12px 0 4px}
+.gT{border-collapse:collapse;width:100%;font-size:13px}.gT td,.gT th{border:1px solid #334155;padding:4px 6px;vertical-align:top;text-align:left}.gT th{background:#1e293b}
+.gSrc{margin-top:10px;font-size:11px;color:#94a3b8}.gSrc a,.gBody sup a{color:#93c5fd}.gBig{font-size:20px;font-weight:700;margin:6px 0}
+.gRes{width:100%;max-width:360px;height:auto}.gSel select{max-width:96px}.gChip{display:inline-block;padding:1px 6px;border-radius:6px;border-left:12px solid var(--c);background:#1e293b;margin:2px}
+.gOhm{display:grid;grid-template-columns:1fr 1fr;gap:6px}.gOhm input{width:100%}.gWheel{width:200px;height:200px;display:block;margin:8px auto}
+.symG{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}.symC{background:#1e293b;border-radius:10px;padding:6px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px}.symC img,.symC canvas{max-width:72px;max-height:56px;background:#fff;border-radius:6px}
+.symC .row{flex-wrap:wrap;justify-content:center}.symC .btn{font-size:11px;padding:3px 6px;min-height:30px}
+#symRv{width:min(560px,96vw);max-height:90dvh}.symL{max-height:60dvh;overflow-y:auto}.symR{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #334155}.symR img{width:64px;height:48px;object-fit:contain;background:#fff;border-radius:6px}.symR>div{display:flex;flex-direction:column;gap:4px;flex:1}
+.seC{width:100%;max-width:300px;background:#fff;border-radius:8px;touch-action:none}#symEd{width:min(420px,96vw)}
+.teachOv{position:absolute;inset:0;z-index:9;cursor:crosshair;background:#0002}.teachTip{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:#1e293b;padding:6px 12px;border-radius:8px}
