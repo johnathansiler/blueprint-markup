@@ -137,3 +137,4 @@ label.opac span{font-size:11px;color:#94a3b8;min-width:28px;text-align:right}
 @media(max-width:520px){#zoomPct.zoomPct{padding:6px 6px;font-size:12px;min-width:2.8em}}
 #cSnap.on{background:#f59e0b;border-color:#fde68a;color:#111;box-shadow:0 0 0 2px #fde68a}
 .dsGrp summary{cursor:pointer;font-weight:600;margin:6px 0}.dsGrp .dsM{margin:2px}
+.dsM .dsD{display:block;font-size:.75em;color:#94a3b8;font-weight:normal}
