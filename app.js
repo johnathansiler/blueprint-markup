@@ -302,7 +302,7 @@ function constrainPt(d,w){const dx=w.x-d.x1,dy=w.y-d.y1;if(d.type==='line'||d.ty
 stage.addEventListener('pointerdown',e=>{if(!plan||e.target!==cv)return;stage.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.offsetX,y:e.offsetY});
  if(ptrs.size===2){draft=null;const[a,b]=[...ptrs.values()];gesture={type:'pinch',d:Math.hypot(a.x-b.x,a.y-b.y),c:{x:(a.x+b.x)/2,y:(a.y+b.y)/2},v:{...view}};return}
  const w=toW(e.offsetX,e.offsetY);const start={sx:e.offsetX,sy:e.offsetY,moved:false};
- if(tool==='pan'||e.button===1){gesture={type:'pan',...start,v:{...view}};return}
+ if(tool==='pan'||tool==='stamp'||e.button===1){gesture={type:'pan',...start,v:{...view}};return}
  if(tool==='select'){if(sel?.kind==='m'&&edOn(sel.o)){const hi=handleHit(sel.o,e.offsetX,e.offsetY);if(hi>=0){gesture={type:'resize',h:hi,...start,orig:structuredClone(sel.o)};return}}
   if(deselOn){gesture={type:'box',des:1,...start,moved:false,w0:w,w1:w};showBox();return} // bpm-v100: Deselect box starts anywhere (never drags a pin)
   {const h0=hit(w),onP=msel.filter(o=>o.page===page);if(h0&&msel.includes(h0.o)){sel=null;gesture={type:EDIT==='multi'?'mmove':'mtap0',...start,v:{...view},items:onP,orig:onP.map(o=>structuredClone(o)),tapO:h0.o};return}
@@ -639,6 +639,7 @@ async function runDetect0(groups,all,MJ){const want=groups.flatMap(g=>DG[g].d),p
  try{for(let i=0;i<pages.length;i++){const n=pages[i],t0=performance.now();$('#busyTxt').textContent=pages.length>1?`Detecting pg ${n}`:'Detecting';
    const pg=await detPage(n);if(R.cancel||plan!==pl)return;if(!pg.__tc){const f=pg.getTextContent.bind(pg);let P=null;pg.getTextContent=(...a)=>a.length&&a[0]?f(...a):(P??=f())}pg.__tc=1; // bpm-v99: one text-layer read per page (Detect, legend, tags share it)
    if(all&&pages.length>1){let tx='';try{tx=(await pg.getTextContent()).items.map(t=>t.str).join(' ')}catch{}if(/\bSYMBOL\b/i.test(tx)&&/\b(QTY|DESCRIPTION)\b/i.test(tx)&&/LEGEND/i.test(tx)){R.stats.push({page:n,skipped:'legend sheet'});prog((i+1)/pages.length);continue}}
+   if(window.pageKind){const k=await pageKind(pl.id,n,pg);if(k.kind&&!(await detAnyway(pl.id,n))){R.stats.push({page:n,skipped:k.kind,why:k.why});ghosts=ghosts.filter(g=>!(g.page===n&&groups.includes(g.g)));if(!all)toast(`Detect skipped page ${n}: ${k.kind} sheet (${k.why}) · Pages ▸ Detect this page anyway`);prog((i+1)/pages.length);continue}} // bpm-v107: no Detect pins on riser / wiring sheets
    const ol=await vecOL(n,pg);if(R.cancel||plan!==pl)return;prog((i+.5)/pages.length);
    const fn=[],args=[];for(let j=0;j<ol.fnArray.length;j++)if(keep.has(ol.fnArray[j])){fn.push(ol.fnArray[j]);args.push(ol.argsArray[j])}
    const vp=pg.getViewport({scale:1}),t1=performance.now(),r=await detOnWorker({id:n,fn,args,O,vt:vp.transform,W:vp.width,H:vp.height,want:null});if(R.cancel||plan!==pl)return;

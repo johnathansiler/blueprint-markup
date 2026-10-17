@@ -99,7 +99,7 @@
  const more=()=>[{k:'fit',i:'⤢',l:'Fit to screen',run:()=>$('#fit').click()},{k:'del',i:'🗑',l:'Delete selected',run:()=>$('#del').click()},{k:'mag',i:'🧲',l:'Magnet snap '+($('#mkSnap').classList.contains('on')?'(on)':'(off)'),run:()=>$('#mkSnap').click()},{k:'cz',i:'⚙',l:'Customize toolbar',run:()=>openCz()}];
  const share=()=>[{k:'split',i:'⇆',l:'Split for 2nd tech',run:()=>$('#splitBtn').click()},{k:'merge',i:'⇄',l:'Merge returned file',run:()=>$('#mergeBtn').click()}];
  // move originals out of the way
- ['pan','select','rect','rrect','ellipse','arc','tri','poly','star','check','cloud','arrow','line','pen','free','zig','measure','pin'].forEach(t=>hid.append(tb(t)));['#mkSnap','#pinType','#size','#del','#fit'].forEach(O);const opl=document.querySelector('#tools .opac');if(opl)hid.append(opl);
+ ['pan','select','rect','rrect','ellipse','arc','tri','poly','star','check','cloud','arrow','line','pen','free','stamp','zig','measure','pin'].forEach(t=>hid.append(tb(t)));['#mkSnap','#pinType','#size','#del','#fit'].forEach(O);const opl=document.querySelector('#tools .opac');if(opl)hid.append(opl);
  const B={shapes:mkWheelBtn('shapes','Shapes',()=>SH,x=>x.on()),lines:mkWheelBtn('lines','Lines',()=>LN,x=>x.on()),width:mkWidthBtn(),
   place:mkWheelBtn('place','Place',pinT,()=>tool==='pin'),select:mkWheelBtn('select','Select',()=>SEL,x=>x.on()),share:mkWheelBtn('share','Share',share,()=>0),more:mkWheelBtn('more','More',more,()=>0)};
  const text=tb('text');hid.append(text);const textB=ce('button','tool','T<span class="tl">Text</span>');textB.type='button';textB.onclick=()=>text.click();
@@ -118,7 +118,8 @@
  const pass=ce('button','tool','✔<span class="tl">Pass</span>');pass.type='button';pass.id='tbPass';pass.onclick=()=>{const it=(msel.length?msel:sel?[sel.o]:[]).filter(isPinO);if(!it.length)return toast('Select pins first (Select ▾), then Pass');bulkPass(it)};
  const walkB=$('#walkBtn');walkB.classList.add('tool');
  const freeB=ce('button','tool tbFree','✍<span class="tl">Freehand</span>');freeB.type='button';freeB.id='tbFree';freeB.title='Freehand (smoothed)';freeB.onclick=()=>tb('free').click();document.addEventListener('click',()=>setTimeout(()=>freeB.classList.toggle('on',tool==='free'),0),true);
- const G={draw:pill('draw','DRAW',[B.shapes,B.lines,freeB,textB,$('#cSnap')]),style:pill('style','STYLE',[colW,B.width]),edit:pill('edit','EDIT',[B.more]),
+ const stampB=ce('button','tool tbStamp','🔖<span class="tl">Stamp</span>');stampB.type='button';stampB.id='tbStamp';stampB.title='Stamp: tap the plan to place';stampB.onclick=()=>tb('stamp').click();document.addEventListener('click',()=>setTimeout(()=>stampB.classList.toggle('on',tool==='stamp'),0),true);
+ const G={draw:pill('draw','DRAW',[B.shapes,B.lines,freeB,stampB,textB,$('#cSnap')]),style:pill('style','STYLE',[colW,B.width]),edit:pill('edit','EDIT',[B.more]),
   pins:pill('pins','PINS',[B.place,$('#detBtn'),walkB]),review:pill('review','REVIEW',[B.select,pass,B.share]),ref:pill('ref','REF',[$('#dsBtn'),$('#qrTool')])};
  const rest=[...T.children];T.innerHTML='';const r1=ce('div','tbR'),r2=ce('div','tbR');T.append(r1,r2);rest.forEach(e=>hid.append(e));
  // bpm-v102: wide screens (≥800px) show tools from the wheels/menus as direct labeled buttons, group by group, as long as both rows still fit; the rest stay as wheels. Phone unchanged.
