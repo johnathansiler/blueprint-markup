@@ -21,10 +21,12 @@
  const layB=mk('tb2Lay','◧','Layers',()=>tlayOpen(),'Layers: show/hide device types (plus Filters)');layB.dataset.tlay='';
  const exW=document.querySelector('#top .exWrap');relabel(by('exMenu'),'⤓','Export');const mic=relabel(by('micBtn'),'🎤','Voice');const pinsB=relabel(by('listBtn'),'📍','Pins');
  const czMore=[{i:'⚙',l:'Customize',run:()=>by('czBtn')?.click()}];
- const moreB=mk('tb2More','⋯','More ▾',()=>{const ph=matchMedia('(max-width:599px)').matches,L=[...czMore];if(ph){if(!mic.hidden)L.push({i:'🎤',l:'Voice',run:()=>mic.click()});L.push({i:'⤓',l:'Export plan as PNG',run:click('exPng')},{i:'⤓',l:'Export plan as PDF',run:click('exPdf')})}L.push({i:'👁',l:'Filters (markups, labels, status)',run:click('layBtn')});wheel('More',L,0)},'More');
+ const moreB=mk('tb2More','⋯','More ▾',()=>{const ph=matchMedia('(max-width:599px)').matches,L=[...czMore];if(ph){L.push({i:'⟳',l:'Rotate view'+(VR?` (now ${VR}°)`:''),run:()=>rot.click()});if(!mic.hidden)L.push({i:'🎤',l:'Voice',run:()=>mic.click()});L.push({i:'⤓',l:'Export plan as PNG',run:click('exPng')},{i:'⤓',l:'Export plan as PDF',run:click('exPdf')})}L.push({i:'👁',l:'Filters (markups, labels, status)',run:click('layBtn')});wheel('More',L,0)},'More');
  [...T.children].forEach(n=>{if(![exW,mic].includes(n))H.append(n)});
  const sp=()=>{const s=document.createElement('span');s.className='sp';return s},br=document.createElement('i');br.className='tb2Br';
- const s1=sp(),s2=sp();s1.classList.add('tb2S1');s2.classList.add('tb2S2');T.append(projB,planB,prev,pageB,next,zoomB,br,s1,rot,pg,layB,exW,mic,pinsB,s2,moreB);T.classList.add('tb2T');
+ const s1=sp(),s2=sp();s1.classList.add('tb2S1');s2.classList.add('tb2S2');// bpm-v105: Undo / Redo live in the top bar (same #undo/#redo buttons, so updUR() greys them out); phone: first on row 2, Rotate moves into More
+ const und=relabel(by('undo'),'↶','Undo'),red=relabel(by('redo'),'↷','Redo');und.classList.remove('tool');red.classList.remove('tool');und.title='Undo (Ctrl+Z)';red.title='Redo (Ctrl+Y)';
+ T.append(projB,planB,und,red,prev,pageB,next,zoomB,br,s1,rot,pg,layB,exW,mic,pinsB,s2,moreB);[s1,rot,pg,layB,exW,mic,pinsB,s2,moreB].forEach(e=>e&&e.classList.add('tb2R2'));T.classList.add('tb2T');
  by('czBtn')&&H.append(by('czBtn'));
  const upd=()=>{crumb();try{pageB.querySelector('.tb2n').textContent=plan?`${page}/${plan.pages||1}`:'–';by('tb2Z').textContent=by('zoomPct').textContent}catch{}};setInterval(upd,400);upd();window.tb2Upd=upd;
 })();
