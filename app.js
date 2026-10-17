@@ -254,7 +254,7 @@ stage.addEventListener('pointerdown',e=>{if(!plan||e.target!==cv)return;stage.se
 stage.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,{x:e.offsetX,y:e.offsetY});if(!gesture)return;
  if(gesture.type==='pinch'&&ptrs.size>=2){const[a,b]=[...ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y),c={x:(a.x+b.x)/2,y:(a.y+b.y)/2},g=gesture,s=clampS(g.v.s*d/g.d),wx=(g.c.x-g.v.x)/g.v.s,wy=(g.c.y-g.v.y)/g.v.s;view={s,x:c.x-wx*s,y:c.y-wy*s};fastView();return}
  const dx=e.offsetX-gesture.sx,dy=e.offsetY-gesture.sy;if(Math.hypot(dx,dy)>4)gesture.moved=true;
- if(gesture.type==='pan'){view.x=gesture.v.x+dx;view.y=gesture.v.y+dy;fastView()}
+ if(gesture.type==='pan'){view.x=gesture.v.x+dx;view.y=gesture.v.y+dy;fastView();pfTrack(gesture)}
  else if(gesture.type==='mmove'){const ddx=dx/view.s,ddy=dy/view.s;gesture.items.forEach((o,i)=>{const g=gesture.orig[i];if('x1'in g){o.x1=g.x1+ddx;o.x2=g.x2+ddx;o.y1=g.y1+ddy;o.y2=g.y2+ddy}else{o.x=g.x+ddx;o.y=g.y+ddy}});requestDraw(false)}
  else if(gesture.type==='mtap'){if(gesture.moved){view.x=gesture.v.x+dx;view.y=gesture.v.y+dy;fastView()}}
  else if(gesture.type==='move'){const o=sel.o,g=gesture.orig;let ddx=dx/view.s,ddy=dy/view.s;if(sel.kind==='p'){o.x=g.x+ddx;o.y=g.y+ddy}else{const s=mkSnapMove(g,ddx,ddy,o);ddx=s.ddx;ddy=s.ddy;o.x1=g.x1+ddx;o.x2=g.x2+ddx;o.y1=g.y1+ddy;o.y2=g.y2+ddy}requestDraw(false)}
@@ -263,7 +263,7 @@ stage.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.s
  else if(gesture.type==='zig'){zMove(gesture,toW(e.offsetX,e.offsetY));requestDraw(false)}
  else if(gesture.type==='mpath'){if(gesture.moved){view.x=gesture.v.x+dx;view.y=gesture.v.y+dy;fastView()}else{MS.hover=toW(e.offsetX,e.offsetY)}}
  else if(gesture.type==='box'){gesture.w1=toW(e.offsetX,e.offsetY);showBox()}});
-async function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);clearTimeout(lpT);const g=gesture;if(g?.type==='pinch'){if(ptrs.size===0){gesture=null;requestDraw()}return}gesture=null;if(!g)return;if(g.type==='pan')requestDraw();
+async function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);clearTimeout(lpT);const g=gesture;if(g?.type==='pinch'){if(ptrs.size===0){gesture=null;requestDraw()}return}gesture=null;if(!g)return;if(g.type==='pan'){if(await pfRelease(g))return;requestDraw()}
  const w=toW(e.offsetX,e.offsetY);
  if(!g.moved){const now=Date.now(),T=lastTap;lastTap={t:now,x:e.offsetX,y:e.offsetY};if(T&&now-T.t<350&&Math.hypot(e.offsetX-T.x,e.offsetY-T.y)<30){lastTap=null;draft=null;sel=null;msel=[];renderSelBar();draw();return}}else lastTap=null;
  if(g.type==='box'){boxSelect(g.w0,g.w1,g.des);return}
@@ -293,7 +293,7 @@ function zMove(g,w){const p=[w.x,w.y],Rw=g.R,q=Rw[Rw.length-1];if(Math.hypot(p[0
  g.V=V.slice(0,-1);g.tip=V[V.length-1];zFinish(draft,V);mRead()}
 stage.addEventListener('pointerup',up);stage.addEventListener('pointercancel',up);
 const clampS=s=>Math.max(.02,Math.min(s,40));
-stage.addEventListener('wheel',e=>{if(!plan)return;e.preventDefault();const k=Math.exp(-e.deltaY*(e.ctrlKey?.01:.0015)),s=clampS(view.s*k),wx=(e.offsetX-view.x)/view.s,wy=(e.offsetY-view.y)/view.s;view={s,x:e.offsetX-wx*s,y:e.offsetY-wy*s};fastView()},{passive:false});
+stage.addEventListener('wheel',e=>{if(!plan)return;e.preventDefault();if(e.shiftKey&&!e.ctrlKey&&!walk){pfWheel(e);return}const k=Math.exp(-e.deltaY*(e.ctrlKey?.01:.0015)),s=clampS(view.s*k),wx=(e.offsetX-view.x)/view.s,wy=(e.offsetY-view.y)/view.s;view={s,x:e.offsetX-wx*s,y:e.offsetY-wy*s};fastView()},{passive:false});
 document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{tool=b.dataset.t;document.querySelectorAll('[data-t]').forEach(x=>x.classList.toggle('on',x===b));if(tool!=='select'){sel=null;draw()}if(tool==='pin'){$('#opac').value=50;opacLbl()}else if(tool!=='select'&&tool!=='pan'){$('#opac').value=80;opacLbl()}});
 (function(){const b=$('#mkSnap');if(!b)return;const sync=()=>{b.classList.toggle('on',MK_SNAP);b.title=MK_SNAP?'Snap markups on — click to free-place':'Snap off — click to snap together';b.setAttribute('aria-pressed',MK_SNAP?'true':'false')};sync();b.onclick=()=>{MK_SNAP=!MK_SNAP;sync();put('meta',MK_SNAP,'mksnap')};get('meta','mksnap').then(v=>{if(v===true||v===false){MK_SNAP=v;sync()}}).catch(()=>{})})();
 async function deleteSel(){if(msel.length)return bulkDelete();if(!sel)return;const o=sel.o,k=sel.kind;sel=null;if(o.planId!==plan?.id)return;if(k==='p')await deletePin(o);else await change('markups',o,null);draw()}
@@ -622,7 +622,7 @@ const mKind=m=>m.type==='cloud'?'clouds':(m.type==='text'||m.type==='arrow'||m.t
 const untested=p=>p.status!=='passed'&&p.status!=='failed';
 function mVis(m){return lay[mKind(m)]!==false}
 function pVis(p){if(!lay.pins)return false;if(lay.only==='failed')return p.status==='failed';if(lay.only==='untested')return untested(p);return true}
-function drawPinL(c,p,s,hl){if(lay.dim&&p.status==='passed')drawPin(c,{...p,opacity:opOf(p,true)*.35},s,hl,false,!lay.labels);else drawPin(c,p,s,hl,false,!lay.labels)}
+function drawPinL(c,p,s,hl){if(walk?.p&&walk.p.id===p.id&&window.walkBlinkAlpha){const a=walkBlinkAlpha();if(a<1){drawPin(c,{...p,opacity:opOf(p,true)*a},s,hl,false,!lay.labels);return}}if(lay.dim&&p.status==='passed')drawPin(c,{...p,opacity:opOf(p,true)*.35},s,hl,false,!lay.labels);else drawPin(c,p,s,hl,false,!lay.labels)}
 const layF=$('#layForm');
 function layToForm(){for(const k of['shapes','clouds','text','pins','labels','ghosts','dim','exp'])layF.elements[k].checked=!!lay[k];layF.elements.only.value=lay.only||''}
 function layMark(){const d=Object.keys(LAY0).some(k=>k!=='exp'&&lay[k]!==LAY0[k]);$('#layBtn').classList.toggle('pri',d)}
@@ -781,7 +781,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v100',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v101',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -1675,3 +1675,21 @@ async function dsList(){const c=await customModels(),q=$('#dsQ').value.trim().to
 $('#dsBody').onclick=async e=>{const r=e.target.closest('[data-rep]'),x=e.target.closest('[data-rm]'),b=e.target.closest('.dsM');if(r)return openQr(r.dataset.rep);if(x){if(await uiConfirm('Remove the scanned link for '+x.dataset.rm+'? The built-in link will be used again.')){await setUserLink(x.dataset.rm,null);dsList();dsBtnSync()}return}if(b)openDs(b.dataset.m)};
 $('#dsQ').oninput=dsList;
 $('#dsBtn').onclick=async()=>{$('#dsQ').value='';await userLinks();await userParts();await dsList();$('#dsDlg').showModal()};
+
+// bpm-v101: page flip by overscroll. Drag (or Shift+wheel) the plan past the bottom edge of the page by PF_T px more than it started → next page, landing at its top
+// (zoom kept); past the top edge → previous page, landing at its bottom. Only plain pans (never pinch, drawing, pin drag, box select); off in Walk. Never moves pins.
+const PF_T=110,PF_H=40;
+function pfEdges(v){const D=dispWH(),H=stage.clientHeight;return{top:v.y,bot:v.y+D.h*v.s,H}}
+function pfHint(dir,k){let h=$('#pfHint');if(!h){h=document.createElement('div');h.id='pfHint';stage.append(h)}if(!dir||k<PF_H/PF_T){h.hidden=true;return}
+ const ok=k>=1,nx=dir>0?page+1:page-1;h.className=dir>0?'pfB':'pfT';h.classList.toggle('ready',ok);h.textContent=ok?(dir>0?`↓ Release for page ${nx}`:`↑ Release for page ${nx}`):(dir>0?`↓ Next page (${nx})`:`↑ Previous page (${nx})`);h.style.setProperty('--k',Math.min(1,k));h.hidden=false}
+function pfAmt(g){if(walk||!plan||!pageW)return null;const e0=pfEdges(g.v),e=pfEdges(view);
+ const dn=Math.min(e.H,e0.bot)-e.bot,upA=e.top-Math.max(0,e0.top);if(dn>0&&page<plan.pages)return{dir:1,k:dn/PF_T};if(upA>0&&page>1)return{dir:-1,k:upA/PF_T};return null}
+function pfTrack(g){const a=pfAmt(g);pfHint(a&&a.dir,a?a.k:0)}
+async function pfFlip(dir){const s=view.s,x=view.x,H=stage.clientHeight;pfHint(0);await gotoPage(page+dir);const D=dispWH();view={s,x,y:dir>0?8:H-D.h*s-8};draw();scheduleRender();toast(`Page ${page} of ${plan.pages}`);return true}
+async function pfRelease(g){const a=pfAmt(g);pfHint(0);if(a&&a.k>=1)return pfFlip(a.dir);return false}
+let pfW=null,pfWT=0;function pfWheel(e){const d=e.deltaY||e.deltaX;
+ if(!pfW)pfW={v:{...view}};clearTimeout(pfWT);const e0=pfEdges(view),D=dispWH(),H=stage.clientHeight;let ny=view.y-d;
+ // clamp the scroll at the edges, then accumulate the extra as overscroll
+ const minY=Math.min(8,H-D.h*view.s-8),maxY=Math.max(8,H-D.h*view.s-8);if(ny<minY){pfW.o=(pfW.o||0)+(minY-ny);ny=minY}else if(ny>maxY){pfW.o=(pfW.o||0)-(ny-maxY);ny=maxY}else pfW.o=0;
+ view={...view,y:ny};fastView();const o=pfW.o||0,dir=o>0?1:o<0?-1:0,ok=dir&&(dir>0?page<plan.pages:page>1);pfHint(ok&&dir,Math.abs(o)/PF_T);
+ if(ok&&Math.abs(o)>=PF_T){pfW=null;pfFlip(dir);return}pfWT=setTimeout(()=>{pfW=null;pfHint(0)},350)}
