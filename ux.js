@@ -80,12 +80,13 @@ window.orderDetTypes=orderDetTypes;
  const run=r=>(r.querySelectorAll?r:document).querySelectorAll('button,label.btn').forEach(lab);
  run(document);new MutationObserver(ms=>{for(const m of ms)for(const n of m.addedNodes)if(n.nodeType===1){if(n.tagName==="BUTTON")lab(n);else run(n)}else{const b=m.target.closest&&m.target.closest("button");if(b)lab(b)}}).observe(document.body,{childList:true,subtree:true});window.labelButtons=()=>run(document)})();
 
-// bpm-v100: walk-mode pulse on the CURRENT pin: a soft glow ring drawn as a DOM overlay (the pin itself is untouched: no position/size/rotation/outset change)
-const walkPulse=window.walkPulse={el:null,raf:0};
-function wpTick(){const P=walkPulse;P.raf=0;const p=walk&&walk.p&&(pins.find(x=>x.id===walk.p.id)||walk.p);if(!p||p.page!==page||!plan){if(P.el)P.el.hidden=true;return}
- if(!P.el){P.el=document.createElement('div');P.el.id='wPulse';stage.append(P.el)}const q=toS(p.x,p.y),sz=Math.max(34,Math.min(140,(Math.max(p.bw||0,p.bh||0)||14)*view.s*1.9));
- Object.assign(P.el.style,{left:(q.x-sz/2)+'px',top:(q.y-sz/2)+'px',width:sz+'px',height:sz+'px'});P.el.style.setProperty('--wpc',(TYPES[p.type]||TYPES.other).c);P.el.hidden=false}
-const _draw=draw;draw=function(...a){const r=_draw.apply(this,a);if(!walkPulse.raf)walkPulse.raf=requestAnimationFrame(wpTick);return r};
-const _ex2=exitWalk;exitWalk=function(...a){const r=_ex2.apply(this,a);if(walkPulse.el)walkPulse.el.hidden=true;return r};
 // docked full-width walk bar on wide screens: keep the side panel's last rows reachable above it
-const _rw2=renderWalk;renderWalk=function(...a){const r=_rw2.apply(this,a);const w=$('#walk');document.documentElement.style.setProperty('--walkH',(w&&!w.hidden?w.offsetHeight:0)+'px');if(!walkPulse.raf)walkPulse.raf=requestAnimationFrame(wpTick);return r};
+const _rw2=renderWalk;renderWalk=function(...a){const r=_rw2.apply(this,a);const w=$('#walk');document.documentElement.style.setProperty('--walkH',(w&&!w.hidden?w.offsetHeight:0)+'px');wBlink();return r};
+
+// bpm-v101: walk blink. The CURRENT pin itself fades 1 → ~0.15 → 1 (~1 s; reduced motion: 1 → 0.55, ~2.4 s) so the print symbol shows through.
+// It is drawn in the pin's own drawPin call on the overlay canvas (same transform as every pin); geometry untouched.
+// While a pan/pinch is in flight the overlay carries a CSS transform relative to the last full draw, so blink frames are drawn in THAT frame (view=drawn) and stay glued to the symbol.
+const RM=matchMedia('(prefers-reduced-motion: reduce)');let wbRaf=0,wbLast=0;
+window.walkBlinkAlpha=()=>{if(!walk||!walk.p)return 1;const t=performance.now();return RM.matches?.775+.225*Math.cos(t/2400*2*Math.PI):.575+.425*Math.cos(t/1000*2*Math.PI)};
+function wBlink(){if(wbRaf)return;const step=t=>{wbRaf=0;if(!walk||!walk.p||!plan){requestDraw(false);return}if(t-wbLast>=33){wbLast=t;if(walk.p.page===page){const keep=view;if(ov.style.transform&&drawn)view={...drawn};try{drawOverlay()}finally{view=keep}}}wbRaf=requestAnimationFrame(step)};wbRaf=requestAnimationFrame(step)}
+const _sw2=startWalk;startWalk=function(...a){const r=_sw2.apply(this,a);wBlink();return r};
