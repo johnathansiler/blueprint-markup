@@ -35,7 +35,7 @@ const area=p=>Math.abs(p.reduce((s,a,i)=>{const b=p[(i+1)%p.length];return s+a[0
 // symbol scale: median side of dark near-square 4-gons (the reference symbols are ~13 pt on the sample plan)
 function scaleOf(G){const s=[];for(const g of G){const p=poly(g,1);if(!p||p.length!==4)continue;const sd=sides(p),mx=Math.max(...sd),mn=Math.min(...sd);if(mn<4||mx>60||mx/mn>1.15)continue;const a=area(p);if(Math.abs(a-mn*mx)/a>.12)continue;s.push((mx+mn)/2)}
  if(s.length<5){/* bpm-v108: few squares on the sheet (FL-00132): also measure regular hexagons (smoke / module / relay, ~15 at k=1) */const q=s.map(v=>v/13);for(const g of G){const p=poly(g,1);if(!p||p.length!==6)continue;const sd=sides(p),mx=Math.max(...sd),mn=Math.min(...sd);if(mn<2.5||mx/mn>1.2)continue;const D=Math.max(g.w,g.h);if(D<8||D>60)continue;q.push(D/15)}
-  if(q.length<3)return 1;q.sort((a,b)=>a-b);return q[q.length>>1]}
+  if(q.length<3){self.KF=1;return self.K0||1}q.sort((a,b)=>a-b);return q[q.length>>1]}/* bpm-v111: no scale evidence on this sheet → the scale measured on an earlier sheet of the same plan (FL-00132 p5) */
  s.sort((a,b)=>a-b);return s[s.length>>1]/13}
 // v45/v46: true size + rotation from polygon; pin center = OBB center of outline (not upright AABB mid)
 function geom(pp,sk){if(!pp||pp.length<3)return null;const n=pp.length,cx0=pp.reduce((s,p)=>s+p[0],0)/n,cy0=pp.reduce((s,p)=>s+p[1],0)/n;let a=0;
@@ -48,27 +48,28 @@ function geom(pp,sk){if(!pp||pp.length<3)return null;const n=pp.length,cx0=pp.re
  if(Math.abs(a)<.02)a=0;return{bw,bh,ang:a,cx,cy}}
 function shape(g,k){if(g.k==='cccc')return Math.abs(g.w-g.h)<1*k?'circle':null;const pts=poly(g,.6*k);if(!pts)return null;
  const s=sides(pts),n=pts.length,A=area(pts),mx=Math.max(...s),mn=Math.min(...s),K2=k*k;
- if(n===4){if(mn>=11.5*k&&mx<=14.5*k&&A>155*K2)return'square';if(mn>=10.3*k&&mn<11.5*k&&mx<=12.5*k&&mx/mn<1.1)return'sqs';/* bpm-v108: slightly small square — a speaker/strobe only when it holds the strobe disc AND has the speaker cone beside it */if(mn>12*k&&mx<17*k&&A<160*K2)return'diamond';if(mn>5.5*k&&mn<8.5*k&&mx>12*k&&mx<16*k)return'rect_small';if(mn>=7*k&&mn<10.5*k&&mx>=14*k&&mx<19*k&&mx/mn>1.45&&mx/mn<2.6)return'eolr';/* bpm-v108: EOL resistor box */
+ if(n===4){if(mn>=11.5*k&&mx<=14.5*k&&A>155*K2)return'square';if(mn>=10.3*k&&mn<11.5*k&&mx<=12.5*k&&mx/mn<1.1)return'sqs';/* bpm-v108: slightly small square — a speaker/strobe only when it holds the strobe disc AND has the speaker cone beside it */if(mn>12*k&&mx<17*k&&A<160*K2)return'diamond';if(mn>14.5*k&&mx<=16.5*k&&mx/mn<1.1&&A>200*K2)return'sqp';/* bpm-v111: a bit larger square, any angle — only a "PB" pull box (FL-00139, drawn rotated on the wire) */if(mn>5.5*k&&mn<8.5*k&&mx>12*k&&mx<16*k)return'rect_small';if(mn>=7*k&&mn<10.5*k&&mx>=14*k&&mx<19*k&&mx/mn>1.45&&mx/mn<2.6)return'eolr';/* bpm-v108: EOL resistor box */
   // FACP/DACT/annunciator-style labeled boxes on the legend (wide shallow rectangles)
   if(mx>=22*k&&mx<=90*k&&mn>=8*k&&mn<=30*k&&mx>=mn*1.55&&A>180*K2)return'panel_rect';
   // large square with lettering (e.g. "SS" transient voltage surge suppressor)
   if(mn>=16*k&&mx<=26*k&&mx/mn<1.15&&A>250*K2)return'sq_big'}
  if(n===6&&Math.max(g.w,g.h)>=11*k&&Math.max(g.w,g.h)<=17*k&&A>100*K2)return'hex';
  if(n===3&&mx>=8.5*k&&mx<=12.5*k&&mn>7*k)return'tri';return null}
-function detect(P,W,H,want){const TB=W>H?W*.825:W;let G=P.filter(g=>dark(g)&&g.x0<TB);const k=scaleOf(G);
+function detect(P,W,H,want){const TB=W>H?W*.825:W;let G=P.filter(g=>dark(g)&&g.x0<TB);self.KF=0;const k=scaleOf(G);
   const ctr=g=>[g.cx,g.cy],prim=[];for(const g of G){const s=shape(g,k);if(s)prim.push([s,g])}
  const tris=prim.filter(p=>p[0]==='tri').map(p=>[p[1],p[1].fill!=null]),circles=prim.filter(p=>p[0]==='circle').map(p=>p[1]),lines=G.filter(g=>g.k==='l');
  // grid index for neighbourhood queries
  const CS=40*k,grid=new Map(),key=(x,y)=>Math.floor(x/CS)+','+Math.floor(y/CS);for(const g of G){const q=key(g.cx,g.cy);let a=grid.get(q);if(!a)grid.set(q,a=[]);a.push(g)}
  const near=(c,r)=>{const o=[];const x0=Math.floor((c[0]-r)/CS),x1=Math.floor((c[0]+r)/CS),y0=Math.floor((c[1]-r)/CS),y1=Math.floor((c[1]+r)/CS);for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++){const a=grid.get(x+','+y);if(a)for(const g of a)if(dist([g.cx,g.cy],c)<r)o.push(g)}return o};
  const out=[];
- for(let[sk,g]of prim){if(!['square','hex','diamond','rect_small','panel_rect','sq_big','sqs','eolr'].includes(sk))continue;const c=ctr(g),R=sk==='sq_big'||sk==='eolr'?Math.max(g.w,g.h)/2:(sk!=='rect_small'?7:7.5)*k;
+ for(let[sk,g]of prim){if(!['square','hex','diamond','rect_small','panel_rect','sq_big','sqs','eolr','sqp'].includes(sk))continue;const c=ctr(g),R=sk==='sq_big'||sk==='eolr'?Math.max(g.w,g.h)/2:(sk!=='rect_small'?7:7.5)*k;
   const ins=near(c,R*.8).filter(h=>h!==g&&Math.max(h.w,h.h)<R*1.6);
   const glyph=ins.filter(h=>h.k!=='cccc'&&h.fill==null).map(h=>h.segs.length).sort((a,b)=>a-b);
   const filled=g.fill!=null||ins.some(h=>h.fill!=null&&Math.max(h.w,h.h)>4*k);
   const hasC=ins.some(h=>h.k==='cccc'&&h.w>4*k&&h.w<8*k);
   const tnear=tris.filter(([t])=>dist(ctr(t),c)<15*k);let t=null,stem=false;
   const inBox=()=>{const pp=poly(g,.6*k);if(!pp)return null;const pin=(x,y)=>{let o=false;for(let i=0,j=pp.length-1;i<pp.length;j=i++){const[xi,yi]=pp[i],[xj,yj]=pp[j];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)o=!o}return o};const ms=Math.min(...sides(pp));return near(c,Math.max(g.w,g.h)/2+1).filter(h=>h!==g&&h.fill==null&&h.k!=='cccc'&&Math.max(h.w,h.h)<ms*.75&&pin(h.cx,h.cy)).map(h=>h.segs.length).sort((x,y)=>x-y).join(',')};
+  if(sk==='sqp'){if(glyph.join(',')!=='10,18')continue;sk='square'}
   if(sk==='sqs'){/* bpm-v109: or a plain speaker: small empty square with the cone beside it (FL-00090) */if(!(tnear.length&&(hasC||!ins.some(h=>h.fill==null&&h.k!=='cccc'))))continue;sk='square'}
   if(sk==='square'){
    if(hasC||tnear.length){t=tnear.some(x=>x[1])?'SPK_BOH':'SPK_FOH';
@@ -108,7 +109,7 @@ function detect(P,W,H,want){const TB=W>H?W*.825:W;let G=P.filter(g=>dark(g)&&g.x
    // bpm-v106: a box holding terminal screws (small full circles) is a wiring-detail terminal strip, not a panel (FL-00114 p7)
    const inB=inBox();
    /* bpm-v108: "VEP" VESDA detector box: the same lettering as a clipped "FACP", so the whole box inside must hold only V, E, P (no C) */
-   const VS=(glyph.join(',')==='1,1,2,2,10'&&inB==='1,1,2,2,10')?'VESDA':{'2,10,19':'VPSU','1,1,1,2,2,10':'VREM','1,2,3':'VNET','2,17,20':'LOC','10,17,20':'DACT','1,1,1,12':'DOOR_HOLDER','1,2,3,17':'PAD'}[glyph.join(',')];/* bpm-v108: VESDA / LOC / communicator boxes by their lettering (VPS, VRE, VNI, LOC, DACT — legend-checked on FL-00144/149) */
+   const VS=(glyph.join(',')==='1,1,2,2,10'&&inB==='1,1,2,2,10')?'VESDA':{'2,10,19':'VPSU','1,1,1,2,2,10':'VREM','1,2,3':'VNET','2,17,20':'LOC','10,17,20':'DACT','1,1,1,12':'DOOR_HOLDER','1,2,3,17':'PAD','1,1,1,2,10,10':'FARP','1,1,1,2,2,2,10':'FARP'}[glyph.join(',')];/* bpm-v111: "FARP" lettering (R and P bowls, no C arc) beats the FACP fallback — FL-00132 p4, FL-00149 legend *//* bpm-v108: VESDA / LOC / communicator boxes by their lettering (VPS, VRE, VNI, LOC, DACT — legend-checked on FL-00144/149) */
    if(VS)t=VS;else if(near(c,Math.max(g.w,g.h)/2+1).some(h=>h!==g&&h.k==='cccc'&&h.w>1.5*k&&h.w<Math.min(g.w,g.h)*.95&&Math.abs(h.cx-c[0])<g.w/2&&Math.abs(h.cy-c[1])<g.h/2))t=null;else if(gl<3)t='PANEL_BOX';else if(glyph.includes(12))t='DACT';else if(glyph.includes(10))t='FACP';else if(ones>=4)t='FATC';else t='PANEL_BOX'}
   if(t){const pp=poly(g,.6*k),sz=pp?Math.sqrt(area(pp))/k:Math.max(g.w,g.h)/k;const skG=(t==='SURGE'&&sk==='diamond')?'square':sk/* bpm-v50: upright SS square can pass diamond test; measure as square, not 45° diagonals */,G2=(sk==='eolr'||sk==='panel_rect'||sk==='rect_small'||sk==='square'||sk==='sq_big'||sk==='diamond'||sk==='hex')?geom(pp,skG):null;out.push({type:t,c:G2?[G2.cx,G2.cy]:c,...(G2?{bw:G2.bw,bh:G2.bh,ang:G2.ang}:{...(sk==='panel_rect'||sk==='rect_small'||sk==='square'||sk==='sq_big'||sk==='diamond'||sk==='hex'?{bw:g.w,bh:g.h}:{})}),fp:{s:sk,gl:glyph.join(','),v:[sz,hasC?1:0,tnear.length,tnear.some(x=>x[1])?1:0,stem?1:0,filled?1:0,ins.length/10]}})}}
  for(const g of circles)if(g.w>11.5*k&&g.w<14.5*k){const c=ctr(g);if(near(c,5*k).some(h=>h!==g&&Math.max(h.w,h.h)<9*k))out.push({type:'JBOX_CEIL',c,fp:{s:'circle',gl:String(near(c,5*k).filter(h=>h!==g&&Math.max(h.w,h.h)<9*k).length),v:[g.w/k,0,0,0,0,g.fill!=null?1:0,0]}})}
@@ -138,4 +139,4 @@ function probeAt(P,q){let best=null;const R=Math.max(q.w,q.h);for(const g of P){
  if(n===4){const onEdge=pp.filter(p=>Math.abs(p[0]-g.cx)<g.w*.15||Math.abs(p[1]-g.cy)<g.h*.15).length;if(onEdge>=4){sk='diamond';kind='dia'}else{const sd=sides(pp),mx=Math.max(...sd),mn=Math.min(...sd);sk=mx/mn<1.15?'square':'panel_rect';kind='rect'}}
  else if(n===6){sk='hex';kind='hex'}else return null;
  const G2=geom(pp,sk);return G2?{x:G2.cx,y:G2.cy,bw:G2.bw,bh:G2.bh,ang:G2.ang||0,kind}:null}
-self.onmessage=e=>{const{id,fn,args,O,vt,W,H,want,probe}=e.data;const t0=performance.now();if(probe){try{const P=walk(fn,args,O,vt);self.postMessage({id,ok:1,probe:probe.map(q=>probeAt(P,q))})}catch(err){self.postMessage({id,ok:0,err:String(err&&err.message||err)})}return}try{const P=walk(fn,args,O,vt);const r=detect(P,W,H,want);self.postMessage({id,ok:1,...r,paths:P.length,ms:performance.now()-t0})}catch(err){self.postMessage({id,ok:0,err:String(err&&err.message||err)})}};
+self.onmessage=e=>{const{id,fn,args,O,vt,W,H,want,probe}=e.data;self.K0=e.data.k0||0;const t0=performance.now();if(probe){try{const P=walk(fn,args,O,vt);self.postMessage({id,ok:1,probe:probe.map(q=>probeAt(P,q))})}catch(err){self.postMessage({id,ok:0,err:String(err&&err.message||err)})}return}try{const P=walk(fn,args,O,vt);const r=detect(P,W,H,want);self.postMessage({id,ok:1,...r,kf:!!self.KF,paths:P.length,ms:performance.now()-t0})}catch(err){self.postMessage({id,ok:0,err:String(err&&err.message||err)})}};
