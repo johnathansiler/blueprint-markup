@@ -69,7 +69,7 @@ function detect(P,W,H,want){const TB=W>H?W*.825:W;let G=P.filter(g=>dark(g)&&g.x
   const hasC=ins.some(h=>h.k==='cccc'&&h.w>4*k&&h.w<8*k);
   const tnear=tris.filter(([t])=>dist(ctr(t),c)<15*k);let t=null,stem=false;
   const inBox=()=>{const pp=poly(g,.6*k);if(!pp)return null;const pin=(x,y)=>{let o=false;for(let i=0,j=pp.length-1;i<pp.length;j=i++){const[xi,yi]=pp[i],[xj,yj]=pp[j];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)o=!o}return o};const ms=Math.min(...sides(pp));return near(c,Math.max(g.w,g.h)/2+1).filter(h=>h!==g&&h.fill==null&&h.k!=='cccc'&&Math.max(h.w,h.h)<ms*.75&&pin(h.cx,h.cy)).map(h=>h.segs.length).sort((x,y)=>x-y).join(',')};
-  if(sk==='sqs'){if(!(hasC&&tnear.length))continue;sk='square'}
+  if(sk==='sqs'){/* bpm-v109: or a plain speaker: small empty square with the cone beside it (FL-00090) */if(!(tnear.length&&(hasC||!ins.some(h=>h.fill==null&&h.k!=='cccc'))))continue;sk='square'}
   if(sk==='square'){
    if(hasC||tnear.length){t=tnear.some(x=>x[1])?'SPK_BOH':'SPK_FOH';
     // Horn/strobe: strobe disc in square, no speaker triangle, with short radial ticks (legend horn symbol)
