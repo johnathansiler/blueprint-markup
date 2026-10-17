@@ -98,7 +98,8 @@ function detect(P,W,H,want){const TB=W>H?W*.825:W;let G=P.filter(g=>dark(g)&&g.x
    // v18: classify by the lettering inside the box (glyph segment signature), checked against the test plan legend:
    //  FACP → a 10-seg glyph (P bowl), DACT → a 12-seg glyph (D), FATC → ≥4 single-seg strokes (T,T,F bars) and no 10/12
    const ones=glyph.filter(x=>x===1).length;
-   if(gl<3)t='PANEL_BOX';else if(glyph.includes(12))t='DACT';else if(glyph.includes(10))t='FACP';else if(ones>=4)t='FATC';else t='PANEL_BOX'}
+   // bpm-v106: a box holding terminal screws (small full circles) is a wiring-detail terminal strip, not a panel (test plan p7)
+   if(near(c,Math.max(g.w,g.h)/2+1).some(h=>h!==g&&h.k==='cccc'&&h.w>1.5*k&&h.w<Math.min(g.w,g.h)*.95&&Math.abs(h.cx-c[0])<g.w/2&&Math.abs(h.cy-c[1])<g.h/2))t=null;else if(gl<3)t='PANEL_BOX';else if(glyph.includes(12))t='DACT';else if(glyph.includes(10))t='FACP';else if(ones>=4)t='FATC';else t='PANEL_BOX'}
   if(t){const pp=poly(g,.6*k),sz=pp?Math.sqrt(area(pp))/k:Math.max(g.w,g.h)/k;const skG=(t==='SURGE'&&sk==='diamond')?'square':sk/* bpm-v50: upright SS square can pass diamond test; measure as square, not 45° diagonals */,G2=(sk==='panel_rect'||sk==='rect_small'||sk==='square'||sk==='sq_big'||sk==='diamond'||sk==='hex')?geom(pp,skG):null;out.push({type:t,c:G2?[G2.cx,G2.cy]:c,...(G2?{bw:G2.bw,bh:G2.bh,ang:G2.ang}:{...(sk==='panel_rect'||sk==='rect_small'||sk==='square'||sk==='sq_big'||sk==='diamond'||sk==='hex'?{bw:g.w,bh:g.h}:{})}),fp:{s:sk,gl:glyph.join(','),v:[sz,hasC?1:0,tnear.length,tnear.some(x=>x[1])?1:0,stem?1:0,filled?1:0,ins.length/10]}})}}
  for(const g of circles)if(g.w>11.5*k&&g.w<14.5*k){const c=ctr(g);if(near(c,5*k).some(h=>h!==g&&Math.max(h.w,h.h)<9*k))out.push({type:'JBOX_CEIL',c,fp:{s:'circle',gl:String(near(c,5*k).filter(h=>h!==g&&Math.max(h.w,h.h)<9*k).length),v:[g.w/k,0,0,0,0,g.fill!=null?1:0,0]}})}
  const sq=out.filter(o=>o.type.startsWith('SPK'));
