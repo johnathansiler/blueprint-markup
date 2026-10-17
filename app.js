@@ -2,6 +2,34 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc='vendor/pdf.worker.min.js';
 const $=s=>document.querySelector(s);
 const TYPES={smoke:{c:'#dc2626',l:'S',n:'Smoke'},heat:{c:'#ea580c',l:'H',n:'Heat'},pull:{c:'#be185d',l:'P',n:'Pull station'},horn:{c:'#7c3aed',l:'HS',n:'Horn/strobe'},panel:{c:'#991b1b',l:'FACP',n:'FACP – Fire Alarm Control Panel',sq:1},dact:{c:'#ca8a04',l:'DACT',n:'DACT – Digital Alarm Communicator Transmitter',sq:1},fatc:{c:'#0e7490',l:'FATC',n:'FATC – Fire Alarm Terminal Cabinet',sq:1},panelbox:{c:'#0f766e',l:'ANN',n:'Annunciator',sq:1},rai:{c:'#e11d48',l:'RI',n:'Remote alarm indicator'},module:{c:'#2563eb',l:'M',n:'Monitor/control module',sq:1},duct:{c:'#b45309',l:'D',n:'Duct detector'},flow:{c:'#0369a1',l:'WF',n:'Waterflow switch'},tamper:{c:'#4d7c0f',l:'TS',n:'Tamper switch'},spkstrobe:{c:'#9333ea',l:'SS',n:'Speaker/strobe'},strobe:{c:'#c026d3',l:'ST',n:'Strobe'},linearray:{c:'#4f46e5',l:'LA',n:'Line array speaker'},relay:{c:'#2dd4bf',l:'R',n:'Relay',sq:1},doorholder:{c:'#db2777',l:'DH',n:'Door holder'},jbox:{c:'#64748b',l:'J',n:'Junction box',sq:1},surge:{c:'#16a34a',l:'SS',n:'Surge protector (TVSS / SPD)',sq:1},other:{c:'#475569',l:'?',n:'Other'}};
+// bpm-v106: new device types (user-approved legend review). Existing types keep shape/geometry; only the panel group's colors change.
+// Panels (all): every panel / enclosure-panel type shares the FACP color (#991b1b), told apart by shape and label. VESDA (all parts): one shared cyan, told apart by shape.
+const PANEL_C='#991b1b',VESDA_C='#06b6d4';
+for(const k of['dact','fatc','panelbox'])TYPES[k].c=PANEL_C;
+Object.assign(TYPES,{
+ farp:{c:PANEL_C,l:'FARP',n:'FARP – Fire Alarm Remote Panel',sq:1},
+ scs:{c:PANEL_C,l:'SCS',n:'Smoke control station',sq:1},
+ loc:{c:PANEL_C,l:'LOC',n:'Local operator console',sq:1},
+ speaker:{c:'#1e3a8a',l:'SP',n:'Speaker (no strobe)'},
+ lfs:{c:'#818cf8',l:'LF',n:'Low-frequency sounder'},
+ bell:{c:'#eab308',l:'B',n:'Bell – 120 VAC'},
+ pad:{c:'#f59e0b',l:'PAD',n:'PAD-4/PAD-5',sq:1},
+ multi:{c:'#a16207',l:'MC',n:'Multi-criteria detector'},
+ damper:{c:'#57534e',l:'FSD',n:'Fire/smoke damper',sq:1},
+ oss:{c:'#84cc16',l:'OSS',n:'Operator safety switch',sq:1},
+ eol:{c:'#fda4af',l:'EOL',n:'EOL resistor',sq:1},
+ bfp:{c:'#9a3412',l:'BFP',n:'Sprinkler backflow preventer'},
+ pullbox:{c:'#78350f',l:'PB',n:'Electrical pull box',sq:1},
+ vesda:{c:VESDA_C,l:'VES',n:'VESDA aspirating detector',sq:1},
+ vpsu:{c:VESDA_C,l:'PS',n:'VESDA power supply',sq:1},
+ vsp:{c:VESDA_C,l:'SP',n:'VESDA sampling point'},
+ vcap:{c:VESDA_C,l:'C',n:'VESDA capillary sampling point'},
+ vlf:{c:VESDA_C,l:'LF',n:'VESDA laser focus'},
+ vnet:{c:VESDA_C,l:'NI',n:'VESDA network interface'},
+ vrem:{c:VESDA_C,l:'RE',n:'VESDA remote enclosure',sq:1},
+ vtee:{c:VESDA_C,l:'T',n:'VESDA aspirating sampling tee'}});
+// color sheet / legend group names for shared colors
+const CGRP={[PANEL_C]:'Panels (all)',[VESDA_C]:'VESDA (all parts)'};const PANEL_GRP=['panel','panelbox','farp','fatc','dact','scs','loc'];
 const ST={passed:'#16a34a',failed:'#dc2626','in progress':'#f59e0b','not tested':'#94a3b8'},STATUSES=['passed','failed','in progress','not tested'];
 // NFPA 72-style default inspection/test items per device type (snapshotted onto each pin when first answered)
 const CHECKS={smoke:['Alarm received at panel','Correct address/label at panel','LED/base condition OK','Sensitivity within range','Clean/unobstructed'],
@@ -25,6 +53,28 @@ const CHECKS={smoke:['Alarm received at panel','Correct address/label at panel',
  rai:['LED lights on alarm of associated device','Correct device/location labeled','Restores (LED off) on reset','Visible from intended location','Mounted/condition OK'],
  jbox:['Cover in place and identified (red/FA)','Wiring secured, no damage','Accessible'],
  other:['Operates as intended','Correct address/label at panel','Physical condition OK']};
+Object.assign(CHECKS,{
+ farp:['Normal/AC power OK','No trouble/supervisory/alarm conditions','Communicates with main FACP','Controls operate (ack/silence/reset)','Physical condition OK'],
+ scs:['Status LEDs match fan/damper positions','Manual override switches operate equipment','Lamp test OK','Communicates with FACP','Physical condition OK'],
+ loc:['Display and controls operate','Communicates with FACP','Paging/voice functions OK','Physical condition OK'],
+ speaker:['Audible/voice message intelligible','Wattage tap matches plan','Mounted/condition OK'],
+ lfs:['Low-frequency tone (520 Hz) audible','Synchronized','Mounted/condition OK'],
+ bell:['Audible on alarm','Silences/restores properly','Mounted/condition OK'],
+ pad:['AC power and battery OK','NAC outputs operate on alarm','Trouble reported to FACP','Physical condition OK'],
+ multi:['Alarm received at panel','Correct address/label at panel','LED/base condition OK','Sensitivity within range','Clean/unobstructed'],
+ damper:['Closes on alarm/command','Position indication received','Reopens/resets','Accessible/condition OK'],
+ oss:['Switch operates (disables release/automatic action)','Supervisory/trouble shown at panel','Restores on reset','Physical condition OK'],
+ eol:['Correct value installed at end of circuit','Circuit supervised (trouble on open)','Secured/labeled'],
+ bfp:['Valves supervised (tamper) where required','No leaks','Accessible/identified','Physical condition OK'],
+ pullbox:['Cover in place and identified','Wiring secured, no damage','Accessible'],
+ vesda:['Airflow within limits','Alarm received at panel','Fault/trouble reported','Filter OK','Physical condition OK'],
+ vpsu:['AC power OK','Battery tested and dated','Trouble reported','Physical condition OK'],
+ vsp:['Sampling hole clear and labeled','Transport time within limits','Physical condition OK'],
+ vcap:['Capillary tube intact and clear','Sampling point labeled','Physical condition OK'],
+ vlf:['Display shows normal','Fault/trouble reported','Physical condition OK'],
+ vnet:['Communicates with FACP/network','Fault reported on loss of comms','Physical condition OK'],
+ vrem:['Display/controls operate','Enclosure secure','Physical condition OK'],
+ vtee:['Tee intact and sealed','Pipe clear','Physical condition OK']});
 let CKT={};const ckTpl=t=>CKT[t]||CHECKS[t]||CHECKS.other;const checkItems=t=>ckTpl(t).map(t=>({t,v:''}));
 const PIN_OP=.5,MK_OP=.8;const pinR=()=>9.6;
 // bpm-v26/27: pin silhouettes match the printed plan symbols (shape + size in plan points, measured from the fa.pdf legend:
@@ -32,7 +82,11 @@ const PIN_OP=.5,MK_OP=.8;const pinR=()=>9.6;
 const PSH={smoke:['hex',15,13],duct:['hex',15,13],module:['hex',15,13],heat:['circ',13,13],pull:['rect',13,13],horn:['rect',13,13],spkstrobe:['rect',13,13],strobe:['rect',13,13],linearray:['rect',13,13],
  panel:['rect',26,13],dact:['rect',26,13],fatc:['rect',26,13],panelbox:['rect',26,13],doorholder:['rect',7,14],relay:['hex',15,13],jbox:['rect',13,13],surge:['rect',13,13],
  flow:['dia',24,9],tamper:['dia',24,9],rai:['circ',6,6],jceil:['circ',13,13],other:['circ',12,12]};
-const PSC=1.3;const PANEL_S=new Set(['panel','dact','fatc','panelbox']);
+// bpm-v106: new types on the v50 shape set (hex / circ / rect / dia); Detect/Teach measured bw/bh still override these defaults
+Object.assign(PSH,{farp:['rect',26,13],scs:['rect',26,13],loc:['rect',26,13],pad:['rect',26,13],speaker:['rect',13,13],lfs:['rect',13,13],bell:['circ',13,13],multi:['hex',15,13],
+ damper:['rect',16,10],oss:['rect',13,13],eol:['rect',9,6],bfp:['dia',24,9],pullbox:['rect',13,13],
+ vesda:['rect',26,13],vpsu:['rect',16,16],vsp:['circ',8,8],vcap:['circ',5,5],vlf:['hex',15,13],vnet:['dia',16,12],vrem:['rect',22,16],vtee:['dia',10,10]});
+const PSC=1.3;const PANEL_S=new Set(['panel','dact','fatc','panelbox','farp','scs','loc','pad','vesda']);
 // bpm-v37: tight outset — path = print outer size; canvas stroke is centered so gray outer edge = print + LW/2 (thin ring just outside black; no inset, no ~1.3× overhang, no color past the gray)
 const pshOf=o=>{if(o&&typeof o==='object'&&o.shk&&o.bw>4&&o.bh>4)return[o.shk,o.bw,o.bh]; /* bpm-v103: taught shape from the template's ink outline */const t=typeof o==='string'?o:o&&(o.shp||o.type),v=PSH[t]||PSH.other;if(PANEL_S.has(t)){if(o&&o.bw>4&&o.bh>4)return['rect',o.bw,o.bh];if(o&&o.vert)return['rect',v[2],v[1]];return['rect',v[1],v[2]]}if(v[0]==='dia'){const W=(o&&o.bw>4&&o.bh>4)?o.bw:v[1],H=(o&&o.bw>4&&o.bh>4)?o.bh:v[2];return['dia',W,H]}if(o&&o.bw>4&&o.bh>4&&(v[0]==='rect'||v[0]==='hex'||v[0]==='circ'))return[v[0],o.bw,o.bh];return[v[0],v[1],v[2]]};
 // bpm-v35: zoom % readout; pin progress summary = pass/fail/total/left/%
@@ -282,7 +336,7 @@ async function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);c
  if(g.type==='mtap'){if(!g.moved)toggleMsel(g.o);else requestDraw();return}
  if(pasteArm&&!g.moved&&g.type!=='pinch'){pasteArm=false;draft=null;await doPaste(w);return}
  if(tool==='select'&&!g.moved&&g.type==='pan'&&msel.length&&!multiOn){msel=[];renderSelBar();requestDraw(false)}
- if(!g.moved&&(g.type==='pan'||g.type==='move')){const gh=ghostHit(w);if(gh&&!(g.type==='move'&&g.wasSel)){sel=null;openGhost(gh);return}const h=hit(w);if(h&&h.kind==='p'){if(walk&&walk.p?.id!==h.o.id){walk.skip.delete(h.o.id);walkGo(h.o);toast('Walk: jumped to this device');return}openPin(h.o);return}}
+ if(!g.moved&&(g.type==='pan'||g.type==='move')){const gh=ghostHit(w);if(gh&&!(g.type==='move'&&g.wasSel)){sel=null;openGhost(gh);return}const h=hit(w);if(h&&h.kind==='p'){if(walk&&walk.p?.id!==h.o.id){walk.skip.delete(h.o.id);walkGo(h.o);toast('Walk: jumped to this device');return}if(window.pdTap)pdTap(h.o);openPin(h.o);return}}
  if(!g.moved&&(g.type==='resize'||(g.type==='move'||g.type==='pan'&&g.selTap)&&g.wasSel)&&sel?.o.type==='text'){inlineText(sel.o);return}
  if((g.type==='move'||g.type==='resize')&&g.moved&&sel)await change(sel.kind==='p'?'pins':'markups',g.orig,sel.o);
  if(g.type==='text'&&!g.moved){inlineText(null,g.w)}
@@ -538,7 +592,11 @@ const DG={spkw:{n:'Speaker/strobe – wall',t:'spkstrobe',d:['SPK_FOH_WALL','SPK
  relay:{n:'Relay',t:'relay',d:['RELAY']},pull:{n:'Pull station',t:'pull',d:['PULL']},dh:{n:'Door holder',t:'doorholder',d:['DOOR_HOLDER']},flow:{n:'Waterflow switch',t:'flow',d:['FLOW','FLOW_TAMPER'],note:'waterflow'},tamper:{n:'Tamper switch',t:'tamper',d:['TAMPER'],note:'valve tamper'},
  jbox:{n:'Junction box',t:'jbox',d:['JBOX','JBOX_CEIL']},surge:{n:'Surge protector (SS / TVSS)',t:'surge',d:['SURGE'],note:'surge suppressor'},
  facp:{n:'FACP (fire alarm control panel)',t:'panel',d:['FACP'],note:'FACP'},dact:{n:'DACT (communicator)',t:'dact',d:['DACT'],note:'DACT'},fatc:{n:'FATC (terminal cabinet)',t:'fatc',d:['FATC'],note:'FATC'},panelbox:{n:'Annunciator',t:'panelbox',d:['PANEL_BOX'],note:'annunciator'},rai:{n:'Remote alarm indicator (RI)',t:'rai',d:['RAI'],note:'remote alarm indicator'}};
+DG.farp={n:'FARP (remote panel)',t:'farp',d:['FARP'],note:'FARP'};
 for(const[k,n,t]of[['heat','Heat detector','heat'],['panel','FACP (manual)','panel'],['oth','Other device','other']])DG[k]={n,t,d:[],x:1};
+// bpm-v106: new types without a Detect glyph yet: manual pick / legend text / master templates only (multi-criteria looks like smoke, so never auto)
+for(const[k,n,t]of[['multi','Multi-criteria detector','multi'],['speaker','Speaker (no strobe)','speaker'],['lfs','Low-frequency sounder','lfs'],['bell','Bell – 120 VAC','bell'],['pad','PAD-4/PAD-5','pad'],['damper','Fire/smoke damper','damper'],['scs','Smoke control station','scs'],['loc','Local operator console','loc'],['oss','Operator safety switch','oss'],['eol','EOL resistor','eol'],['bfp','Sprinkler backflow preventer','bfp'],['pullbox','Electrical pull box','pullbox'],
+ ['vesda','VESDA aspirating detector','vesda'],['vpsu','VESDA power supply','vpsu'],['vsp','VESDA sampling point','vsp'],['vcap','VESDA capillary sampling point','vcap'],['vlf','VESDA laser focus','vlf'],['vnet','VESDA network interface','vnet'],['vrem','VESDA remote enclosure','vrem'],['vtee','VESDA aspirating sampling tee','vtee']])DG[k]={n,t,d:[],x:1};
 const D2G={};for(const[k,g]of Object.entries(DG))for(const d of g.d)D2G[d]=k;
 const DEF_SEL=Object.keys(DG).filter(k=>k!=='jbox');
 const gT=g=>TYPES[DG[g.g].t]||TYPES.other;
@@ -561,10 +619,17 @@ const DOPS=['save','restore','transform','paintFormXObjectBegin','paintFormXObje
 function cancelDetect(msg){if(!det)return;det.cancel=1;if(det.reject)det.reject(new Error('cancelled'));if(detW){detW.terminate();detW=null}det=null;busy(0);renderGhostBar();if(msg)showErr(msg)}
 function detOnWorker(msg){return new Promise((res,rej)=>{if(!detW)detW=new Worker('detect.js');det.reject=rej;detW.onmessage=e=>{det&&(det.reject=null);e.data.ok?res(e.data):rej(new Error(e.data.err))};detW.onerror=e=>{e.preventDefault?.();rej(new Error(e.message||'worker failed'))};detW.postMessage(msg)})}
 // bpm-v103: measure printed outlines at given points with Detect's own vector geom() (separate worker, so it never races a Detect run)
-let probeW=null;async function vecProbe(pg,probes){if(!probes.length)return[];const O=pdfjsLib.OPS,keep=new Set(DOPS.map(k=>O[k]).filter(v=>v!==undefined)),ol=await pg.getOperatorList(),fn=[],args=[];for(let j=0;j<ol.fnArray.length;j++)if(keep.has(ol.fnArray[j])){fn.push(ol.fnArray[j]);args.push(ol.argsArray[j])}
+// bpm-v106 (speed): Detect reads only vector path ops, so it parses the plan in a second, image-free document (pdf.js maxImageSize) on its own worker thread.
+// Scanned/raster strips and big embedded images were being decoded just to be thrown away (FL-00114 riser pages: 12-15 s → ~1 s). Same path ops → same results.
+let VD=null;async function vecDoc(){const pl=plan;if(VD&&VD.id===pl.id)return VD.p;if(VD){const o=VD;VD=null;o.p.then(d=>d&&d.destroy()).catch(()=>{});try{o.w.destroy()}catch{}}
+ const w=new pdfjsLib.PDFWorker({name:'bpm-vec'}),p=(async()=>{try{const data=new Uint8Array(await pl.blob.arrayBuffer());return await pdfjsLib.getDocument({data,worker:w,maxImageSize:1,disableFontFace:true,stopAtErrors:false}).promise}catch(e){console.warn('vec doc',e);return null}})();VD={id:pl.id,p,w};return p}
+// Detect also takes its page (text layer, viewport) from that document, so it never queues behind page/thumbnail renders on the display worker
+async function detPage(n){try{if(pdf&&plan?.kind==='pdf'&&plan.blob){const d=await vecDoc();if(d)return await d.getPage(n)}}catch(e){console.warn('vec page',e)}return pdf.getPage(n)}
+async function vecOL(n,pg){try{if(pdf&&plan?.kind==='pdf'&&plan.blob){const d=await vecDoc();if(d){const t=await d.getPage(n);const ol=await t.getOperatorList();if(ol&&ol.fnArray.length)return ol}}}catch(e){console.warn('vec ops',e)}return pg.getOperatorList()}
+let probeW=null;async function vecProbe(pg,probes){if(!probes.length)return[];const O=pdfjsLib.OPS,keep=new Set(DOPS.map(k=>O[k]).filter(v=>v!==undefined)),ol=await vecOL(pg._pageIndex+1,pg),fn=[],args=[];for(let j=0;j<ol.fnArray.length;j++)if(keep.has(ol.fnArray[j])){fn.push(ol.fnArray[j]);args.push(ol.argsArray[j])}
  const vp=pg.getViewport({scale:1});if(!probeW)probeW=new Worker('detect.js');return new Promise((res,rej)=>{probeW.onmessage=e=>e.data.ok?res(e.data.probe):rej(new Error(e.data.err));probeW.onerror=e=>{e.preventDefault?.();rej(new Error(e.message||'probe worker failed'))};probeW.postMessage({id:'probe',fn,args,O,vt:vp.transform,W:vp.width,H:vp.height,probe:probes})})}
 window.vecProbe=vecProbe;
-async function runDetect(groups,all){const MJ=[];try{return await runDetect0(groups,all,MJ)}finally{const pl=plan,pg=[...new Set(MJ.map(j=>j.n))];window.masterDone=(async()=>{await new Promise(r=>setTimeout(r,30));if(window.ocrPass&&pg.length)await ocrPass(pg,groups,pl);if(MJ.length)await masterBg(MJ,groups,pl)})()}}
+async function runDetect(groups,all){const MJ=[];try{return await runDetect0(groups,all,MJ)}finally{const pl=plan,pg=[...new Set(MJ.map(j=>j.n))];window.masterDone=(async()=>{await new Promise(r=>setTimeout(r,30));if(window.ocrPass&&pg.length)await ocrPass(pg,groups,pl);if(window.hornPass&&pg.length)await hornPass(pg,groups,pl);if(window.panelPass&&pg.length)await panelPass(pg,groups,pl);if(window.multiPass&&pg.length)await multiPass(pg,groups,pl);if(window.linePass&&pg.length)await linePass(pg,groups,pl);if(MJ.length)await masterBg(MJ,groups,pl)})()}}
 // bpm-v99: background master-template pass. Adds only NEW suggestions (flagged low='template') at spots with no pin/ghost; never touches existing pins or ghosts.
 async function masterBg(jobs,groups,pl){let k=0;const MG=masterBg.gen=(masterBg.gen||0)+1;for(const j of jobs){await new Promise(r=>setTimeout(r,30));if(plan!==pl||MG!==masterBg.gen)return k;let its=[];try{const pg=await pdf.getPage(j.n);its=await masterItems(pg,j.n,j.vp,j.base)}catch(e){console.warn('master match',e);continue}
   const rules=await learnedRules();for(const it of its){let g=it.g||D2G[it.type];const m=matchRule(rules,it.fp);if(m){if(m.g==='none')continue;g=m.g}if(!g||!(groups.includes(g)||DG[g]?.x))continue;if(pins.some(p=>p.page===j.n&&Math.hypot(p.x-it.x,p.y-it.y)<12)||ghosts.some(q=>q.page===j.n&&Math.hypot(q.x-it.x,q.y-it.y)<12))continue;ghosts.push({id:uid(),page:j.n,x:it.x,y:it.y,...(it.bw?{bw:it.bw,bh:it.bh}:{}),...(it.ang?{ang:it.ang}:{}),...(it.shk?{shk:it.shk}:{}),det:it.type||'MASTER',g,fp:it.fp,low:'template'});k++}} // bpm-v103: measured print geometry rides along
@@ -572,9 +637,9 @@ async function masterBg(jobs,groups,pl){let k=0;const MG=masterBg.gen=(masterBg.
 async function runDetect0(groups,all,MJ){const want=groups.flatMap(g=>DG[g].d),pl=plan,pages=all?Array.from({length:pl.pages},(_,i)=>i+1):[page],R=det={cancel:0,stats:[]};hideErr();busy(1,'Detecting');prog(0);
  const O=pdfjsLib.OPS,keep=new Set(DOPS.map(k=>O[k]).filter(v=>v!==undefined));let found=0;
  try{for(let i=0;i<pages.length;i++){const n=pages[i],t0=performance.now();$('#busyTxt').textContent=pages.length>1?`Detecting pg ${n}`:'Detecting';
-   const pg=await pdf.getPage(n);if(R.cancel||plan!==pl)return;if(!pg.__tc){const f=pg.getTextContent.bind(pg);let P=null;pg.getTextContent=(...a)=>a.length&&a[0]?f(...a):(P??=f())}pg.__tc=1; // bpm-v99: one text-layer read per page (Detect, legend, tags share it)
+   const pg=await detPage(n);if(R.cancel||plan!==pl)return;if(!pg.__tc){const f=pg.getTextContent.bind(pg);let P=null;pg.getTextContent=(...a)=>a.length&&a[0]?f(...a):(P??=f())}pg.__tc=1; // bpm-v99: one text-layer read per page (Detect, legend, tags share it)
    if(all&&pages.length>1){let tx='';try{tx=(await pg.getTextContent()).items.map(t=>t.str).join(' ')}catch{}if(/\bSYMBOL\b/i.test(tx)&&/\b(QTY|DESCRIPTION)\b/i.test(tx)&&/LEGEND/i.test(tx)){R.stats.push({page:n,skipped:'legend sheet'});prog((i+1)/pages.length);continue}}
-   const ol=await pg.getOperatorList();if(R.cancel||plan!==pl)return;prog((i+.5)/pages.length);
+   const ol=await vecOL(n,pg);if(R.cancel||plan!==pl)return;prog((i+.5)/pages.length);
    const fn=[],args=[];for(let j=0;j<ol.fnArray.length;j++)if(keep.has(ol.fnArray[j])){fn.push(ol.fnArray[j]);args.push(ol.argsArray[j])}
    const vp=pg.getViewport({scale:1}),t1=performance.now(),r=await detOnWorker({id:n,fn,args,O,vt:vp.transform,W:vp.width,H:vp.height,want:null});if(R.cancel||plan!==pl)return;
    const near=(x,y)=>pins.some(p=>p.page===n&&Math.hypot(p.x-x,p.y-y)<18*r.k);
@@ -582,14 +647,18 @@ async function runDetect0(groups,all,MJ){const want=groups.flatMap(g=>DG[g].d),p
    // Label panel boxes using the page text layer (FACP/DACT/SYS/FATC) and drop legend-side hits
    try{const tc=await pg.getTextContent(),TB=vp.width>vp.height?vp.width*.825:vp.width;
     const labs=[];for(const it of tc.items){const s=(it.str||'').trim();if(!s)continue;
-     let typ=null;if(/^FACP[-\s]?\d*$/i.test(s))typ='FACP';else if(/^DACT[-\s]?\d*$/i.test(s))typ='DACT';else if(/^FATC[-\s]?\d*$/i.test(s))typ='FATC';else if(/^(SYS\d+|AMP\d*|ANNUN\w*)$/i.test(s))typ='PANEL_BOX';
+     let typ=null;/* bpm-v106: read the letters — FAAP is always the annunciator, FARP the remote panel, FATC the terminal cabinet, FACP the fallback */if(/^FAAP[-\s]?\d*$/i.test(s))typ='PANEL_BOX';else if(/^FARP[-\s]?\d*$/i.test(s))typ='FARP';else if(/^FACP[-\s]?\d*$/i.test(s))typ='FACP';else if(/^DACT[-\s]?\d*$/i.test(s))typ='DACT';else if(/^FATC[-\s]?\d*$/i.test(s))typ='FATC';else if(/^(SYS\d+|AMP\d*|ANNUN\w*)$/i.test(s))typ='PANEL_BOX';
      else if(/^(TS|TAMPER)$/i.test(s))typ='TAMPER';else if(/^(FS|WF|FLOW)$/i.test(s))typ='FLOW';else if(/^(SS|TVSS|SPD)$/i.test(s))typ='SURGE';if(!typ)continue;
      const m=pdfjsLib.Util.transform(vp.transform,it.transform),x=m[4]+(typ==='SURGE'?(it.width||0)*.5:0),y=m[5]-(it.height||0)*.5;if(x>TB)continue;
      labs.push({type:typ,x,y,vert:Math.abs(m[1])>Math.abs(m[0]),fp:{s:'text',gl:s.slice(0,12),v:[0,0,0,0,0,0,0]}})}
     for(const L of labs){if(!r.items.some(o=>o.type===L.type&&Math.hypot(o.x-L.x,o.y-L.y)<28))r.items.push(L)}
-    for(const it of r.items){if(!['FACP','DACT','FATC','PANEL_BOX','FLOW','TAMPER','FLOW_TAMPER'].includes(it.type))continue;
-     const lab=labs.find(L=>Math.hypot(L.x-it.x,L.y-it.y)<36);if(lab)it.type=lab.type;
+    for(const it of r.items){if(!['FACP','DACT','FATC','PANEL_BOX','FARP','FLOW','TAMPER','FLOW_TAMPER'].includes(it.type))continue;
+     const lab=labs.find(L=>Math.hypot(L.x-it.x,L.y-it.y)<36);if(lab){it.type=lab.type;it.lab=1}
      else if(it.type==='FLOW_TAMPER')it.type='FLOW'}
+    // bpm-v106: an unlabeled "panel" box whose inside holds other text-layer words (terminal names C / NC / 2-, table cells) is a wiring detail or table, not a panel
+    {const TW=[];for(const q of tc.items){const s=(q.str||'').trim();if(!s)continue;const m=pdfjsLib.Util.transform(vp.transform,q.transform);TW.push({s,x:m[4]+(q.width||0)/2,y:m[5]-(Math.hypot(m[2],m[3])||8)/2})}
+     r.items=r.items.filter(it=>{if(it.lab||!['FACP','DACT','FATC','PANEL_BOX'].includes(it.type)||!(it.bw>0))return true;const a=it.ang||0,ca=Math.cos(a),sa=Math.sin(a);
+      return !TW.some(w=>{const dx=w.x-it.x,dy=w.y-it.y,u=dx*ca+dy*sa,v=-dx*sa+dy*ca;return Math.abs(u)<it.bw/2-1&&Math.abs(v)<it.bh/2-1&&!/^(FACP|FACU|DACT|FATC|FAAP|FARP|ANN\w*|SYS\d*|AMP\d*|PANEL|XLS|MXL|FC\d+)/i.test(w.s)})})}
    }catch{}
    if(window.masterItems)MJ.push({n,vp,base:r.items.map(o=>({type:o.type,x:o.x,y:o.y,bw:o.bw,bh:o.bh}))}); // bpm-v99: master-template matching runs AFTER Detect returns (background, non-blocking)
    const rules=await learnedRules();let nl=0;const items=[];for(const it of r.items){let g=D2G[it.type],lr=null;const m=matchRule(rules,it.fp);if(m){lr=m.g;nl++;if(m.g==='none')continue;g=m.g}if(groups.includes(g)||(lr&&DG[g]?.x))items.push({...it,g,learned:!!lr})}
@@ -599,9 +668,15 @@ async function runDetect0(groups,all,MJ){const want=groups.flatMap(g=>DG[g].d),p
    // bpm-v98 (B4): flag low-confidence suggestions; merge different types found on the SAME symbol into one flagged conflict (kept item's geometry untouched)
    try{if(window.legendRects){const LR=await legendRects(pg,n);for(const it of items)if(LR.some(q=>it.x>q.x&&it.x<q.x+q.w&&it.y>q.y&&it.y<q.y+q.h))it.low='legend'}}catch(e){console.warn('legend rects',e)}
    for(const it of items){if(!it.low&&it.fp?.s==='master')it.low='template';if(!it.low&&it.fromG&&it.tagSrc==='ocr')it.low='ocr-tag'}
+   // bpm-v106: wiring-detail terminal strips: 4+ identical hits in a straight row at an even, tight pitch (terminal screws / DIP rows) are not devices → drop
+   {const bad=new Set(),by={};for(const it of items)if(!it.learned&&!it.lab&&it.fp?.s!=='master')(by[it.g]||=[]).push(it);
+    for(const L of Object.values(by)){if(L.length<4)continue;for(const ax of['x','y']){const oa=ax==='x'?'y':'x',rows=new Map();for(const it of L){const k=Math.round(it[oa]/1.5);let row=rows.get(k)||rows.get(k-1)||rows.get(k+1);if(!row){row=[];rows.set(k,row)}row.push(it)}
+     for(const row of rows.values()){if(row.length<4)continue;row.sort((p,q)=>p[ax]-q[ax]);let s=0;for(let i=1;i<=row.length;i++){const sz=Math.max(row[i-1].bw||0,row[i-1].bh||0,12),gp=i<row.length?row[i][ax]-row[i-1][ax]:1e9,g0=i>1?row[i-1][ax]-row[i-2][ax]:gp;
+      if(!(i<row.length&&gp<=Math.max(2.2*sz,26)&&gp>2&&(i===s+1||Math.abs(gp-g0)<=2))){if(i-s>=4)for(let j=s;j<i;j++)bad.add(row[j]);s=i}}}}}
+    if(bad.size){const k=items.filter(it=>!bad.has(it));items.length=0;items.push(...k);(R.chainDrop||=[]).push({page:n,n:bad.size})}}
    {const keep=[];for(const it of items){const o=keep.find(k=>k.g!==it.g&&Math.hypot(k.x-it.x,k.y-it.y)<3);if(o){if(!(o.conflict||=[]).some(c=>c.g===it.g))o.conflict.push({g:it.g,det:it.type,fp:it.fp});continue}keep.push(it)}items.length=0;items.push(...keep)} // bpm-v94: RI/WP/R text tags re-type only (after geometry backfill; x/y/ang/bw/bh untouched; shp keeps the glyph's original silhouette so size/outset stay identical)
    // bpm-v49: SS surge box sits flush beside its AIM hex (~18pt); only an existing surge pin (or a pin right on it) suppresses it
-   const add=items.filter(it=>!(it.g==='surge'?pins.some(p=>p.page===n&&Math.hypot(p.x-it.x,p.y-it.y)<(p.type==='surge'?18*r.k:8)):near(it.x,it.y))).map(it=>({id:uid(),page:n,x:it.x,y:it.y,bw:it.bw,bh:it.bh,ang:it.ang,vert:it.vert,det:it.type,g:it.g,fp:it.fp,learned:it.learned,...(it.tags?.length?{tags:it.tags}:{}),...(it.plan?{plan:it.plan}:{}),...(it.fromG?{fromG:it.fromG,shp:DG[it.fromG].t}:{}),...(it.conflict?{conflict:it.conflict}:{}),...(it.low?{low:it.low}:{})}));ghosts.push(...add);found+=add.length;
+   const add=items.filter(it=>!(it.g==='surge'?pins.some(p=>p.page===n&&Math.hypot(p.x-it.x,p.y-it.y)<(p.type==='surge'?18*r.k:8)):near(it.x,it.y))).map(it=>({id:uid(),page:n,x:it.x,y:it.y,bw:it.bw,bh:it.bh,ang:it.ang,vert:it.vert,det:it.type,g:it.g,fp:it.fp,learned:it.learned,...(it.tags?.length?{tags:it.tags}:{}),...(it.plan?{plan:it.plan}:{}),...(it.fromG?{fromG:it.fromG,shp:DG[it.fromG].t}:{}),...(it.conflict?{conflict:it.conflict}:{}),...(it.low?{low:it.low}:{}),...(it.lab?{lab:1}:{})}));ghosts.push(...add);found+=add.length;
    R.stats.push({page:n,ops:ol.fnArray.length,paths:r.paths,found:items.length,kept:add.length,skipped:items.length-add.length,learnedHits:nl,opsMs:Math.round(t1-t0),workerMs:Math.round(r.ms),totalMs:Math.round(performance.now()-t0),k:r.k});
    prog((i+1)/pages.length);if(n===page)draw();renderGhostBar()}
   window.__detStats=R.stats;if(!found)showErr(`No ${groups.length===Object.keys(DG).length?'':'matching '}device symbols found${all?'':' on this page'}. Detection works on CAD-exported vector plans with standard symbols.`)}
@@ -1262,7 +1337,7 @@ stage.addEventListener('pointerdown',e=>{if(ted&&e.target!==ted.el)tedEnd(true)}
 
 // ---------- v16: de-overlap pins & ghosts (display only; stored x,y stay on the device) ----------
 var OFFMAP=null,SCRNOFF=null;
-const PANEL_T=new Set(['panel','dact','fatc','panelbox']),PANEL_G=new Set(['facp','dact','fatc','panelbox']);
+const PANEL_T=new Set(['panel','dact','fatc','panelbox','farp','scs','loc','pad','vesda']),PANEL_G=new Set(['facp','dact','fatc','panelbox','farp','scs','loc','pad','vesda']); // bpm-v106: + new box types
 function isPanelO(o){return PANEL_T.has(o.type)||PANEL_G.has(o.g)}
 function pinFoot(o){const hw=pinLW(o.g!=null?gPin(o):o)/2;if(o.g!=null)return pinHalf(gPin(o))+hw;return pinHalf(o)+hw}
 // bpm-v46: upright foot keeps status pad (v43). Angled OBB foot = print outer only — edge-touching
@@ -1327,6 +1402,9 @@ const MODELS={
  strobe:['SC-ST-WR-F','SC-ST-WW-F'],
  spkstrobe:['SC-SS-WW-F','SC-SS-CW-F','SC-SP-WW-F','SC-SP-CW-F','SL24XSPS-FW'],
  panel:['FireFinder XLS','MXL','FC2025','FC2050','FC922','FC924','FC901','FC2005']};
+// bpm-v106: Siemens parts with a stored install sheet (INSTALL below); others via "Custom…"
+Object.assign(MODELS,{speaker:['SC-SP-WW-F','SC-SP-CW-F','SC-SP-WR-F'],pad:['PAD5-6A','PAD5-6A-R','PAD5-9A','PAD5-9A-R','PAD-5-MB','PAD-5-CDC','PAD-5-CLSA'],
+ multi:['OOH941','OOHC941','FDOOT441','FDOOTC441','FDOT421'],vnet:['VESDA-HLI-KIT','VPM'],farp:['FC2025','FC2050','FireFinder XLS'],pullbox:[],damper:[]});
 let MODELS_C=null;async function customModels(){if(!MODELS_C)MODELS_C=(await get('meta','models:custom'))||{};return MODELS_C}
 async function rememberModel(t,m){m=String(m||'').trim();if(!m||(MODELS[t]||[]).some(x=>x===m||x.endsWith(' '+m)))return;const c=await customModels();if((c[t]||[]).includes(m))return;c[t]=[...(c[t]||[]),m];await put('meta',c,'models:custom')}
 async function modelOpts(t){const c=await customModels(),S=MODELS[t]||[],C=(c[t]||[]).filter(m=>!S.includes(m)),v=form.elements.model.value,sel=$('#dModelSel');

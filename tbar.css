@@ -94,3 +94,18 @@ body.light .whI.cen{color:#000}
 
 /* bpm-v105: Freehand is a direct button on wide screens (it stays in the Lines wheel everywhere) */
 #tools .tbFree{display:none!important}@media(min-width:800px){#tools .tbFree{display:inline-flex!important}}
+/* bpm-v106: curved drum band wheel. One continuous band cut into the same 24° slices as the words (bends, foreshortens and scrolls with them);
+   rounded at the first/last item, dark translucent + 9px backdrop blur, 14px soft side edges; blue center slice with light-blue lines. */
+.whWin{perspective:520px;overflow:visible!important}
+.whDrum{transform-style:preserve-3d;top:0}
+.whS{position:absolute;left:0;right:0;height:51px;margin-top:-25.5px;backface-visibility:hidden;-webkit-backdrop-filter:blur(9px) saturate(1.2);backdrop-filter:blur(9px) saturate(1.2);
+ -webkit-mask-image:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 14px),transparent);mask-image:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 14px),transparent);pointer-events:none}
+.whS.f{border-radius:16px 16px 0 0}.whS.l{border-radius:0 0 16px 16px}.whS.f.l{border-radius:16px}
+.whS.cen{background:linear-gradient(#1d4ed8e6,#2563ebe6)!important;box-shadow:inset 0 1.5px 0 #93c5fd,inset 0 -1.5px 0 #93c5fd}
+.whI{color:#e5e7eb;font-weight:600;text-shadow:none!important;gap:8px;padding:0 12px;overflow:hidden;text-overflow:ellipsis}
+.whI.cen{color:#fff!important;font-weight:800}.whI .whIc{filter:none!important}
+body.light .whI{color:#e5e7eb;text-shadow:none}body.light .whI.cen{color:#fff}
+.whPtr{position:absolute;width:0;height:0;border:8px solid transparent;z-index:2;pointer-events:none}.whPtr[hidden]{display:none}
+.whPtr.left{border-left-color:#60a5fa;border-right-width:0}.whPtr.right{border-right-color:#60a5fa;border-left-width:0}
+.whPtr.above{border-top-color:#60a5fa;border-bottom-width:0}.whPtr.below{border-bottom-color:#60a5fa;border-top-width:0}
+.whPressed{outline:2px solid #60a5fa!important;outline-offset:1px}

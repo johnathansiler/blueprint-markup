@@ -80,7 +80,7 @@
  <label class="btn">🎥 Video<input type="file" id="addVideo" accept="video/*" capture="environment" hidden></label>
  <button type="button" class="btn" id="rec">🎙 Record</button></div>
  <div id="media"></div>
- <div class="row"><button type="button" class="btn danger" id="pinDel">Delete pin</button><span class="sp"></span><button class="btn" value="cancel">Close</button><button class="btn pri" id="pinSave" value="save">Save</button></div>
+ <div class="row"><button type="button" class="btn danger" id="pinDel" hidden>Delete pin</button><span class="sp"></span><button class="btn" value="cancel">Close</button><button class="btn pri" id="pinSave" value="save">Save</button></div>
 </form></dialog>
 <dialog id="saveDlg"><form method="dialog"><h3 style="margin:4px 0">💾 Project file</h3>
  <b>Save project</b><small style="display:block;color:#94a3b8">One <code>.bpm</code> file with every plan, markup, pin, checklist, photo/video/voice note and layer setting. Open it on any device with 📥.</small>
@@ -164,4 +164,4 @@
   <div class="row"><span class="sp"></span><button type="button" class="btn pri" id="myCodeSave">Save to my library</button></div>
  </details>
  <div class="row"><span class="sp"></span><button class="btn" value="cancel">Done</button></div></form></dialog>
-<script src="vendor/pdf.min.js"></script><script src="vendor/jspdf.umd.min.js"></script><script src="vendor/pdf-lib.min.js"></script><script src="dlg.js"></script><script src="app.js"></script><script src="ux.js"></script><script src="pen.js"></script><script src="sync.js"></script><script src="tx.js"></script><script src="mdl.js"></script><script src="tbar.js"></script><script src="guides.js"></script><script src="symbols.js"></script><script src="tags.js"></script><script src="panel.js"></script><script src="tlay.js"></script><script src="topbar.js"></script><script>requestAnimationFrame(function(){requestAnimationFrame(function(){document.documentElement.classList.remove("spl");var t=document.querySelector("meta[name=theme-color]");if(t)t.content="#1e293b"})})</script></body></html>
+<script src="vendor/pdf.min.js"></script><script src="vendor/jspdf.umd.min.js"></script><script src="vendor/pdf-lib.min.js"></script><script src="dlg.js"></script><script src="app.js"></script><script src="ux.js"></script><script src="pen.js"></script><script src="sync.js"></script><script src="tx.js"></script><script src="mdl.js"></script><script src="tbar.js"></script><script src="guides.js"></script><script src="symbols.js"></script><script src="tags.js"></script><script src="panel.js"></script><script src="pinshdr.js"></script><script src="tlay.js"></script><script src="topbar.js"></script><script src="laypanel.js"></script><script src="pindel.js"></script><script>requestAnimationFrame(function(){requestAnimationFrame(function(){document.documentElement.classList.remove("spl");var t=document.querySelector("meta[name=theme-color]");if(t)t.content="#1e293b"})})</script></body></html>

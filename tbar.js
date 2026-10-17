@@ -9,27 +9,60 @@
  // ---- wheel picker ----
  const W=ce('div','whOv');W.hidden=true;W.innerHTML='<div class="whBox"><div class="whT"></div><div class="whWin"><div class="whBand"></div><div class="whDrum"></div><div class="whFade"></div><div class="whTick"></div></div><div class="whBtns"><button type="button" class="btn" data-w="x">Cancel</button><button type="button" class="btn pri" data-w="ok">Choose</button></div></div>';document.body.append(W);
  const ST=24,R=118,IH=40;let WH=null;
- function wheelOpen(title,items,cur,cb){const d=W.querySelector('.whDrum');W.querySelector('.whT').textContent=title;
-  d.innerHTML=items.map((it,i)=>`<div class="whI" data-i="${i}" style="transform:rotateX(${-i*ST}deg) translateZ(${R}px)">${it.html||esc(it.l)}</div>`).join('');
-  WH={items,cb,pos:Math.max(0,cur),v:0,raf:0,lastI:-1};W.hidden=false;whPlace(W.querySelector('.whBox'),LASTA,WH.pos,items.length);W.classList.remove('in');requestAnimationFrame(()=>W.classList.add('in'));paint()}
- // bpm-v103: floating borderless wheel anchored to the tapped control (below it, or above if no room; clamped to the viewport)
+ // bpm-v106: curved drum band (option A look) + adjacent, never-overlapping placement (option B rules). Same API: wheelOpen(title,items,cur,cb).
+ const PSP=520,SLH=50,proj=d=>{const t=d*ST*Math.PI/180,y=R*Math.sin(t),z=R*Math.cos(t)-R;return y*PSP/(PSP-z)};
+ const PT=W.appendChild(ce('div','whPtr'));let PRESS=null;
+ const mcv=document.createElement('canvas').getContext('2d');
+ function wheelOpen(title,items,cur,cb){const d=W.querySelector('.whDrum');W.querySelector('.whT').textContent=title;const n=items.length;
+  d.innerHTML=items.map((it,i)=>`<div class="whS${i===0?' f':''}${i===n-1?' l':''}" data-i="${i}"></div><div class="whI" data-i="${i}">${it.html||esc(it.l)}</div>`).join('');
+  WH={items,cb,pos:Math.max(0,Math.min(n-1,cur)),v:0,raf:0,lastI:-1,rows:3};W.hidden=false;
+  if(PRESS)PRESS.classList.remove('whPressed');PRESS=LASTA&&LASTA.isConnected?LASTA:null;if(PRESS)PRESS.classList.add('whPressed');
+  whPlace(W.querySelector('.whBox'),PRESS,WH.pos,n);W.classList.remove('in');requestAnimationFrame(()=>W.classList.add('in'));paint()}
  let LASTA=null;document.addEventListener('pointerdown',e=>{if(W.contains(e.target))return;const a=e.target.closest&&e.target.closest('button,summary,label,.btn,select,[data-w]');if(a)LASTA=a},true);
- function whPlace(box,a,cur,n){const bw=Math.min(300,innerWidth-16),bh=210,ih=40;box.style.width=bw+'px';let x=(innerWidth-bw)/2,y=(innerHeight-bh)/2;
-  if(a&&a.isConnected){const r=a.getBoundingClientRect();x=r.left+r.width/2-bw/2;const up=Math.min(cur,2),dn=Math.min(n-1-cur,2),need=(up+dn+1)*ih;
-   // the visible items sit directly below the button (or above it when there is no room); the selected one is the bright center row
-   const cB=r.bottom+6+ih/2+up*ih,cA=r.top-6-ih/2-dn*ih;let c=r.bottom+6+need<=innerHeight-6?cB:r.top-6-need>=6?cA:Math.max(ih/2+6,Math.min(innerHeight-ih/2-6,r.top+r.height/2));y=c-bh/2}
-  x=Math.max(8,Math.min(innerWidth-bw-8,x));box.style.left=x+'px';box.style.top=y+'px'}
+ const vis=e=>e&&!e.hidden&&e.offsetParent!==null&&e.getBoundingClientRect().width>0;
+ const R4=r=>({left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height});
+ const hit=(a,b)=>a.left<b.right-.5&&a.right>b.left+.5&&a.top<b.bottom-.5&&a.bottom>b.top+.5;
+ function whPlace(box,a,cur,n){const VW=innerWidth,VH=innerHeight,m=8,g=6,pt=8,phone=VW<600,fs=phone?14.5:16;mcv.font=`800 ${fs}px Roboto,Arial,sans-serif`;
+  const tw=Math.max(...WH.items.map(it=>{const t=it.l||String(it.html||'').replace(/<[^>]*>/g,'');return mcv.measureText(t).width+(it.html&&/whIc/.test(it.html)?30:0)}));
+  const W0=Math.max(140,Math.min(phone?200:240,tw+40));
+  const top=$('#top'),tools=$('#tools'),sb=$('#selBar'),P=a&&a.closest('#panel,#lyrP'),K=[];
+  const lo=(vis(top)?top.getBoundingClientRect().bottom:0)+m;let hi=VH-m;for(const e of[tools,sb,$('#mBar')])if(vis(e)){const r=e.getBoundingClientRect();if(r.top>VH/2)hi=Math.min(hi,r.top-m)}
+  for(const e of[top,tools,sb,$('#mBar'),$('#proj')])if(vis(e))K.push(R4(e.getBoundingClientRect()));
+  let ar=a&&a.isConnected?R4(a.getBoundingClientRect()):null;if(ar)K.push(ar);
+  let pr=null;if(P){pr=R4(P.getBoundingClientRect());const sl=P.querySelector('.pSumL,.pFB'),bb=[...P.querySelectorAll('.pBB')].find(vis);K.push({...pr,bottom:sl&&vis(sl)?sl.getBoundingClientRect().bottom+2:pr.top+60});if(bb)K.push({...pr,top:bb.getBoundingClientRect().top-2})}
+  // the dialog/sheet a control sits in (e.g. the Fail sheet) is a keep-out for its header; the control itself always is
+  const acx=ar?ar.left+ar.width/2:VW/2,acy=ar?ar.top+ar.height/2:VH/2;
+  const tryAt=(side,rows)=>{const up=Math.min(cur,rows),dn=Math.min(n-1-cur,rows),hU=up?Math.abs(proj(-up-.5))+6:SLH/2,hD=dn?Math.abs(proj(dn+.5))+6:SLH/2;let w=W0,x,y;
+   if(side==='left'||side==='right'){const edgeL=pr?pr.left:ar?ar.left:VW/2,edgeR=pr?pr.right:ar?ar.right:VW/2,room=side==='left'?edgeL-14-m:VW-m-edgeR-14;if(room<130)return null;w=Math.min(W0,room);
+    x=side==='left'?edgeL-14-w:edgeR+14;y=Math.max(lo+hU,Math.min(hi-hD,acy));if(y-hU<lo-.5||y+hD>hi+.5)return null}
+   else{x=Math.max(m,Math.min(VW-m-w,acx-w/2));if(side==='above'){y=(ar?ar.top:VH/2)-g-pt-hD}else{y=(ar?ar.bottom:VH/2)+g+pt+hU}y=Math.min(y,hi-hD);y=Math.max(y,lo+hU);
+    if(side==='above'&&ar&&y+hD>ar.top-g)return null;if(side==='below'&&ar&&y-hU<ar.bottom+g)return null}
+   const r={left:x,right:x+w,top:y-hU,bottom:y+hD};if(r.top<lo-.5||r.bottom>hi+.5||r.left<m-.5||r.right>VW-m+.5)return null;if(K.some(k=>hit(r,k)))return null;return{side,rows,x,y,w,hU,hD,r}};
+  const inSt=a&&a.closest&&a.closest('#stage');let order=P?['left','right','below','above']:inSt?(acx>VW/2?['left','right','above','below']:['right','left','above','below']):(()=>{const o=[];if(ar){if(acy>VH*.5)o.push('above','below');else o.push('below','above');if(acx>VW/2)o.push('left','right');else o.push('right','left')}else o.push('below','above');return o})();
+  let best=null;for(const rows of[3,2,1]){for(const sd of order){best=tryAt(sd,rows);if(best)break}if(best)break}
+  if(!best){const rows=1,hU=Math.abs(proj(-1.5)),hD=hU;best={side:'none',rows,w:W0,x:Math.max(m,Math.min(VW-m-W0,acx-W0/2)),y:Math.max(lo+hU,Math.min(hi-hD,acy)),hU,hD}}
+  WH.rows=best.rows;WH.hU=best.hU;WH.side=best.side;box.style.width=best.w+'px';box.style.left=best.x+'px';box.style.top=(best.y-best.hU)+'px';
+  const win=box.querySelector('.whWin');win.style.height=(best.hU+best.hD)+'px';win.style.perspectiveOrigin=`50% ${best.hU}px`;box.querySelector('.whDrum').style.top=best.hU+'px';box.style.setProperty('--whF',fs+'px');
+  // pointer at the tapped control, on the band edge, ≥14px from the band's ends
+  PT.className='whPtr '+best.side;if(!ar||best.side==='none'){PT.hidden=true;return}PT.hidden=false;const y0=best.y-best.hU,y1=best.y+best.hD;
+  if(best.side==='left'){Object.assign(PT.style,{left:best.x+best.w-1+'px',top:Math.max(y0+14,Math.min(y1-14,acy))-8+'px'})}
+  else if(best.side==='right'){Object.assign(PT.style,{left:best.x-15+'px',top:Math.max(y0+14,Math.min(y1-14,acy))-8+'px'})}
+  else if(best.side==='above'){Object.assign(PT.style,{left:Math.max(best.x+16,Math.min(best.x+best.w-16,acx))-8+'px',top:y1+'px'})}
+  else Object.assign(PT.style,{left:Math.max(best.x+16,Math.min(best.x+best.w-16,acx))-8+'px',top:y0-8+'px'})}
  window.wheelAnchor=a=>{LASTA=a};
- function paint(){const d=W.querySelector('.whDrum'),p=WH.pos;d.style.transform=`translateZ(-${R}px) rotateX(${p*ST}deg)`;const c=Math.round(p);
-  d.querySelectorAll('.whI').forEach((e,i)=>{const a=Math.abs(i-p)*ST;e.style.opacity=a>80?0:1-a/100;e.style.fontSize=Math.max(12,21-a/9)+'px';e.classList.toggle('cen',i===c)});if(c!==WH.lastI){if(WH.lastI>=0&&navigator.vibrate)try{navigator.vibrate(4)}catch{}WH.lastI=c}}
+ function paint(){const d=W.querySelector('.whDrum'),p=WH.pos,c=Math.round(p),F=parseFloat(W.querySelector('.whBox').style.getPropertyValue('--whF'))||16,lim=WH.rows+.5;d.style.transform='';
+  d.querySelectorAll('.whS,.whI').forEach(e=>{const i=+e.dataset.i,dd=i-p,an=dd*ST,on=Math.abs(dd)<=lim,tf=`translateZ(-${R}px) rotateX(${-an}deg) translateZ(${R+(e.classList.contains('whI')?1.5:0)}px)`;e.style.transform=tf;e.style.visibility=on?'':'hidden';
+   const op=Math.max(0,1-Math.abs(an)/105);if(e.classList.contains('whS')){e.classList.toggle('cen',i===c);e.style.background=i===c?'':`rgba(15,23,42,${Math.min(.94,.7*op+.3).toFixed(2)})`}
+   else{e.style.opacity=Math.max(.15,op).toFixed(2);e.style.fontSize=Math.max(11,F-Math.abs(an)/10)+'px';e.classList.toggle('cen',i===c)}});
+  if(c!==WH.lastI){if(WH.lastI>=0&&navigator.vibrate)try{navigator.vibrate(4)}catch{}WH.lastI=c}}
  const clampP=p=>Math.max(0,Math.min(WH.items.length-1,p));
  function settle(){cancelAnimationFrame(WH.raf);const step=()=>{if(Math.abs(WH.v)>.002){WH.pos=clampP(WH.pos+WH.v);WH.v*=.92;if(WH.pos===0||WH.pos===WH.items.length-1)WH.v=0}else{const t=Math.round(WH.pos);WH.pos+=(t-WH.pos)*.3;if(Math.abs(t-WH.pos)<.01){WH.pos=t;paint();return}}paint();WH.raf=requestAnimationFrame(step)};step()}
  const win=W.querySelector('.whWin');let dr=null;
  win.addEventListener('pointerdown',e=>{win.setPointerCapture(e.pointerId);cancelAnimationFrame(WH.raf);dr={y:e.clientY,p:WH.pos,t:performance.now(),ly:e.clientY,lt:performance.now(),moved:0}});
  win.addEventListener('pointermove',e=>{if(!dr)return;const dy=e.clientY-dr.y;dr.moved=Math.max(dr.moved,Math.abs(dy));WH.pos=clampP(dr.p-dy/IH);const n=performance.now();WH.v=-(e.clientY-dr.ly)/IH/Math.max(1,(n-dr.lt)/16);dr.ly=e.clientY;dr.lt=n;paint()});
- win.addEventListener('pointerup',e=>{if(!dr)return;const tap=dr.moved<6;dr=null;if(tap){const r=win.getBoundingClientRect(),off=Math.round((e.clientY-(r.top+r.height/2))/IH);if(off===0)return choose();WH.pos=clampP(Math.round(WH.pos)+off);WH.v=0}settle()});
+ win.addEventListener('pointerup',e=>{if(!dr)return;const tap=dr.moved<6;dr=null;if(tap){const r=win.getBoundingClientRect(),dy=e.clientY-(r.top+(WH.hU||r.height/2));let off=0,bd=1e9;for(let k=-7;k<=7;k++){const q=Math.abs(proj(k)-dy);if(q<bd){bd=q;off=k}}if(off===0)return choose();WH.pos=clampP(Math.round(WH.pos)+off);WH.v=0}settle()});
  win.addEventListener('wheel',e=>{e.preventDefault();WH.v+=e.deltaY/IH/12;settle()},{passive:false});
- const close=()=>{W.classList.remove('in');setTimeout(()=>W.hidden=true,150)};function choose(){const i=Math.round(WH.pos),cb=WH.cb;close();cb(WH.items[i],i)}
+ const close=()=>{W.classList.remove('in');if(PRESS){PRESS.classList.remove('whPressed');PRESS=null}setTimeout(()=>W.hidden=true,150)};function choose(){const i=Math.round(WH.pos),cb=WH.cb;close();cb(WH.items[i],i)}
  W.querySelector('[data-w=x]').onclick=close;W.querySelector('[data-w=ok]').onclick=choose;W.addEventListener('click',e=>{if(e.target===W)close()});document.addEventListener('keydown',e=>{if(W.hidden||!WH)return;if(e.key==='Escape'){e.preventDefault();close()}else if(e.key==='Enter'){e.preventDefault();choose()}else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();WH.pos=clampP(Math.round(WH.pos)+(e.key==='ArrowDown'?1:-1));paint()}});
  window.wheelOpen=wheelOpen;window.wheelPos=()=>WH&&WH.pos;
  // ---- grouped wheel buttons (tap = last pick; tap again or ▾ = wheel) ----
@@ -77,7 +110,7 @@
   for(const [k,t] of Object.entries(TYPES)){if(!t.c)continue;const c=t.c.toLowerCase();if(!dev.has(c))dev.set(c,[]);dev.get(c).push(t.n.replace(/ – .*/,''))}
   const sw=(c,lab,names)=>`<button type="button" class="cSw${c.toLowerCase()===cur?' on':''}" data-c="${c}" title="${esc(names||lab)}" aria-label="${esc((names||lab)+' '+c)}"><i style="background:${c}"></i><span class="cSl">${esc(lab)}</span></button>`;
   d.innerHTML=`<div class="cHead"><b>Color</b><span class="sp"></span><button type="button" class="btn" id="cX">✕<span class="tl">Close</span></button></div><div class="cBody"><h4>Markup colors</h4><div class="cGrid">${BASIC.map(([c,l])=>sw(c,l)).join('')}</div>
-   <h4>Device colors</h4><div class="cGrid">${[...dev].map(([c,ns])=>sw(c,ns.join(', '),ns.join(', '))).join('')}</div>
+   <h4>Device colors</h4><div class="cGrid">${[...dev].map(([c,ns])=>{const G=typeof CGRP!=='undefined'&&Object.entries(CGRP).find(([k])=>k.toLowerCase()===c);/* bpm-v106: a shared group color shows once with its group name */return sw(c,G?G[1]:ns.join(', '),(G?G[1]+': ':'')+ns.join(', '))}).join('')}</div>
    <div class="row" style="margin-top:10px"><button type="button" class="btn" id="cCust">🎨<span class="tl">Custom…</span></button></div></div>`;
   const pick=c=>{col.value=c;col.dispatchEvent(new Event('input',{bubbles:true}));col.dispatchEvent(new Event('change',{bubbles:true}));d.close()};
   d.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>pick(b.dataset.c));d.querySelector('#cX').onclick=()=>d.close();d.querySelector('#cCust').onclick=()=>{d.close();col.click()};d.showModal()};
