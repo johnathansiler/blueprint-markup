@@ -35,7 +35,7 @@ const area=p=>Math.abs(p.reduce((s,a,i)=>{const b=p[(i+1)%p.length];return s+a[0
 // symbol scale: median side of dark near-square 4-gons (the reference symbols are ~13 pt on the sample plan)
 function scaleOf(G){const s=[];for(const g of G){const p=poly(g,1);if(!p||p.length!==4)continue;const sd=sides(p),mx=Math.max(...sd),mn=Math.min(...sd);if(mn<4||mx>60||mx/mn>1.15)continue;const a=area(p);if(Math.abs(a-mn*mx)/a>.12)continue;s.push((mx+mn)/2)}
  if(s.length<5){/* bpm-v108: few squares on the sheet (test plan): also measure regular hexagons (smoke / module / relay, ~15 at k=1) */const q=s.map(v=>v/13);for(const g of G){const p=poly(g,1);if(!p||p.length!==6)continue;const sd=sides(p),mx=Math.max(...sd),mn=Math.min(...sd);if(mn<2.5||mx/mn>1.2)continue;const D=Math.max(g.w,g.h);if(D<8||D>60)continue;q.push(D/15)}
-  if(q.length<3)return 1;q.sort((a,b)=>a-b);return q[q.length>>1]}
+  if(q.length<3){self.KF=1;return self.K0||1}q.sort((a,b)=>a-b);return q[q.length>>1]}/* bpm-v111: no scale evidence on this sheet → the scale measured on an earlier sheet of the same plan (test plan p5) */
  s.sort((a,b)=>a-b);return s[s.length>>1]/13}
 // v45/v46: true size + rotation from polygon; pin center = OBB center of outline (not upright AABB mid)
 function geom(pp,sk){if(!pp||pp.length<3)return null;const n=pp.length,cx0=pp.reduce((s,p)=>s+p[0],0)/n,cy0=pp.reduce((s,p)=>s+p[1],0)/n;let a=0;
@@ -55,7 +55,7 @@ function shape(g,k){if(g.k==='cccc')return Math.abs(g.w-g.h)<1*k?'circle':null;c
   if(mn>=16*k&&mx<=26*k&&mx/mn<1.15&&A>250*K2)return'sq_big'}
  if(n===6&&Math.max(g.w,g.h)>=11*k&&Math.max(g.w,g.h)<=17*k&&A>100*K2)return'hex';
  if(n===3&&mx>=8.5*k&&mx<=12.5*k&&mn>7*k)return'tri';return null}
-function detect(P,W,H,want){const TB=W>H?W*.825:W;let G=P.filter(g=>dark(g)&&g.x0<TB);const k=scaleOf(G);
+function detect(P,W,H,want){const TB=W>H?W*.825:W;let G=P.filter(g=>dark(g)&&g.x0<TB);self.KF=0;const k=scaleOf(G);
   const ctr=g=>[g.cx,g.cy],prim=[];for(const g of G){const s=shape(g,k);if(s)prim.push([s,g])}
  const tris=prim.filter(p=>p[0]==='tri').map(p=>[p[1],p[1].fill!=null]),circles=prim.filter(p=>p[0]==='circle').map(p=>p[1]),lines=G.filter(g=>g.k==='l');
  // grid index for neighbourhood queries
@@ -138,4 +138,4 @@ function probeAt(P,q){let best=null;const R=Math.max(q.w,q.h);for(const g of P){
  if(n===4){const onEdge=pp.filter(p=>Math.abs(p[0]-g.cx)<g.w*.15||Math.abs(p[1]-g.cy)<g.h*.15).length;if(onEdge>=4){sk='diamond';kind='dia'}else{const sd=sides(pp),mx=Math.max(...sd),mn=Math.min(...sd);sk=mx/mn<1.15?'square':'panel_rect';kind='rect'}}
  else if(n===6){sk='hex';kind='hex'}else return null;
  const G2=geom(pp,sk);return G2?{x:G2.cx,y:G2.cy,bw:G2.bw,bh:G2.bh,ang:G2.ang||0,kind}:null}
-self.onmessage=e=>{const{id,fn,args,O,vt,W,H,want,probe}=e.data;const t0=performance.now();if(probe){try{const P=walk(fn,args,O,vt);self.postMessage({id,ok:1,probe:probe.map(q=>probeAt(P,q))})}catch(err){self.postMessage({id,ok:0,err:String(err&&err.message||err)})}return}try{const P=walk(fn,args,O,vt);const r=detect(P,W,H,want);self.postMessage({id,ok:1,...r,paths:P.length,ms:performance.now()-t0})}catch(err){self.postMessage({id,ok:0,err:String(err&&err.message||err)})}};
+self.onmessage=e=>{const{id,fn,args,O,vt,W,H,want,probe}=e.data;self.K0=e.data.k0||0;const t0=performance.now();if(probe){try{const P=walk(fn,args,O,vt);self.postMessage({id,ok:1,probe:probe.map(q=>probeAt(P,q))})}catch(err){self.postMessage({id,ok:0,err:String(err&&err.message||err)})}return}try{const P=walk(fn,args,O,vt);const r=detect(P,W,H,want);self.postMessage({id,ok:1,...r,kf:!!self.KF,paths:P.length,ms:performance.now()-t0})}catch(err){self.postMessage({id,ok:0,err:String(err&&err.message||err)})}};

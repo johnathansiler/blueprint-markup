@@ -648,7 +648,7 @@ async function runDetect0(groups,all,MJ){const want=groups.flatMap(g=>DG[g].d),p
    if(window.pageKind){const k=await pageKind(pl.id,n,pg);if(k.kind&&!(await detAnyway(pl.id,n))){R.stats.push({page:n,skipped:k.kind,why:k.why});ghosts=ghosts.filter(g=>!(g.page===n&&groups.includes(g.g)));if(!all)toast(`Detect skipped page ${n}: ${k.kind} sheet (${k.why}) · Pages ▸ Detect this page anyway`);prog((i+1)/pages.length);continue}} // bpm-v107: no Detect pins on riser / wiring sheets
    const ol=await vecOL(n,pg);if(R.cancel||plan!==pl)return;prog((i+.5)/pages.length);
    const fn=[],args=[];for(let j=0;j<ol.fnArray.length;j++)if(keep.has(ol.fnArray[j])){fn.push(ol.fnArray[j]);args.push(ol.argsArray[j])}
-   const vp=pg.getViewport({scale:1}),t1=performance.now(),r=await detOnWorker({id:n,fn,args,O,vt:vp.transform,W:vp.width,H:vp.height,want:null});if(R.cancel||plan!==pl)return;
+   const vp=pg.getViewport({scale:1}),t1=performance.now(),r=await detOnWorker({id:n,fn,args,O,vt:vp.transform,W:vp.width,H:vp.height,want:null,k0:(window.KH||={})[pl.id]||0});if(!r.kf&&r.k)KH[pl.id]=r.k;if(R.cancel||plan!==pl)return;
    const near=(x,y)=>pins.some(p=>p.page===n&&Math.hypot(p.x-x,p.y-y)<18*r.k);
    ghosts=ghosts.filter(g=>!(g.page===n&&groups.includes(g.g)));
    // Label panel boxes using the page text layer (FACP/DACT/SYS/FATC) and drop legend-side hits
