@@ -46,7 +46,7 @@ window.bulkPass=async function(list){const tn=await getTester(),now=Date.now(),L
 
 // ---------- 5) pre-send check before report / PDF / PNG export ----------
 async function preIssues(scope){const D=scope==='project'?await projData():[{pl:plan,pins:pins.slice()}],out=[];
- for(const d of D)for(const p of d.pins){const nm=`${TYPES[p.type]?.n||p.type} ${p.address||'(no address)'}`+(D.length>1?` · ${d.pl.name||''} pg ${p.page}`:` · pg ${p.page}`);
+ for(const d of D)for(const p of d.pins){const nm=`${TYPES[p.type]?.n||p.type} ${p.address||'(no address)'}`+(D.length>1?` · ${d.pl.name||''} ${pgT(d.pl.id,p.page)}`:` · ${pgT(d.pl.id,p.page)}`);
   if(untested(p))out.push({k:'untested',t:`Untested: ${nm}`,pl:d.pl.id,p});
   else if(String(p.status).includes('fail')){if(!p.reason)out.push({k:'reason',t:`Fail without reason: ${nm}`,pl:d.pl.id,p});const md=await byIdx('media','pinId',p.id);if(!md.some(m=>(m.kind||'photo')!=='audio'))out.push({k:'photo',t:`Fail without photo: ${nm}`,pl:d.pl.id,p})}}
  const tn=tester===null?await get('meta','tester'):tester,j=project?await getJob():{};if(!(tn||j.techName))out.push({k:'tester',t:'Tester name is missing'});if(!(j.techLic||j.license))out.push({k:'lic',t:'Tester license # is missing'});return out}

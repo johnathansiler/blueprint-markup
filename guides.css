@@ -52,3 +52,8 @@ body.light .ohmQ.known{fill:#bfdbfe}body.light .ohmQ.calc{fill:#bbf7d0}
 #gDlg .gTabs .tl{font-size:12px}
 body.light #gDlg .btn{background:#e2e8f0;color:#0f172a;border-color:#94a3b8}body.light #gDlg .btn .tl{color:#0f172a}
 body.light #gDlg .btn.pri{background:#2563eb;color:#fff}body.light #gDlg .btn.pri .tl{color:#fff}
+/* bpm-v102 trouble categories */
+.gTJ{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0;position:sticky;top:0;z-index:2;background:#0f172a;padding:4px 0}.gTJ .btn{font-size:14px;padding:4px 8px;min-height:34px}
+.gTS{margin:6px 0;scroll-margin-top:90px}.gTS>summary{cursor:pointer;list-style:none}.gTS>summary::-webkit-details-marker{display:none}.gTS>summary h4{display:inline;font-size:17px}.gTS>summary::before{content:'▸ ';}.gTS[open]>summary::before{content:'▾ '}
+#gDlg .gT,.gTS .gT{font-size:16px}#gTq{font-size:16px}
+body.light .gTJ{background:#fff}
