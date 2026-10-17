@@ -23,7 +23,7 @@
   P.querySelector('#lpNone').onclick=()=>{if(window.HT)ks.forEach(k=>HT.add(k));if(mkOn())setMk(false);tlaySave()}}
  window.lpRender=render;
  function place(){if(WMQ.matches){P.style.top=P.style.bottom='';return}const t=document.getElementById('top'),b=document.getElementById('tools');P.style.top=Math.round(t?t.getBoundingClientRect().bottom:0)+'px';P.style.bottom=Math.round(b?innerHeight-b.getBoundingClientRect().top:0)+'px'}
- function set(on,quiet){P.hidden=!on;document.body.classList.toggle('lpOn',on);const b=btn();if(b){b.classList.toggle('pri',on);b.setAttribute('aria-pressed',on)}if(!quiet)localStorage.setItem(KEY,on?'1':'0');if(on){place();counts()}try{resize()}catch{}}
+ function set(on,quiet){if(on&&window.pinsPanel)try{pinsPanel(false)}catch{}/* bpm-v111: Layers replaces Pins in the right-side slot */P.hidden=!on;document.body.classList.toggle('lpOn',on);const b=btn();if(b){b.classList.toggle('pri',on);b.setAttribute('aria-pressed',on)}if(!quiet)localStorage.setItem(KEY,on?'1':'0');if(on){place();counts()}try{resize()}catch{}}
  window.layPanel=set;window.layPanelToggle=()=>set(!isOpen());
  // top-bar Layers button opens/closes the panel (the full dialog is still in the bottom toolbar's Layers ▾)
  const hook=()=>{const b=btn();if(!b)return setTimeout(hook,200);b.onclick=()=>window.layPanelToggle();b.title='Layers panel: show/hide device types and markups';set(localStorage.getItem(KEY)==='1',true)};hook();
