@@ -380,7 +380,7 @@ body.light .tcRow{background:#fff;border-color:#cbd5e1}
 #ghBar{left:8px;right:auto;bottom:8px;width:auto;max-width:min(372px,calc(100% - 16px));max-height:none;overflow:visible;display:flex;flex-direction:column;gap:5px;padding:7px;background:var(--sf);color:var(--tx);border-radius:16px;box-shadow:0 8px 28px #000a;border:1px solid #334155;font-size:12px}
 #ghBar .ghH{display:flex;align-items:baseline;gap:6px;padding:0 3px}#ghBar .ghH b{font-size:13px}#ghBar .ghH small{color:var(--mu2)}
 #ghBar .ghBB{display:flex;flex-wrap:wrap;gap:4px}
-#ghBar .pB{width:58px;height:44px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:0 2px;border:1px solid #334155;border-radius:10px;background:var(--sf2);color:var(--tx);cursor:pointer;overflow:hidden}
+#ghBar .pB{width:54px;height:44px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:0 2px;border:1px solid #334155;border-radius:10px;background:var(--sf2);color:var(--tx);cursor:pointer;overflow:hidden}
 #ghBar .pB i{font-style:normal;font-size:15px;line-height:17px}#ghBar .pB small{font-size:10px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;color:inherit;opacity:.85}
 #ghBar .pB.pri{background:var(--acc);border-color:var(--acc);color:#fff}#ghBar .pB.danger{color:#f87171}#ghBar .pB.warn{color:#fbbf24}
 body.light #ghBar{border-color:#cbd5e1;box-shadow:0 8px 28px #0f172a33}body.light #ghBar .pB{border-color:#cbd5e1}body.light #ghBar .pB.danger{color:#dc2626}body.light #ghBar .pB.warn{color:#b45309}body.light #ghBar .pB.pri{color:#fff}
