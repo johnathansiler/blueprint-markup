@@ -435,9 +435,11 @@ function drawLegend(x,ps,PP,PH){const pp=PP||pins.filter(p=>p.page===page&&(!lay
  x.save();x.fillStyle='rgba(255,255,255,.93)';x.strokeStyle='#334155';x.lineWidth=1.5*u;x.fillRect(X,Y,w,h);x.strokeRect(X,Y,w,h);x.fillStyle='#111';x.font=`bold ${13*u}px sans-serif`;x.textBaseline='middle';x.textAlign='left';x.fillText('Legend',X+pad,Y+pad+row/2);
  let y=Y+pad+row*1.5;for(const t of types){drawPin(x,{type:t,x:X+pad+14*u,y},ps,false,true);x.fillStyle='#111';x.font=`${12*u}px sans-serif`;x.textAlign='left';x.textBaseline='middle';x.fillText(TYPES[t]?.n||t,X+pad+34*u,y);y+=row}
  for(const s of sts){x.fillStyle=ST[s];x.strokeStyle='#fff';x.lineWidth=2*u;x.beginPath();x.arc(X+pad+14*u,y,6*u,0,7);x.fill();x.stroke();x.fillStyle='#111';x.font=`${12*u}px sans-serif`;x.textAlign='left';x.fillText('Status: '+s,X+pad+34*u,y);y+=row}x.restore()}
-async function composite(){const sc=Math.min(3,Math.sqrt(30e6/(pageW*pageH)));const c=document.createElement('canvas');c.width=Math.round(pageW*sc);c.height=Math.round(pageH*sc);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
- if(pdf){const pg=await pdf.getPage(page);await pg.render({canvasContext:x,viewport:pg.getViewport({scale:sc})}).promise}else x.drawImage(bmp,0,0,c.width,c.height);
- x.setTransform(sc,0,0,sc,0,0);const ps=1/Math.max(1,Math.max(pageW,pageH)/1200);const E=lay.exp;for(const m of markups)if(m.page===page&&(!E||mVis(m)))drawMarkup(x,m,1/1.5);OFFMAP=pinOffsets(pins.filter(p=>p.page===page&&(!E||pVis(p))));for(const p of pins)if(p.page===page&&(!E||pVis(p)))(E?drawPinL:drawPin)(x,p,ps,false);OFFMAP=null;drawLegend(x,ps);return c}
+// bpm-v105: exports follow the in-app orientation: the PDF's own /Rotate plus the in-app Rotate setting (VR), drawing, markups and pins together
+function vrXf(x,vr,W,H,s){if(vr===90)x.setTransform(0,s,-s,0,s*H,0);else if(vr===180)x.setTransform(-s,0,0,-s,s*W,s*H);else if(vr===270)x.setTransform(0,-s,s,0,0,s*W);else x.setTransform(s,0,0,s,0,0)}
+async function composite(){const vr=+VR||0,sw=vr%180!==0,OW=sw?pageH:pageW,OH=sw?pageW:pageH,sc=Math.min(3,Math.sqrt(30e6/(pageW*pageH)));const c=document.createElement('canvas');c.width=Math.round(OW*sc);c.height=Math.round(OH*sc);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
+ if(pdf){const pg=await pdf.getPage(page);await pg.render({canvasContext:x,viewport:pg.getViewport({scale:sc,rotation:((pg.rotate||0)+vr)%360})}).promise}else{vrXf(x,vr,pageW,pageH,sc);x.drawImage(bmp,0,0,pageW,pageH)}
+ vrXf(x,vr,pageW,pageH,sc);const ps=1/Math.max(1,Math.max(pageW,pageH)/1200);const E=lay.exp;CR=vr*Math.PI/180;try{for(const m of markups)if(m.page===page&&(!E||mVis(m)))drawMarkup(x,m,1/1.5);OFFMAP=pinOffsets(pins.filter(p=>p.page===page&&(!E||pVis(p))));for(const p of pins)if(p.page===page&&(!E||pVis(p)))(E?drawPinL:drawPin)(x,p,ps,false)}finally{OFFMAP=null;CR=0}x.setTransform(sc,0,0,sc,0,0);drawLegend(x,ps,null,OH);return c}
 const base=()=>`${plan.name.replace(/\.[^.]+$/,'')}-p${page}`;
 function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
 $('#exPng').onclick=async()=>{if(!plan)return;busy(1,'Exporting');try{const c=await composite();await new Promise(r=>c.toBlob(b=>{dl(b,base()+'.png');r()},'image/png'))}catch(e){showErr('PNG export failed: '+e.message)}finally{busy(0)}};
@@ -799,7 +801,7 @@ async function unzipBlob(b){const T=Math.max(0,b.size-65557),tail=new DataView(a
   if(meth===8)blob=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();else if(meth!==0)throw new Error('unsupported compression in '+name);out.set(name,{blob,crc})}return out}
 const fsafe=s=>String(s||'project').replace(/[\\/:*?"<>|]+/g,'_').trim()||'project';
 async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),pls=(await all('plans')).filter(p=>p.projectId===pid).sort((a,b)=>a.added-b.added),files=[];
- const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v104',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
+ const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v105',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
   for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
@@ -873,29 +875,31 @@ $('#exGo').onclick=async()=>{if(!project)return;const pr=project,mode=document.q
 // ---------- v11: selectable plan PDF (pdf-lib vector page + transparent markup overlay) ----------
 const hexRgb=h=>{h=(h||'#000').replace('#','');if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];return{r:parseInt(h.slice(0,2),16)/255,g:parseInt(h.slice(2,4),16)/255,b:parseInt(h.slice(4,6),16)/255}};
 async function pageHasText(jsPage){try{const tc=await jsPage.getTextContent();let n=0;for(const it of tc.items){if((it.str||'').trim()){n++;if(n>=3)return true}}return n>0}catch{return false}}
-async function rasterPageOverlay(W,H,drawFn){const sc=Math.min(2.5,Math.sqrt(16e6/(W*H)));const c=document.createElement('canvas');c.width=Math.round(W*sc);c.height=Math.round(H*sc);const x=c.getContext('2d');x.setTransform(sc,0,0,sc,0,0);drawFn(x,1/Math.max(1,Math.max(W,H)/1200));const blob=await new Promise(r=>c.toBlob(r,'image/png'));c.width=c.height=0;return blob}
-function drawEmbRotated(page,emb,rot,W,H){const{degrees}=PDFLib,ew=emb.width,eh=emb.height;
- if(rot===90)page.drawPage(emb,{x:H,y:0,width:ew,height:eh,rotate:degrees(90)});
+async function rasterPageOverlay(W,H,drawFn){const sc=Math.min(2.5,Math.sqrt(16e6/(W*H)));const c=document.createElement('canvas');c.width=Math.round(W*sc);c.height=Math.round(H*sc);const x=c.getContext('2d');x.setTransform(sc,0,0,sc,0,0);drawFn(x,1/Math.max(1,Math.max(W,H)/1200),sc);const blob=await new Promise(r=>c.toBlob(r,'image/png'));c.width=c.height=0;return blob}
+function drawEmbRotated(page,emb,rot,W,H){const{degrees}=PDFLib,ew=emb.width,eh=emb.height; // bpm-v105: rot = clockwise display rotation (PDF /Rotate + in-app Rotate); pdf-lib rotates counter-clockwise about (x,y)
+ if(rot===90)page.drawPage(emb,{x:0,y:H,width:ew,height:eh,rotate:degrees(270)});
  else if(rot===180)page.drawPage(emb,{x:W,y:H,width:ew,height:eh,rotate:degrees(180)});
- else if(rot===270)page.drawPage(emb,{x:0,y:W,width:ew,height:eh,rotate:degrees(270)});
+ else if(rot===270)page.drawPage(emb,{x:W,y:0,width:ew,height:eh,rotate:degrees(90)});
  else page.drawPage(emb,{x:0,y:0,width:ew,height:eh})}
 async function overlayOnPage(out,page,W,H,pngBlob){const png=await out.embedPng(await pngBlob.arrayBuffer());page.drawImage(png,{x:0,y:0,width:W,height:H})}
-async function rasterFullPage(jsPage,W,H,drawFn){const sc=Math.min(2.5,Math.sqrt(14e6/(W*H)));const c=document.createElement('canvas');c.width=Math.round(W*sc);c.height=Math.round(H*sc);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
- if(jsPage)await jsPage.render({canvasContext:x,viewport:jsPage.getViewport({scale:sc})}).promise;x.setTransform(sc,0,0,sc,0,0);drawFn(x,1/Math.max(1,Math.max(W,H)/1200));
+async function rasterFullPage(jsPage,W,H,drawFn,rot){const sc=Math.min(2.5,Math.sqrt(14e6/(W*H)));const c=document.createElement('canvas');c.width=Math.round(W*sc);c.height=Math.round(H*sc);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
+ if(jsPage)await jsPage.render({canvasContext:x,viewport:jsPage.getViewport({scale:sc,rotation:rot??(jsPage.rotate||0)})}).promise;x.setTransform(sc,0,0,sc,0,0);drawFn(x,1/Math.max(1,Math.max(W,H)/1200),sc);
  const jpeg=await new Promise(r=>c.toBlob(r,'image/jpeg',.85));c.width=c.height=0;return jpeg}
 /** Build a marked-up PDF for one plan. If outDoc is a PDFDocument, pages are appended to it. Returns {doc,pages,blob?}. */
 async function exportPlanPdf(pl,mks,pns,L,onPage,outDoc=null){const{PDFDocument}=PDFLib;const out=outDoc||await PDFDocument.create();let pages=0;
+ const RT=plan&&pl.id===plan.id?ROTS:((await get('meta','rot:'+pl.id))||{});
+ const expMarks=(x,ps,sc,i,vr,W,H,OH)=>{const E=L.exp,pp=pns.filter(p=>p.page===i&&(!E||pVis(p)));vrXf(x,vr,W,H,sc);CR=vr*Math.PI/180;try{for(const m of mks)if(m.page===i&&(!E||mVis(m)))drawMarkup(x,m,1/1.5);OFFMAP=pinOffsets(pp);for(const p of pp)(E?drawPinL:drawPin)(x,p,ps,false)}finally{OFFMAP=null;CR=0}x.setTransform(sc,0,0,sc,0,0);drawLegend(x,ps,pp,OH)};
  const keep=lay;lay=L||lay;try{
  if(pl.kind==='pdf'&&pl.blob?.size){const bytes=new Uint8Array(await pl.blob.arrayBuffer());const src=await PDFDocument.load(bytes,{ignoreEncryption:true});
   const js=await pdfjsLib.getDocument({data:bytes.slice()}).promise;
-  try{for(let i=1;i<=js.numPages;i++){const jsp=await js.getPage(i),vp=jsp.getViewport({scale:1}),W=vp.width,H=vp.height,rot=jsp.rotate||0;
-   const drawFn=(x,ps)=>{const E=L.exp;for(const m of mks)if(m.page===i&&(!E||mVis(m)))drawMarkup(x,m,1/1.5);const pp=pns.filter(p=>p.page===i&&(!E||pVis(p)));OFFMAP=pinOffsets(pp);for(const p of pp)(E?drawPinL:drawPin)(x,p,ps,false);OFFMAP=null;drawLegend(x,ps,pp,H)};
+  try{for(let i=1;i<=js.numPages;i++){const jsp=await js.getPage(i),vp=jsp.getViewport({scale:1}),W=vp.width,H=vp.height,rot=jsp.rotate||0,vr=+(RT[i]||0),T=(rot+vr)%360,sw=vr%180!==0,OW=sw?H:W,OH=sw?W:H;
+   const drawFn=(x,ps,sc)=>expMarks(x,ps,sc,i,vr,W,H,OH);
    const hasTxt=await pageHasText(jsp);
-   if(hasTxt){const emb=await out.embedPage(src.getPage(i-1));const page=out.addPage([W,H]);drawEmbRotated(page,emb,rot,W,H);const ov=await rasterPageOverlay(W,H,drawFn);await overlayOnPage(out,page,W,H,ov)}
-   else{const jpeg=await rasterFullPage(jsp,W,H,drawFn);const img=await out.embedJpg(await jpeg.arrayBuffer());const page=out.addPage([W,H]);page.drawImage(img,{x:0,y:0,width:W,height:H})}
+   if(hasTxt){const emb=await out.embedPage(src.getPage(i-1));const page=out.addPage([OW,OH]);drawEmbRotated(page,emb,T,OW,OH);const ov=await rasterPageOverlay(OW,OH,drawFn);await overlayOnPage(out,page,OW,OH,ov)}
+   else{const jpeg=await rasterFullPage(jsp,OW,OH,drawFn,T);const img=await out.embedJpg(await jpeg.arrayBuffer());const page=out.addPage([OW,OH]);page.drawImage(img,{x:0,y:0,width:OW,height:OH})}
    jsp.cleanup();pages++;onPage&&onPage(i,js.numPages)}}finally{js.destroy()}}
- else{const im=await createImageBitmap(pl.blob);const W=im.width,H=im.height;const drawFn=(x,ps)=>{const E=L.exp;for(const m of mks)if(m.page===1&&(!E||mVis(m)))drawMarkup(x,m,1/1.5);const pp=pns.filter(p=>p.page===1&&(!E||pVis(p)));OFFMAP=pinOffsets(pp);for(const p of pp)(E?drawPinL:drawPin)(x,p,ps,false);OFFMAP=null;drawLegend(x,ps,pp,H)};
-  const jpeg=await rasterFullPage(null,W,H,(x,ps)=>{x.drawImage(im,0,0,W,H);drawFn(x,ps)});const img=await out.embedJpg(await jpeg.arrayBuffer());const page=out.addPage([W,H]);page.drawImage(img,{x:0,y:0,width:W,height:H});pages=1;onPage&&onPage(1,1)}
+ else{const im=await createImageBitmap(pl.blob);const W=im.width,H=im.height,vr=+(RT[1]||0),sw=vr%180!==0,OW=sw?H:W,OH=sw?W:H;
+  const jpeg=await rasterFullPage(null,OW,OH,(x,ps,sc)=>{vrXf(x,vr,W,H,sc);x.drawImage(im,0,0,W,H);expMarks(x,ps,sc,1,vr,W,H,OH)});const img=await out.embedJpg(await jpeg.arrayBuffer());const page=out.addPage([OW,OH]);page.drawImage(img,{x:0,y:0,width:OW,height:OH});pages=1;onPage&&onPage(1,1)}
  }finally{lay=keep}
  if(!outDoc){try{out.setTitle((pl.name||'plan')+' (marked up)');out.setProducer('Marker')}catch{}}
  return{doc:out,pages}}

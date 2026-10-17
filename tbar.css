@@ -87,3 +87,10 @@ body.light #tlDlg{background:#fff;color:#0f172a;border-color:#cbd5e1}
 body.light .whI{color:#0f172a;text-shadow:0 0 2px #fff,0 0 4px #fff,0 0 8px #fffc,0 1px 2px #fff}
 body.light .whI .whIc{filter:drop-shadow(0 0 2px #fff) drop-shadow(0 0 4px #fffa)}
 body.light .whI.cen{color:#000}
+
+/* bpm-v105: Undo/Redo in the top bar */
+#top #undo:disabled,#top #redo:disabled{opacity:.38;filter:grayscale(1);cursor:default}
+@media(max-width:599px){#top .tb2Br{order:1}#top #undo,#top #redo{order:2}#top .tb2R2{order:3}#top #rotBtn{display:none!important}}
+
+/* bpm-v105: Freehand is a direct button on wide screens (it stays in the Lines wheel everywhere) */
+#tools .tbFree{display:none!important}@media(min-width:800px){#tools .tbFree{display:inline-flex!important}}
