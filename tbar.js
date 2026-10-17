@@ -37,12 +37,27 @@
  const SEL=[tool1('select','➤','Select'),tool1('pan','✋','Pan')];
  const sizes=()=>[...['S','M','L','XL'].map((s,i)=>({k:'s'+i,i:'≡',l:'Size '+s,run:()=>{$('#size').value=i;$('#size').dispatchEvent(new Event('change',{bubbles:true}))}})),...[25,50,75,100].map(o=>({k:'o'+o,i:'◐',l:'Opacity '+o+'%',run:()=>{$('#opac').value=o;$('#opac').dispatchEvent(new Event('input',{bubbles:true}));$('#opac').dispatchEvent(new Event('change',{bubbles:true}))}})),
   {k:'mag',i:'🧲',l:'Magnet '+($('#mkSnap').classList.contains('on')?'on → off':'off → on'),run:()=>$('#mkSnap').click()}];
+
+ // bpm-v102: Width picker. Same values/behavior as before (#size 0..3 -> SZ px, text SZT font); each option previews its real stroke in the current color.
+ const WN=['Thin','Medium','Thick','Extra thick'];
+ function mkWidthBtn(){const b=ce('button','tool tbw tbWid');b.type='button';b.dataset.w='width';
+  const show=()=>{const i=+$('#size').value||0,c=$('#color').value,w=SZ[i];b.innerHTML=`<svg class="wPv" width="26" height="18" viewBox="0 0 26 18" aria-hidden="true"><line x1="3" y1="9" x2="23" y2="9" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/></svg><span class="tl">Width ▾</span>`;b.title=`Line width: ${WN[i]} (${w} px)`;b.setAttribute('aria-label',b.title)};
+  b.onclick=()=>widthSheet(show);b._show=show;show();$('#color').addEventListener('input',show);$('#color').addEventListener('change',show);$('#size').addEventListener('change',show);return b}
+ function widthSheet(show){let d=$('#widDlg');if(!d){d=ce('dialog');d.id='widDlg';document.body.append(d)}const i0=+$('#size').value||0,c=$('#color').value,op=+$('#opac').value||100,mag=$('#mkSnap').classList.contains('on');
+  d.innerHTML=`<div class="cHead"><b>Line width</b><span class="sp"></span><button type="button" class="btn" id="wX">✕<span class="tl">Close</span></button></div><div class="wList" role="radiogroup" aria-label="Line width">${SZ.map((w,i)=>`<button type="button" role="radio" aria-checked="${i===i0}" class="wOpt${i===i0?' on':''}" data-i="${i}"><svg width="120" height="24" viewBox="0 0 120 24" aria-hidden="true"><line x1="8" y1="12" x2="112" y2="12" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/></svg><span class="wL">${WN[i]}</span><small>${w} px</small><b class="wCk">${i===i0?'✓':''}</b></button>`).join('')}</div>
+   <small class="wNote">Text markups use the same choice as font size (${SZT.join(' / ')} px).</small>
+   <h4>Opacity</h4><div class="wOp">${[25,50,75,100].map(o=>`<button type="button" class="btn${o===op?' on':''}" data-o="${o}">${o}%</button>`).join('')}</div>
+   <h4>Magnet snap</h4><button type="button" class="btn${mag?' on':''}" id="wMag">🧲<span class="tl">Magnet ${mag?'on (tap to turn off)':'off (tap to turn on)'}</span></button>`;
+  d.querySelectorAll('.wOpt').forEach(x=>x.onclick=()=>{$('#size').value=x.dataset.i;$('#size').dispatchEvent(new Event('change',{bubbles:true}));show();d.close()});
+  d.querySelectorAll('[data-o]').forEach(x=>x.onclick=()=>{const o=+x.dataset.o;$('#opac').value=o;$('#opac').dispatchEvent(new Event('input',{bubbles:true}));$('#opac').dispatchEvent(new Event('change',{bubbles:true}));widthSheet(show)});
+  d.querySelector('#wMag').onclick=()=>{$('#mkSnap').click();widthSheet(show)};d.querySelector('#wX').onclick=()=>d.close();d.onclick=e=>{if(e.target===d)d.close()};if(!d.open)d.showModal()}
+ window.widthSheet=()=>widthSheet(B.width._show);document.addEventListener('pointerup',()=>setTimeout(()=>B.width&&B.width._show(),0),true);
  const pinT=()=>Object.entries(TYPES).map(([k,v])=>({k,i:`<span class="tbDot" style="background:${v.c}"></span>`,l:v.n,run:()=>{$('#pinType').value=k;$('#pinType').dispatchEvent(new Event('change',{bubbles:true}));tb('pin').click()}}));
  const more=()=>[{k:'fit',i:'⤢',l:'Fit to screen',run:()=>$('#fit').click()},{k:'del',i:'🗑',l:'Delete selected',run:()=>$('#del').click()},{k:'mag',i:'🧲',l:'Magnet snap '+($('#mkSnap').classList.contains('on')?'(on)':'(off)'),run:()=>$('#mkSnap').click()},{k:'cz',i:'⚙',l:'Customize toolbar',run:()=>openCz()}];
  const share=()=>[{k:'split',i:'⇆',l:'Split for 2nd tech',run:()=>$('#splitBtn').click()},{k:'merge',i:'⇄',l:'Merge returned file',run:()=>$('#mergeBtn').click()}];
  // move originals out of the way
  ['pan','select','rect','ellipse','check','cloud','arrow','line','zig','measure','pin'].forEach(t=>hid.append(tb(t)));['#mkSnap','#pinType','#size','#del','#fit'].forEach(O);const opl=document.querySelector('#tools .opac');if(opl)hid.append(opl);
- const B={shapes:mkWheelBtn('shapes','Shapes',()=>SH,x=>x.on()),lines:mkWheelBtn('lines','Lines',()=>LN,x=>x.on()),width:mkWheelBtn('width','Width',sizes,()=>0),
+ const B={shapes:mkWheelBtn('shapes','Shapes',()=>SH,x=>x.on()),lines:mkWheelBtn('lines','Lines',()=>LN,x=>x.on()),width:mkWidthBtn(),
   place:mkWheelBtn('place','Place',pinT,()=>tool==='pin'),select:mkWheelBtn('select','Select',()=>SEL,x=>x.on()),share:mkWheelBtn('share','Share',share,()=>0),more:mkWheelBtn('more','More',more,()=>0)};
  const text=tb('text');hid.append(text);const textB=ce('button','tool','T<span class="tl">Text</span>');textB.type='button';textB.onclick=()=>text.click();
  const col=$('#color');const colW=ce('label','tool tbCol');colW.append(col,ce('span','tl','Color'));
@@ -62,7 +77,21 @@
  const G={draw:pill('draw','DRAW',[B.shapes,B.lines,textB,$('#cSnap')]),style:pill('style','STYLE',[colW,B.width]),edit:pill('edit','EDIT',[$('#undo'),$('#redo'),B.more]),
   pins:pill('pins','PINS',[B.place,$('#detBtn'),walkB]),review:pill('review','REVIEW',[B.select,pass,B.share]),ref:pill('ref','REF',[$('#dsBtn'),$('#qrTool')])};
  const rest=[...T.children];T.innerHTML='';const r1=ce('div','tbR'),r2=ce('div','tbR');T.append(r1,r2);rest.forEach(e=>hid.append(e));
- function layout(){const o=UI.order.filter(k=>G[k]).concat(Object.keys(G).filter(k=>!UI.order.includes(k)));r1.replaceChildren(...o.slice(0,3).map(k=>G[k]));r2.replaceChildren(...o.slice(3).map(k=>G[k]),...(window.TB_EXTRA||[]))}window.tbLayout=layout;
+ // bpm-v102: wide screens (≥800px) show tools from the wheels/menus as direct labeled buttons, group by group, as long as both rows still fit; the rest stay as wheels. Phone unchanged.
+ const flat=(x,lab)=>{const b=ce('button','tool tbFlat',`${x.i}<span class="tl">${esc(lab||x.l)}</span>`);b.type='button';b.title=x.l;b.onclick=()=>{x.run();setTimeout(flatSync,0)};b._x=x;return b};
+ const SHORT={rect:'Box',ellipse:'Circle',cloud:'Cloud',check:'Check',line:'Line',arrow:'Arrow',zig:'Zigzag',measure:'Measure',select:'Select',pan:'Pan',fit:'Fit',del:'Delete',mag:'Magnet',cz:'Customize',tlay:'Layers ▾',split:'Split',merge:'Merge'};
+ const EXP=[['shapes',()=>SH],['lines',()=>LN],['select',()=>SEL],['share',share],['more',more]];
+ function flatSync(){window.tlayMark&&tlayMark();document.querySelectorAll('#tools .tbFlat').forEach(b=>{const x=b._x;b.classList.toggle('on',!!(x.on&&x.on()))})}
+ const WMQ=matchMedia('(min-width:800px)');const FL={};
+ const ensure=k=>{if(FL[k])return FL[k];const w=B[k];FL[k]=EXP.find(e=>e[0]===k)[1]().map(x=>{const f=flat(x,SHORT[x.k]);f.hidden=true;return f});w.after(...FL[k]);return FL[k]};
+ const setExp=(k,on)=>{const f=ensure(k);B[k].hidden=on;f.forEach(b=>b.hidden=!on)};
+ function place(){const o=UI.order.filter(k=>G[k]).concat(Object.keys(G).filter(k=>!UI.order.includes(k)));r1.replaceChildren(...o.map(k=>G[k]),...(window.TB_EXTRA||[]));r2.replaceChildren();r2.hidden=true;fade()}
+ // bpm-v102: ONE row everywhere; scrolls horizontally (momentum) with an edge fade where it doesn't fit
+ function fade(){const L=r1.scrollLeft>2,R=r1.scrollLeft+r1.clientWidth<r1.scrollWidth-2;r1.classList.toggle('fL',L);r1.classList.toggle('fR',R)}r1.addEventListener('scroll',fade,{passive:true});
+ const fits=()=>r1.scrollWidth<=r1.clientWidth+1;
+ function layout(){place();const wide=WMQ.matches;T.classList.toggle('tbWide',wide);const exp=[];for(const [k] of EXP)setExp(k,false);
+  if(wide)for(const [k] of EXP){setExp(k,true);if(fits())exp.push(k);else setExp(k,false)}flatSync();T.dataset.exp=exp.join(',');fade()}
+ window.tbLayout=layout;WMQ.addEventListener('change',layout);let lrT=0;new ResizeObserver(()=>{clearTimeout(lrT);lrT=setTimeout(layout,120)}).observe(T);document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#tools,.wh'))setTimeout(flatSync,0)},true);
  layout();T.classList.add('tbNew');
  const refresh=()=>Object.values(B).forEach(b=>b._show());document.addEventListener('click',()=>setTimeout(refresh,0),true);new MutationObserver(()=>refresh()).observe(hid,{subtree:true,attributes:true,attributeFilter:['class']});
  // ---- theme / accent / density ----
