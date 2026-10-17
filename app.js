@@ -593,10 +593,12 @@ const DG={spkw:{n:'Speaker/strobe – wall',t:'spkstrobe',d:['SPK_FOH_WALL','SPK
  jbox:{n:'Junction box',t:'jbox',d:['JBOX','JBOX_CEIL']},surge:{n:'Surge protector (SS / TVSS)',t:'surge',d:['SURGE'],note:'surge suppressor'},
  facp:{n:'FACP (fire alarm control panel)',t:'panel',d:['FACP'],note:'FACP'},dact:{n:'DACT (communicator)',t:'dact',d:['DACT'],note:'DACT'},fatc:{n:'FATC (terminal cabinet)',t:'fatc',d:['FATC'],note:'FATC'},panelbox:{n:'Annunciator',t:'panelbox',d:['PANEL_BOX'],note:'annunciator'},rai:{n:'Remote alarm indicator (RI)',t:'rai',d:['RAI'],note:'remote alarm indicator'}};
 DG.farp={n:'FARP (remote panel)',t:'farp',d:['FARP'],note:'FARP'};
-for(const[k,n,t]of[['heat','Heat detector','heat'],['panel','FACP (manual)','panel'],['oth','Other device','other']])DG[k]={n,t,d:[],x:1};
+for(const[k,n,t]of[['panel','FACP (manual)','panel'],['oth','Other device','other']])DG[k]={n,t,d:[],x:1};
+DG.heat={n:'Heat detector',t:'heat',d:['HEAT'],note:'heat'}; // bpm-v108: hex + H glyph (legend-checked on FL-00090/139/144/149)
 // bpm-v106: new types without a Detect glyph yet: manual pick / legend text / master templates only (multi-criteria looks like smoke, so never auto)
 for(const[k,n,t]of[['multi','Multi-criteria detector','multi'],['speaker','Speaker (no strobe)','speaker'],['lfs','Low-frequency sounder','lfs'],['bell','Bell – 120 VAC','bell'],['pad','PAD-4/PAD-5','pad'],['damper','Fire/smoke damper','damper'],['scs','Smoke control station','scs'],['loc','Local operator console','loc'],['oss','Operator safety switch','oss'],['eol','EOL resistor','eol'],['bfp','Sprinkler backflow preventer','bfp'],['pullbox','Electrical pull box','pullbox'],
  ['vesda','VESDA aspirating detector','vesda'],['vpsu','VESDA power supply','vpsu'],['vsp','VESDA sampling point','vsp'],['vcap','VESDA capillary sampling point','vcap'],['vlf','VESDA laser focus','vlf'],['vnet','VESDA network interface','vnet'],['vrem','VESDA remote enclosure','vrem'],['vtee','VESDA aspirating sampling tee','vtee']])DG[k]={n,t,d:[],x:1};
+for(const[k,d]of[['damper','DAMPER'],['pullbox','PULLBOX'],['eol','EOL'],['vpsu','VPSU'],['vesda','VESDA'],['vrem','VREM'],['vnet','VNET'],['loc','LOC'],['vsp','VSP'],['vcap','VCAP'],['vtee','VTEE'],['pad','PAD'],['speaker','SPEAKER']]){DG[k].d=[d];delete DG[k].x} // bpm-v108: vector glyph detectors (FSD diamond, PB square)
 const D2G={};for(const[k,g]of Object.entries(DG))for(const d of g.d)D2G[d]=k;
 const DEF_SEL=Object.keys(DG).filter(k=>k!=='jbox');
 const gT=g=>TYPES[DG[g.g].t]||TYPES.other;
@@ -651,14 +653,26 @@ async function runDetect0(groups,all,MJ){const want=groups.flatMap(g=>DG[g].d),p
      let typ=null;/* bpm-v106: read the letters — FAAP is always the annunciator, FARP the remote panel, FATC the terminal cabinet, FACP the fallback */if(/^FAAP[-\s]?\d*$/i.test(s))typ='PANEL_BOX';else if(/^FARP[-\s]?\d*$/i.test(s))typ='FARP';else if(/^FACP[-\s]?\d*$/i.test(s))typ='FACP';else if(/^DACT[-\s]?\d*$/i.test(s))typ='DACT';else if(/^FATC[-\s]?\d*$/i.test(s))typ='FATC';else if(/^(SYS\d+|AMP\d*|ANNUN\w*)$/i.test(s))typ='PANEL_BOX';
      else if(/^(TS|TAMPER)$/i.test(s))typ='TAMPER';else if(/^(FS|WF|FLOW)$/i.test(s))typ='FLOW';else if(/^(SS|TVSS|SPD)$/i.test(s))typ='SURGE';if(!typ)continue;
      const m=pdfjsLib.Util.transform(vp.transform,it.transform),x=m[4]+(typ==='SURGE'?(it.width||0)*.5:0),y=m[5]-(it.height||0)*.5;if(x>TB)continue;
-     labs.push({type:typ,x,y,vert:Math.abs(m[1])>Math.abs(m[0]),fp:{s:'text',gl:s.slice(0,12),v:[0,0,0,0,0,0,0]}})}
-    for(const L of labs){if(!r.items.some(o=>o.type===L.type&&Math.hypot(o.x-L.x,o.y-L.y)<28))r.items.push(L)}
+     labs.push({type:typ,x,y,fh:Math.hypot(m[2],m[3])||0,x0:m[4],by:m[5],vert:Math.abs(m[1])>Math.abs(m[0]),fp:{s:'text',gl:s.slice(0,12),v:[0,0,0,0,0,0,0]}})}
+    // bpm-v108: a bare panel word that is part of a homerun note ("FROM FACP", "TO FARP-1") names where the wire goes, not a panel; it may still label a box next to it
+    const HR=[];for(const q of tc.items){const s=(q.str||'').trim();if(!/(^|\s)(FROM|TO)$/i.test(s))continue;const m=pdfjsLib.Util.transform(vp.transform,q.transform);HR.push({x:m[4],x2:m[4]+(q.width||0),y:m[5],h:Math.hypot(m[2],m[3])||8})}
+    // bpm-v108: …and a big-lettered note heading ("FACP / LOCATION") is a note, not a device label: drop a bare word in note-size type, or one with another line of the same size right under it
+    const TL=tc.items.map(q=>{const m=pdfjsLib.Util.transform(vp.transform,q.transform);return{x:m[4],y:m[5],h:Math.hypot(m[2],m[3])||0,s:(q.str||'').trim()}}).filter(t=>t.s);
+    const noteW=L=>L.fp.s==='text'&&!['TAMPER','FLOW','SURGE'].includes(L.type)&&!L.vert&&(L.fh>13||TL.some(t=>t.s&&Math.abs(t.h-L.fh)<.15*L.fh&&Math.abs(t.x-L.x0)<L.fh*1.2&&t.y-L.by>L.fh*.8&&t.y-L.by<L.fh*1.6&&/^[A-Z]{3,}/.test(t.s)));
+    const homer=L=>noteW(L)||L.fp.s==='text'&&!['TAMPER','FLOW','SURGE'].includes(L.type)&&HR.some(h=>{const dy=L.y-(h.y-h.h*.5);return(Math.abs(dy)<h.h*.8&&L.x>h.x&&L.x-h.x2<h.h*3)||(dy>0&&dy<h.h*2.6&&L.x>h.x-h.h*4&&L.x<h.x2+h.h*4)});
+    // bpm-v108: a speaker tap tag (1/4W, 1/2W, 2W) beside a strobe-only box makes it a speaker/strobe (the strobe glyph with the speaker cone on top)
+    for(const q of tc.items){const s=(q.str||'').trim();if(!/^\d+(\/\d+)?\s?W$/i.test(s))continue;const m=pdfjsLib.Util.transform(vp.transform,q.transform),hh=Math.hypot(m[2],m[3])||8,vt=Math.abs(m[1])>Math.abs(m[0]),qx=m[4]+(vt?-hh/2:(q.width||0)/2),qy=m[5]+(vt?-(q.width||0)/2:-hh/2);
+     let b=null,bd=40;for(const o of r.items){const d=Math.hypot(o.x-qx,o.y-qy);if(d<bd&&/^(STROBE|SPK|HORN)/.test(o.type)){bd=d;b=o}}if(b&&/^STROBE/.test(b.type)){b.type=b.type==='STROBE_BOH'?'SPK_BOH_WALL':'SPK_FOH_WALL';b.wtag=s}}
+    if(!/VESDA|ASPIRAT|SAMPLING/i.test(tc.items.map(q=>q.str).join(' ')))r.items=r.items.filter(it=>!['VSP','VCAP','VTEE'].includes(it.type)); // bpm-v108: hatched VESDA symbols only on sheets that talk about VESDA piping
+    // bpm-v108: square + speaker cone with no strobe disc is a plain speaker when this plan's legend has no line-array speaker or LF sounder (FL-00132)
+    if(r.items.some(it=>it.type==='LINE_ARRAY')&&window.planTextAll){const PT=await planTextAll();if(/SPEAKER/i.test(PT)&&!/LINE[- ]?ARRAY|LOW[- ]FREQUENCY|\bLFS?\b/i.test(PT))for(const it of r.items)if(it.type==='LINE_ARRAY')it.type='SPEAKER'}
+    for(const L of labs){if(!homer(L)&&!r.items.some(o=>o.type===L.type&&Math.hypot(o.x-L.x,o.y-L.y)<28))r.items.push(L)}
     for(const it of r.items){if(!['FACP','DACT','FATC','PANEL_BOX','FARP','FLOW','TAMPER','FLOW_TAMPER'].includes(it.type))continue;
      const lab=labs.find(L=>Math.hypot(L.x-it.x,L.y-it.y)<36);if(lab){it.type=lab.type;it.lab=1}
      else if(it.type==='FLOW_TAMPER')it.type='FLOW'}
     // bpm-v106: an unlabeled "panel" box whose inside holds other text-layer words (terminal names C / NC / 2-, table cells) is a wiring detail or table, not a panel
     {const TW=[];for(const q of tc.items){const s=(q.str||'').trim();if(!s)continue;const m=pdfjsLib.Util.transform(vp.transform,q.transform);TW.push({s,x:m[4]+(q.width||0)/2,y:m[5]-(Math.hypot(m[2],m[3])||8)/2})}
-     r.items=r.items.filter(it=>{if(it.lab||!['FACP','DACT','FATC','PANEL_BOX'].includes(it.type)||!(it.bw>0))return true;const a=it.ang||0,ca=Math.cos(a),sa=Math.sin(a);
+     r.items=r.items.filter(it=>{if(it.lab||!['FACP','DACT','FATC','PANEL_BOX','VPSU','VESDA','VREM','VNET','LOC','EOL'].includes(it.type)||!(it.bw>0))return true;const a=it.ang||0,ca=Math.cos(a),sa=Math.sin(a);
       return !TW.some(w=>{const dx=w.x-it.x,dy=w.y-it.y,u=dx*ca+dy*sa,v=-dx*sa+dy*ca;return Math.abs(u)<it.bw/2-1&&Math.abs(v)<it.bh/2-1&&!/^(FACP|FACU|DACT|FATC|FAAP|FARP|ANN\w*|SYS\d*|AMP\d*|PANEL|XLS|MXL|FC\d+)/i.test(w.s)})})}
    }catch{}
    if(window.masterItems)MJ.push({n,vp,base:r.items.map(o=>({type:o.type,x:o.x,y:o.y,bw:o.bw,bh:o.bh}))}); // bpm-v99: master-template matching runs AFTER Detect returns (background, non-blocking)
@@ -677,7 +691,7 @@ async function runDetect0(groups,all,MJ){const want=groups.flatMap(g=>DG[g].d),p
     if(bad.size){const k=items.filter(it=>!bad.has(it));items.length=0;items.push(...k);(R.chainDrop||=[]).push({page:n,n:bad.size})}}
    {const keep=[];for(const it of items){const o=keep.find(k=>k.g!==it.g&&Math.hypot(k.x-it.x,k.y-it.y)<3);if(o){if(!(o.conflict||=[]).some(c=>c.g===it.g))o.conflict.push({g:it.g,det:it.type,fp:it.fp});continue}keep.push(it)}items.length=0;items.push(...keep)} // bpm-v94: RI/WP/R text tags re-type only (after geometry backfill; x/y/ang/bw/bh untouched; shp keeps the glyph's original silhouette so size/outset stay identical)
    // bpm-v49: SS surge box sits flush beside its AIM hex (~18pt); only an existing surge pin (or a pin right on it) suppresses it
-   const add=items.filter(it=>!(it.g==='surge'?pins.some(p=>p.page===n&&Math.hypot(p.x-it.x,p.y-it.y)<(p.type==='surge'?18*r.k:8)):near(it.x,it.y))).map(it=>({id:uid(),page:n,x:it.x,y:it.y,bw:it.bw,bh:it.bh,ang:it.ang,vert:it.vert,det:it.type,g:it.g,fp:it.fp,learned:it.learned,...(it.tags?.length?{tags:it.tags}:{}),...(it.plan?{plan:it.plan}:{}),...(it.fromG?{fromG:it.fromG,shp:DG[it.fromG].t}:{}),...(it.conflict?{conflict:it.conflict}:{}),...(it.low?{low:it.low}:{}),...(it.lab?{lab:1}:{})}));ghosts.push(...add);found+=add.length;
+   const add=items.filter(it=>!(it.g==='surge'?pins.some(p=>p.page===n&&Math.hypot(p.x-it.x,p.y-it.y)<(p.type==='surge'?18*r.k:8)):near(it.x,it.y))).map(it=>({id:uid(),page:n,x:it.x,y:it.y,bw:it.bw,bh:it.bh,ang:it.ang,vert:it.vert,det:it.type,g:it.g,fp:it.fp,learned:it.learned,...(it.tags?.length?{tags:it.tags}:{}),...(it.plan?{plan:it.plan}:{}),...(it.fromG?{fromG:it.fromG,shp:DG[it.fromG].t}:{}),...(it.conflict?{conflict:it.conflict}:{}),...(it.low?{low:it.low}:{}),...(it.lab?{lab:1}:{}),...(it.type==='HEAT'?{shk:'hex'}:it.type==='DAMPER'?{shk:'dia'}:it.type==='VTEE'?{shk:'rect'}:{})}));ghosts.push(...add);found+=add.length; /* bpm-v108: heat prints as a hex, keep the printed outline */
    R.stats.push({page:n,ops:ol.fnArray.length,paths:r.paths,found:items.length,kept:add.length,skipped:items.length-add.length,learnedHits:nl,opsMs:Math.round(t1-t0),workerMs:Math.round(r.ms),totalMs:Math.round(performance.now()-t0),k:r.k});
    prog((i+1)/pages.length);if(n===page)draw();renderGhostBar()}
   window.__detStats=R.stats;if(!found)showErr(`No ${groups.length===Object.keys(DG).length?'':'matching '}device symbols found${all?'':' on this page'}. Detection works on CAD-exported vector plans with standard symbols.`)}

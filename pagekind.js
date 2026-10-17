@@ -1,4 +1,4 @@
-// bpm-v107: page kind for Detect. Riser and wiring sheets get no Detect pins. The kind is read from the title block's SHEET TITLE field
+// bpm-v107: page kind for Detect. Riser and wiring sheets get no Detect pins (bpm-v108: also equipment-detail and schedule/calculation sheets). The kind is read from the title block's SHEET TITLE field
 // (falling back to the big drawing titles next to the sheet number). A floor-plan title (… PLAN) always wins, so a small "wiring" detail
 // box on a plan never skips it. Per-page override "Detect this page anyway" is remembered (IndexedDB meta 'detAny').
 (()=>{const KC=new Map();let ANY=null;
@@ -19,6 +19,9 @@
   if(PLAN.test(txt)&&!RISER.test(title)){kind=null;why='plan title'}
   else if(RISER.test(txt)){kind='riser';why=`${src}: ${(txt.match(/[^|]*RISER[^|]*/i)||[txt])[0].trim()}`}
   else if(WIRE.test(txt)||(title&&/\bWIRING\b/i.test(title))){kind='wiring';why=`${src}: ${(txt.match(/[^|]*(WIRING|POINT|SCHEMATIC|ONE[- ]LINE)[^|]*/i)||[txt])[0].trim()}`}
+  // bpm-v108: other non-plan sheets by their sheet title (equipment details / elevations / graphic displays; schedules, matrices, calculations, index)
+  else if(/\bDETAILS?\b|\bELEVATIONS?\b|GRAPHIC DISPLAY|ISOMETRIC/i.test(txt)){kind='detail';why=`${src}: ${txt.trim()}`}
+  else if(/\bSCHEDULES?\b|\bMATRIX\b|CALCULATIONS?\b|INDEX SHEET|COVER SHEET/i.test(txt)){kind='schedule';why=`${src}: ${txt.trim()}`}
   else if(!title&&SN&&/^X?FAS-?50\d$/i.test(SN.s)&&!PLAN.test(big.join(' '))){kind='riser';why=`sheet no. ${SN.s} (riser series)`}
   return{kind,why:why.slice(0,90),title:title.slice(0,90),sheet:SN?SN.s:''}}
  window.pageKindOf=classify;
