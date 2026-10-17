@@ -35,16 +35,30 @@ window.mergePins=mergePins;window.mergeLog=mergeLog;
   return pins.filter(p=>pg.has(p.page)&&(!ty.size||ty.has(p.type))&&(!A||(p.x>=A.x0&&p.x<=A.x1&&p.y>=A.y0&&p.y<=A.y1)))}
  async function openSplit(area){if(!plan)return toast('Open a plan first');let d=$('#splitDlg');if(!d){d=ce('dialog',{id:'splitDlg'});document.body.append(d)}
   const all=await byIdx('pins','planId',plan.id),pgs=[...new Set(all.map(p=>p.page))].sort((a,b)=>a-b),tys=[...new Set(all.map(p=>p.type))];d._area=area||null;
-  d.innerHTML=`<h3 style="margin:4px 0">⇆ Split for a second tech</h3><small style="color:#cbd5e1">Exports a .marker with the chosen pins. They test it and send the file back; ⇄ Merge pulls their results in by pin ID.</small>
-  <b>Pages</b><div class="row">${pgs.map(n=>`<label><input type="checkbox" data-pg="${n}"${n===page?' checked':''}> pg ${n}</label>`).join('')}</div>
-  <b>Device types</b> <small>(none = all)</small><div class="row">${tys.map(t=>`<label><input type="checkbox" data-ty="${t}"> ${esc(TYPES[t]?.n||t)}</label>`).join('')}</div>
-  <b>Area</b><div class="row"><span id="spA">${area?'Drawn area on pg '+page:'Whole page'}</span><button type="button" class="btn" id="spDraw">▭ Draw area</button>${area?'<button type="button" class="btn" id="spClr">Clear</button>':''}</div>
-  <div class="row"><b id="spN"></b><span class="sp"></span><button type="button" class="btn" id="spX">Cancel</button><button type="button" class="btn pri" id="spGo">Export split</button></div>`;
+  /* bpm-v103: redesigned Split: title, 2-step layout, grouped sections, chip toggles with live counts, summary, prominent Share/Save */
+  const cnt=f=>all.filter(f).length,dot=t=>(TYPES[t]||TYPES.other).c;d.classList.add('spD');
+  d.innerHTML=`<div class="spHd"><div><h3>⇆ Split for a second tech</h3><small>Give some pins to another phone. They test them and send the file back; ⇄ Merge pulls their results in by pin ID.</small></div><button type="button" class="btn spClose" id="spX2" title="Close">✕<span>Close</span></button></div>
+  <ol class="spSteps"><li class="on"><b>1</b> Choose devices</li><li><b>2</b> Share or save</li></ol>
+  <section class="spSec"><h4>Pages</h4><div class="spChips">${pgs.map(n=>`<label class="spChip"><input type="checkbox" data-pg="${n}"${n===page?' checked':''}><span>${esc(pgT(plan.id,n))}</span><em>${cnt(p=>p.page===n)}</em></label>`).join('')}</div></section>
+  <section class="spSec"><h4>Device types <small>none ticked = all types</small></h4><div class="spChips">${tys.map(t=>`<label class="spChip"><input type="checkbox" data-ty="${t}"><i style="background:${dot(t)}"></i><span>${esc(TYPES[t]?.n||t)}</span><em data-tc="${t}">${cnt(p=>p.type===t)}</em></label>`).join('')}</div></section>
+  <section class="spSec"><h4>Area</h4><div class="spArea"><span id="spA">${area?'▭ Drawn area on '+esc(pgT(plan.id,page)):'Whole page'}</span><span class="sp"></span><button type="button" class="btn" id="spDraw">▭ Draw area</button>${area?'<button type="button" class="btn" id="spClr">Clear area</button>':''}</div></section>
+  <div class="spSum" id="spSum"></div>
+  <div class="spFt"><button type="button" class="btn" id="spX">Cancel</button><button type="button" class="btn pri spGo" id="spGo">⇪ Share / Save split · <b id="spN"></b></button></div>`;
   if(area)d.querySelectorAll('[data-pg]').forEach(b=>b.checked=+b.dataset.pg===page);
-  const upd=()=>{pins.length;const n=selected(d).length;d.querySelector('#spN').textContent=`${n} pin${n===1?'':'s'}`;d.querySelector('#spGo').disabled=!n};d.onchange=upd;upd();
-  d.querySelector('#spX').onclick=()=>d.close();if(d.querySelector('#spClr'))d.querySelector('#spClr').onclick=()=>{d.close();openSplit()};
+  const upd=()=>{const S=selected(d),n=S.length,T=[...new Set(S.map(p=>p.type))],P=[...new Set(S.map(p=>p.page))].sort((a,b)=>a-b),ut=S.filter(p=>!p.status||p.status==='not tested').length;
+   d.querySelector('#spN').textContent=`${n} pin${n===1?'':'s'}`;d.querySelector('#spGo').disabled=!n;
+   const pg=new Set([...d.querySelectorAll('[data-pg]:checked')].map(b=>+b.dataset.pg)),A=d._area;d.querySelectorAll('[data-tc]').forEach(e=>{const t=e.dataset.tc;e.textContent=all.filter(p=>p.type===t&&pg.has(p.page)&&(!A||(p.x>=A.x0&&p.x<=A.x1&&p.y>=A.y0&&p.y<=A.y1))).length});
+   d.querySelector('#spSum').innerHTML=n?`<b>${n}</b> pin${n===1?'':'s'} · ${T.length} type${T.length===1?'':'s'} · ${P.map(x=>esc(pgT(plan.id,x))).join(', ')}<br><small>${ut} untested · ${n-ut} already have a result${A?' · inside the drawn area':''}</small>`:'<small>Nothing selected yet. Tick at least one page.</small>'};
+  d.onchange=upd;upd();
+  d.querySelector('#spX').onclick=()=>d.close();d.querySelector('#spX2').onclick=()=>d.close();if(d.querySelector('#spClr'))d.querySelector('#spClr').onclick=()=>{d.close();openSplit()};
   d.querySelector('#spDraw').onclick=()=>{d.close();document.querySelectorAll('dialog[open]').forEach(x=>x.close());drawArea(a=>openSplit(a))};
-  d.querySelector('#spGo').onclick=async()=>{const sel=selected(d);d.close();busy(1,'Building split…');try{const b=await buildSplit(sel),nm=fsafe(project.name)+'-split-'+sel.length+'.marker';window.__lastSplit=b;const r=await shareOrSave(b,nm);toast(`Split of ${sel.length} pins ${r}`)}catch(e){alert('Split failed: '+e.message)}finally{busy(0)}};
+  d.querySelector('#spGo').onclick=async()=>{const sel=selected(d);busy(1,'Building split…');let b,nm;try{b=await buildSplit(sel);nm=fsafe(project.name)+'-split-'+sel.length+'.marker';window.__lastSplit=b}catch(e){busy(0);d.close();return alert('Split failed: '+e.message)}busy(0);
+   const f=new File([b],nm,{type:'application/octet-stream'}),canSh=!!(navigator.canShare&&navigator.canShare({files:[f]}));
+   const step2=msg=>{d.querySelector('.spSteps').innerHTML='<li class="done"><b>✓</b> Choose devices</li><li class="on"><b>2</b> Share or save</li>';d.querySelectorAll('.spSec,#spSum').forEach(e=>e.hidden=true);
+    d.querySelector('.spFt').innerHTML=`<div class="spReady"><div class="spFile">📦 <b>${esc(nm)}</b><small>${sel.length} pins · ${(b.size/1048576).toFixed(1)} MB</small></div>${msg||''}</div><div class="spFt2">${canSh?'<button type="button" class="btn pri spGo" id="spShare">⇪ Share file</button><button type="button" class="btn" id="spSave">⬇ Save to device</button>':''}<button type="button" class="btn" id="spDone">Done</button></div>`;
+    const q=x=>d.querySelector(x);if(q('#spShare'))q('#spShare').onclick=async()=>{try{await navigator.share({files:[f],title:nm});toast(`Split of ${sel.length} pins shared`);d.close()}catch(e){if(e.name!=='AbortError')toast('Share failed: '+e.message)}};
+    if(q('#spSave'))q('#spSave').onclick=()=>{dl(b,nm);toast(`Split of ${sel.length} pins saved`);d.close()};q('#spDone').onclick=()=>d.close()};
+   if(canSh)step2();else{dl(b,nm);toast(`Split of ${sel.length} pins saved`);step2('<small class="spOk">✓ Saved to your downloads. Send it to the second tech.</small>')}};
   if(!d.open)d.showModal()}
  function drawArea(cb){const o=ce('div',{id:'areaOv'});o.style.cssText='position:absolute;inset:0;z-index:8;cursor:crosshair;touch-action:none;background:#0002';const r=ce('div');r.style.cssText='position:absolute;border:2px dashed #fbbf24;background:#fbbf2422;display:none';o.append(r,ce('div',{},'<div style="position:absolute;top:6px;left:50%;transform:translateX(-50%);background:#1e293b;padding:4px 10px;border-radius:6px">Drag a box around the area</div>'));stage.append(o);
   let s=null;o.onpointerdown=e=>{o.setPointerCapture(e.pointerId);const b=stage.getBoundingClientRect();s={x:e.clientX-b.left,y:e.clientY-b.top,b}};
