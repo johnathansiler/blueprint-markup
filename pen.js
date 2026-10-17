@@ -237,24 +237,50 @@ window.setLineStyle=async v=>{LS=v;localStorage.setItem(LSK,v);const it=(tool===
  let F=null,FP=new Map(),fpinch=null; // F = active stroke {id,raw:[[sx,sy,t]],B:[[x,y]] brush (plan), bs:{x,y} brush screen, t0, moved}
  const ST2=e=>{const r=stage.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}};
  const palm=e=>e.pointerType==='touch'&&(e.width>34||e.height>34);
- // live stabilizer: lazy brush (string length grows with Smoothing) + light exponential smoothing
- function feed(s){const t=.25+.75*SM/100,rad=lerp(1.5,16,t),a=lerp(.75,.32,t),b=F.bs,dx=s.x-b.x,dy=s.y-b.y,d=Math.hypot(dx,dy);F.raw.push([s.x,s.y]);if(d<=rad)return;
-  const tx=b.x+dx*(d-rad)/d,ty=b.y+dy*(d-rad)/d;b.x+=(tx-b.x)*a;b.y+=(ty-b.y)*a;const w=toW(b.x,b.y),L=F.B[F.B.length-1];if(!L||Math.hypot(w.x-L[0],w.y-L[1])*view.s>.8)F.B.push([w.x,w.y])}
- // release: smooth (moving average, scaled by Smoothing) -> RDP simplify -> Catmull-Rom -> cubic Bezier nodes (all smooth)
- function rdp(P,eps){if(P.length<3)return P.slice();let i0=0,dm=0;const[a,b]=[P[0],P[P.length-1]],dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy)||1;
-  for(let i=1;i<P.length-1;i++){const d=Math.abs(dx*(a[1]-P[i][1])-dy*(a[0]-P[i][0]))/L;if(d>dm){dm=d;i0=i}}return dm>eps?rdp(P.slice(0,i0+1),eps).slice(0,-1).concat(rdp(P.slice(i0),eps)):[a,b]}
+ // bpm-v106: live input = coalesced pointer samples -> velocity-adaptive 1-euro filter (strong smoothing when slow, little lag when fast)
+ // -> light lazy brush (kept short so tight turns are not cut). Smoothing slider drives the filter cutoff, brush radius, resample step, RDP tolerance.
+ const t01=()=>.25+.75*SM/100;
+ function oe(prev,x,dt,dx,mc,beta){const fc=mc+beta*Math.abs(dx),a=1/(1+1/(2*Math.PI*fc*dt));return prev+(x-prev)*a}
+ function feed(s){const t=t01();F.raw.push([s.x,s.y,s.t||performance.now()]);F.fitN=null;const now=s.t||performance.now(),E=F.oe||(F.oe={x:s.x,y:s.y,dx:0,dy:0,t:now});let dt=Math.max(1,now-E.t)/1000;if(dt>0.1)dt=0.1;
+  const mc=lerp(3.5,0.9,t),beta=lerp(.06,.012,t),ad=1/(1+1/(2*Math.PI*1.0*dt));const vx=(s.x-E.x)/dt,vy=(s.y-E.y)/dt;E.dx+=(vx-E.dx)*ad;E.dy+=(vy-E.dy)*ad;
+  E.x=oe(E.x,s.x,dt,E.dx,mc,beta);E.y=oe(E.y,s.y,dt,E.dy,mc,beta);E.t=now;
+  // short lazy brush on top (only removes hand tremor; radius well under a tight turn)
+  const rad=lerp(.8,5,t),b=F.bs,dx=E.x-b.x,dy=E.y-b.y,d=Math.hypot(dx,dy);if(d>rad){b.x+=dx*(d-rad)/d;b.y+=dy*(d-rad)/d}
+  const w=toW(b.x,b.y),L=F.B[F.B.length-1];if(!L||Math.hypot(w.x-L[0],w.y-L[1])*view.s>.8){F.B.push([w.x,w.y]);F.fitN=null}}
+ function rdp(P,eps){if(P.length<3)return P.slice();let i0=0,dm=0;const[a,b]=[P[0],P[P.length-1]],dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy);
+  for(let i=1;i<P.length-1;i++){const d=L?Math.abs(dx*(a[1]-P[i][1])-dy*(a[0]-P[i][0]))/L:Math.hypot(P[i][0]-a[0],P[i][1]-a[1]);if(d>dm){dm=d;i0=i}}return dm>eps?rdp(P.slice(0,i0+1),eps).slice(0,-1).concat(rdp(P.slice(i0),eps)):[a,b]}
  function resample(P,step){if(P.length<2)return P;const O=[P[0]];let acc=0;for(let i=1;i<P.length;i++){let[ax,ay]=P[i-1];const[bx,by]=P[i];let d=Math.hypot(bx-ax,by-ay);while(acc+d>=step){const k=(step-acc)/d;ax+=(bx-ax)*k;ay+=(by-ay)*k;O.push([ax,ay]);d=Math.hypot(bx-ax,by-ay);acc=0}acc+=d}const l=P[P.length-1],q=O[O.length-1];if(Math.hypot(l[0]-q[0],l[1]-q[1])>step*.3)O.push(l);else O[O.length-1]=l;return O}
- function fit(B,closedHint){const t=.25+.75*SM/100,px=1/view.s;if(B.length<2)return null;let P=resample(B,lerp(2,5,t)*px);
-  const win=Math.round(lerp(1,7,t)),passes=t>.5?2:1;for(let p=0;p<passes;p++){P=P.map((q,i)=>{if(i===0||i===P.length-1)return q;let sx=0,sy=0,n=0;for(let j=Math.max(0,i-win);j<=Math.min(P.length-1,i+win);j++){sx+=P[j][0];sy+=P[j][1];n++}return[sx/n,sy/n]})}
-  let K=rdp(P,lerp(.7,3.6,t)*px);if(K.length<2)K=[P[0],P[P.length-1]];
-  const N=K.map(([x,y])=>({x,y,ix:0,iy:0,ox:0,oy:0,k:K.length>2?'s':'c'}));
-  for(let i=0;i<N.length;i++){const p=N[Math.max(0,i-1)],q=N[Math.min(N.length-1,i+1)];if(i===0||i===N.length-1)continue;
-   let tx=(q.x-p.x)/2,ty=(q.y-p.y)/2;const tl=Math.hypot(tx,ty)||1,li=Math.hypot(N[i].x-p.x,N[i].y-p.y)/3,lo=Math.hypot(q.x-N[i].x,q.y-N[i].y)/3;N[i].ix=-tx/tl*li;N[i].iy=-ty/tl*li;N[i].ox=tx/tl*lo;N[i].oy=ty/tl*lo}
-  if(N.length>2){const a=N[0],b=N[1],y=N[N.length-1],z=N[N.length-2];a.ox=(b.x+b.ix-a.x)*.5;a.oy=(b.y+b.iy-a.y)*.5;y.ix=(z.x+z.ox-y.x)*.5;y.iy=(z.y+z.oy-y.y)*.5}
-  return N}
- window.FH_API={fit,rdp,resample};
+ // intentional corners: turning angle over ±k samples above ~62° and a local maximum → kept sharp (segments are fitted separately, cusp node)
+ function corners(P,step){const k=Math.max(2,Math.round(7/step*(1/view.s))||2),C=[],ang=new Array(P.length).fill(0);
+  for(let i=k;i<P.length-k;i++){const a=P[i-k],b=P[i],c=P[i+k],v1x=b[0]-a[0],v1y=b[1]-a[1],v2x=c[0]-b[0],v2y=c[1]-b[1],l1=Math.hypot(v1x,v1y),l2=Math.hypot(v2x,v2y);if(!l1||!l2)continue;ang[i]=Math.acos(Math.max(-1,Math.min(1,(v1x*v2x+v1y*v2y)/(l1*l2))))}
+  const th=lerp(52,70,t01())*Math.PI/180;for(let i=k;i<P.length-k;i++){if(ang[i]<th)continue;let mx=true;for(let j=i-k;j<=i+k;j++)if(ang[j]>ang[i]||(ang[j]===ang[i]&&j<i)){mx=false;break}if(mx&&(!C.length||i-C[C.length-1]>=k))C.push(i)}return C}
+ const smoothSeg=(P,win,passes)=>{for(let p=0;p<passes;p++){P=P.map((q,i)=>{if(i===0||i===P.length-1)return q;const w=Math.min(win,i,P.length-1-i);let sx=0,sy=0,n=0;for(let j=i-w;j<=i+w;j++){sx+=P[j][0];sy+=P[j][1];n++}return[sx/n,sy/n]})}return P};
+ // centripetal Catmull-Rom (alpha .5) → cubic Bezier handles: no overshoot / self-loops on uneven spacing
+ function crHandles(K){const n=K.length,N=K.map(([x,y])=>({x,y,ix:0,iy:0,ox:0,oy:0,k:'s'}));if(n<2)return N;
+  const G=i=>i<0?[2*K[0][0]-K[1][0],2*K[0][1]-K[1][1]]:i>=n?[2*K[n-1][0]-K[n-2][0],2*K[n-1][1]-K[n-2][1]]:K[i];
+  for(let i=0;i<n-1;i++){const P0=G(i-1),P1=K[i],P2=K[i+1],P3=G(i+2),dd=(A,B)=>Math.max(1e-6,Math.pow(Math.hypot(B[0]-A[0],B[1]-A[1]),.5)),d1=dd(P0,P1),d2=dd(P1,P2),d3=dd(P2,P3);
+   const b1=[0,1].map(j=>(d1*d1*P2[j]-d2*d2*P0[j]+(2*d1*d1+3*d1*d2+d2*d2)*P1[j])/(3*d1*(d1+d2))),b2=[0,1].map(j=>(d3*d3*P1[j]-d2*d2*P3[j]+(2*d3*d3+3*d3*d2+d2*d2)*P2[j])/(3*d3*(d3+d2)));
+   N[i].ox=b1[0]-P1[0];N[i].oy=b1[1]-P1[1];N[i+1].ix=b2[0]-P2[0];N[i+1].iy=b2[1]-P2[1]}return N}
+ // final + live fit, from the raw samples in screen px (zero-phase, so no lag at corners):
+ // arc-length resample (speed carried along) -> corner split -> velocity-adaptive smoothing (1-euro idea: wide when slow = tremor, narrow when fast)
+ // -> RDP (tolerance from the slider) -> centripetal Catmull-Rom Bezier. Nodes are converted to plan coords at the end.
+ function resampleT(P,step){const O=[[P[0][0],P[0][1],0]];let acc=0;const sp=i=>{const a=P[Math.max(0,i-1)],b=P[i];const dt=Math.max(4,(b[2]||0)-(a[2]||0));return Math.hypot(b[0]-a[0],b[1]-a[1])/dt*1000};
+  for(let i=1;i<P.length;i++){let ax=P[i-1][0],ay=P[i-1][1];const bx=P[i][0],by=P[i][1],v=sp(i);let d=Math.hypot(bx-ax,by-ay);if(i===1)O[0][2]=v;while(acc+d>=step){const k=(step-acc)/d;ax+=(bx-ax)*k;ay+=(by-ay)*k;O.push([ax,ay,v]);d=Math.hypot(bx-ax,by-ay);acc=0}acc+=d}
+  const l=P[P.length-1],q=O[O.length-1];if(Math.hypot(l[0]-q[0],l[1]-q[1])>step*.3)O.push([l[0],l[1],q[2]]);else{q[0]=l[0];q[1]=l[1]}return O}
+ function fitScreen(raw){const t=t01();if(raw.length<2)return null;const step=lerp(1.5,3,t);let P=resampleT(raw,step);if(P.length<2)return null;
+  const C=corners(P,step*view.s),cuts=[0,...C,P.length-1],wslow=lerp(2,7,t)*lerp(2,5,t),eps=lerp(.6,3.2,t),out=[];
+  for(let s=0;s<cuts.length-1;s++){let S=P.slice(cuts[s],cuts[s+1]+1);if(S.length<2)continue;
+   for(let pass=0;pass<2;pass++)S=S.map((q,i)=>{if(i===0||i===S.length-1)return q;const w=Math.max(0,Math.round(wslow/(1+q[2]/600)/step));const h=Math.min(w,i,S.length-1-i);if(!h)return q;let sx=0,sy=0,sw=0;for(let j=i-h;j<=i+h;j++){const g=Math.exp(-2*((j-i)/(h+1))**2);sx+=S[j][0]*g;sy+=S[j][1]*g;sw+=g}return[sx/sw,sy/sw,q[2]]});
+   const vm=S.reduce((a,q)=>a+q[2],0)/S.length;let K=rdp(S.map(q=>[q[0],q[1]]),eps*(1+Math.min(1.5,vm/1500)));if(K.length<2)K=[[S[0][0],S[0][1]],[S[S.length-1][0],S[S.length-1][1]]];const N=crHandles(K);
+   if(out.length){const L=out[out.length-1];L.ox=N[0].ox;L.oy=N[0].oy;L.k='c';N.shift()}out.push(...N)}
+  if(!out.length)return null;out[0].k=out[out.length-1].k='c';
+  return out.map(n=>{const p=toW(n.x,n.y),i=toW(n.x+n.ix,n.y+n.iy),o=toW(n.x+n.ox,n.y+n.oy);return{x:p.x,y:p.y,ix:i.x-p.x,iy:i.y-p.y,ox:o.x-p.x,oy:o.y-p.y,k:n.k}})}
+ function fit(B){if(!B||B.length<2)return null;const S=B.map(([x,y],i)=>{const s=toS(x,y);return[s.x,s.y,i*16]});return fitScreen(S)}
+ // the live preview draws the same fit as the final stroke (cached per brush length)
+ function liveNodes(){if(!F)return null;if(F.fitN&&F.fitL===F.raw.length&&F.fitV===view)return F.fitN;F.fitN=fitScreen(F.raw);F.fitL=F.raw.length;F.fitV=view;return F.fitN}
+ window.FH_API={fit,fitScreen,rdp,resample,corners};
  async function finish(){const S=F;F=null;requestDraw(false);if(!S)return;if(S.B.length<2||!S.moved)return;
-  const l=S.bs;const w=toW(l.x,l.y);S.B.push([w.x,w.y]);const N=fit(S.B);if(!N)return;
+  const N=fitScreen(S.raw);if(!N)return;
   const m={id:uid(),planId:plan.id,page,type:'path',fh:1,color:$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false)};PEN_API.writeNodes(m,N,false,false);m.type='path';
   window.fhLast={raw:S.raw.map(([x,y])=>{const q=toW(x,y);return[q.x,q.y]}),stab:S.B.slice(),nodes:N.length,id:m.id};await change('markups',null,m)}
  const startPinch=()=>{const[a,b]=[...FP.values()];fpinch={d:Math.hypot(a.x-b.x,a.y-b.y)||1,c:{x:(a.x+b.x)/2,y:(a.y+b.y)/2},v:{...view}}};
@@ -265,16 +291,16 @@ window.setLineStyle=async v=>{LS=v;localStorage.setItem(LSK,v);const it=(tool===
   const s=ST2(e);
   if(FP.size===1){ // second finger: early -> two-finger pan/zoom (stroke discarded); late -> resting palm, ignored
    if(F&&(F.moved>24||performance.now()-F.t0>350))return;F=null;FP.set(e.pointerId,s);startPinch();requestDraw(false);return}
-  FP.set(e.pointerId,s);stage.setPointerCapture?.(e.pointerId);F={pid:e.pointerId,pt:e.pointerType,raw:[[s.x,s.y]],bs:{x:s.x,y:s.y},B:[[toW(s.x,s.y).x,toW(s.x,s.y).y]],t0:performance.now(),moved:0,s0:s}},true);
+  FP.set(e.pointerId,s);stage.setPointerCapture?.(e.pointerId);F={pid:e.pointerId,pt:e.pointerType,raw:[[s.x,s.y,performance.now()]],bs:{x:s.x,y:s.y},B:[[toW(s.x,s.y).x,toW(s.x,s.y).y]],t0:performance.now(),moved:0,s0:s}},true);
  stage.addEventListener('pointermove',e=>{if(tool!=='free'||!FP.has(e.pointerId))return;e.stopImmediatePropagation();const s=ST2(e);FP.set(e.pointerId,s);
   if(fpinch&&FP.size>=2){const[a,b]=[...FP.values()],d=Math.hypot(a.x-b.x,a.y-b.y),c={x:(a.x+b.x)/2,y:(a.y+b.y)/2},g=fpinch,sc=clampS(g.v.s*d/g.d),wx=(g.c.x-g.v.x)/g.v.s,wy=(g.c.y-g.v.y)/g.v.s;view={s:sc,x:c.x-wx*sc,y:c.y-wy*sc};fastView();return}
-  if(!F||F.pid!==e.pointerId)return;const ev=e.getCoalescedEvents?e.getCoalescedEvents():[];for(const c of(ev.length?ev:[e])){const q=ST2(c);F.moved=Math.max(F.moved,Math.hypot(q.x-F.s0.x,q.y-F.s0.y));feed(q)}requestDraw(false)},true);
+  if(!F||F.pid!==e.pointerId)return;const ev=e.getCoalescedEvents?e.getCoalescedEvents():[];for(const c of(ev.length?ev:[e])){const q=ST2(c);q.t=c.timeStamp;F.moved=Math.max(F.moved,Math.hypot(q.x-F.s0.x,q.y-F.s0.y));feed(q)}requestDraw(false)},true);
  const fup=e=>{if(tool!=='free'&&!FP.has(e.pointerId))return;if(!FP.has(e.pointerId))return;e.stopImmediatePropagation();FP.delete(e.pointerId);
   if(fpinch){if(FP.size<2)fpinch=null;if(!FP.size)drawBase&&requestDraw(true);return}if(F&&F.pid===e.pointerId)finish()};
  stage.addEventListener('pointerup',fup,true);stage.addEventListener('pointercancel',e=>{if(F&&F.pid===e.pointerId){F=null;requestDraw(false)}fup(e)},true);
  const _o=drawOverlay0;drawOverlay0=function(){_o();if(!F||F.B.length<2||!plan)return;const c=octx;c.save();setT(c);c.globalAlpha=toolOp(false);c.strokeStyle=$('#color').value;c.lineWidth=(SZ[$('#size').value]||3)/MK_S;c.lineCap=c.lineJoin='round';
   const ls=window.lineStyle?lineStyle():'solid',lw=c.lineWidth;if(ls==='dash')c.setLineDash([lw*3.2,lw*2.2]);else if(ls==='dot')c.setLineDash([.01,lw*2.2]);
-  c.beginPath();const B=F.B;c.moveTo(B[0][0],B[0][1]);for(let i=1;i<B.length-1;i++){const mx=(B[i][0]+B[i+1][0])/2,my=(B[i][1]+B[i+1][1])/2;c.quadraticCurveTo(B[i][0],B[i][1],mx,my)}const l=B[B.length-1];c.lineTo(l[0],l[1]);c.stroke();c.restore()};
+  const N=liveNodes();if(!N||N.length<2){c.restore();return}c.beginPath();c.moveTo(N[0].x,N[0].y);for(let i=1;i<N.length;i++){const p=N[i-1],q=N[i];c.bezierCurveTo(p.x+p.ox,p.y+p.oy,q.x+q.ix,q.y+q.iy,q.x,q.y)}c.stroke();c.restore()};
  // options bar: labeled Smoothing slider (Light .. Strong), remembered
  function fhBar(){let b=$('#fhBar');if(!b){b=document.createElement('div');b.id='fhBar';stage.append(b)}if(tool!=='free'){b.hidden=true;setTimeout(toastLift,0);return}b.hidden=false;
   b.innerHTML=`<span class="pbH">✍ Freehand</span><label class="fhL" for="fhSm">Smoothing</label><span class="fhE">Light</span><input type="range" id="fhSm" min="0" max="100" step="5" value="${SM}" aria-label="Smoothing, light to strong"><span class="fhE">Strong</span><b id="fhV">${SM}</b>`;
