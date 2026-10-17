@@ -269,3 +269,12 @@ body.selbar #toast{bottom:68px}body.selbar #pfHint.pfB{bottom:120px}
 .spFt{display:grid;grid-template-columns:1fr 2.2fr;gap:10px;margin-top:10px}.spFt .btn{min-height:52px;font-size:16px;border-radius:14px}.spGo{font-weight:800}
 .spReady{grid-column:1/-1}.spFile{display:flex;flex-direction:column;gap:2px;padding:12px;border-radius:12px;background:#0f172a;border:1px solid #334155;font-size:16px}.spFile small{color:#94a3b8}.spOk{display:block;margin-top:8px;color:#86efac;font-size:14px}
 .spFt2{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap}.spFt2 .btn{flex:1;min-height:52px;font-size:16px;border-radius:14px}
+/* bpm-v104: pen bar, node-edit + text-style groups in the selection bar (one row, scrolls sideways) */
+#penBar{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;z-index:4;display:flex;gap:6px;align-items:center;background:#0f172aee;border:1px solid #334155;border-radius:10px;padding:5px 8px;max-width:calc(100% - 16px);overflow-x:auto;scrollbar-width:none;box-shadow:0 6px 20px #0006}
+#penBar>*{flex:none}#penBar .btn{min-height:40px;min-width:48px}#penBar .pbH{color:#cbd5e1;font-size:11px;max-width:min(230px,calc(100vw - 250px));white-space:normal;line-height:1.2}
+#selBar .sbGrp{display:flex;flex:none;gap:4px;align-items:center}#selBar .sbGrp>*{flex:none}
+#selBar .sbSep{width:1px;align-self:stretch;background:#475569;margin:0 2px}#selBar .sbHint{color:#94a3b8;font-size:11px;white-space:nowrap}
+#selBar .sbL{display:flex;align-items:center;gap:3px;color:#cbd5e1;font-size:11px;white-space:nowrap}#selBar .sbT{min-width:40px;min-height:40px}
+#selBar .sbCol input{width:34px;height:30px;padding:0;border:0;background:none}
+.rrI{display:inline-block;border:2px solid currentColor;border-radius:5px;width:.9em;height:.9em;font-size:0;vertical-align:middle}
+#widDlg #wLs .btn{display:inline-flex;align-items:center;gap:4px}
