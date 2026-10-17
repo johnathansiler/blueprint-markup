@@ -76,3 +76,14 @@ body.light #tlDlg{background:#fff;color:#0f172a;border-color:#cbd5e1}
 #tools.tbNew .tbR.fR{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
 #tools.tbNew .tbR.fL{-webkit-mask-image:linear-gradient(90deg,transparent,#000 28px);mask-image:linear-gradient(90deg,transparent,#000 28px)}
 #tools.tbNew .tbR.fL.fR{-webkit-mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent)}
+/* bpm-v103: floating borderless wheel (no card, no backdrop, no frame); labels carry a halo for readability over plans and UI */
+.whOv{background:transparent!important;display:block!important}.whOv[hidden]{display:none!important}
+.whBox{position:fixed;margin:0!important;background:none!important;box-shadow:none!important;border:0!important;padding:0!important;border-radius:0!important;transform:scale(.92);transition:transform .15s ease-out}
+.whOv.in .whBox{transform:none}
+.whT,.whBand,.whFade,.whTick,.whBtns{display:none!important}
+.whI{color:#fff;font-weight:600;text-shadow:0 0 2px #000,0 0 4px #000,0 0 8px #000c,0 1px 2px #000;white-space:nowrap;cursor:pointer}
+.whI .whIc{filter:drop-shadow(0 0 2px #000) drop-shadow(0 0 4px #000a)}
+.whI.cen{font-weight:800;color:#fff}
+body.light .whI{color:#0f172a;text-shadow:0 0 2px #fff,0 0 4px #fff,0 0 8px #fffc,0 1px 2px #fff}
+body.light .whI .whIc{filter:drop-shadow(0 0 2px #fff) drop-shadow(0 0 4px #fffa)}
+body.light .whI.cen{color:#000}

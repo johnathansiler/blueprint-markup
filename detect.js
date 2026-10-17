@@ -113,4 +113,12 @@ function detect(P,W,H,want){const TB=W>H?W*.825:W;let G=P.filter(g=>dark(g)&&g.x
  const res=[];for(const o of out){const thr=(o.type==='FLOW'||o.type==='TAMPER'||o.type==='FACP'||o.type==='DACT'||o.type==='FATC'||o.type==='PANEL_BOX'?12:4)*k;
  if(res.some(r=>r.type===o.type&&dist(o.c,r.c)<thr))continue;res.push(o)}
  return{k,items:res.filter(o=>!want||want.includes(o.type)).map(o=>({type:o.type,x:o.c[0],y:o.c[1],fp:o.fp,bw:o.bw,bh:o.bh,ang:o.ang||undefined}))}}
-self.onmessage=e=>{const{id,fn,args,O,vt,W,H,want}=e.data;const t0=performance.now();try{const P=walk(fn,args,O,vt);const r=detect(P,W,H,want);self.postMessage({id,ok:1,...r,paths:P.length,ms:performance.now()-t0})}catch(err){self.postMessage({id,ok:0,err:String(err&&err.message||err)})}};
+// bpm-v103: probe mode for taught / master-legend matches: measure the printed outline at each probe with the SAME geom()
+// as built-in Detect (OBB center, bw/bh, ang), so taught pins get identical size/center/rotation semantics.
+function probeAt(P,q){let best=null;const R=Math.max(q.w,q.h);for(const g of P){if(!dark(g))continue;if(Math.hypot(g.cx-q.x,g.cy-q.y)>R*.4)continue;if(g.w<q.w*.5||g.h<q.h*.5||g.w>q.w*1.3||g.h>q.h*1.3)continue;if(!best||g.w*g.h>best.w*best.h)best=g}
+ if(!best)return null;const g=best;if(/^c+$/.test(g.k)&&g.segs.length>=4){return{x:g.cx,y:g.cy,bw:g.w,bh:g.h,ang:0,kind:Math.abs(g.w-g.h)<.08*Math.max(g.w,g.h)?'circ':null}}
+ const pp=poly(g,.6);if(!pp)return null;const n=pp.length;let sk=null,kind=null;
+ if(n===4){const onEdge=pp.filter(p=>Math.abs(p[0]-g.cx)<g.w*.15||Math.abs(p[1]-g.cy)<g.h*.15).length;if(onEdge>=4){sk='diamond';kind='dia'}else{const sd=sides(pp),mx=Math.max(...sd),mn=Math.min(...sd);sk=mx/mn<1.15?'square':'panel_rect';kind='rect'}}
+ else if(n===6){sk='hex';kind='hex'}else return null;
+ const G2=geom(pp,sk);return G2?{x:G2.cx,y:G2.cy,bw:G2.bw,bh:G2.bh,ang:G2.ang||0,kind}:null}
+self.onmessage=e=>{const{id,fn,args,O,vt,W,H,want,probe}=e.data;const t0=performance.now();if(probe){try{const P=walk(fn,args,O,vt);self.postMessage({id,ok:1,probe:probe.map(q=>probeAt(P,q))})}catch(err){self.postMessage({id,ok:0,err:String(err&&err.message||err)})}return}try{const P=walk(fn,args,O,vt);const r=detect(P,W,H,want);self.postMessage({id,ok:1,...r,paths:P.length,ms:performance.now()-t0})}catch(err){self.postMessage({id,ok:0,err:String(err&&err.message||err)})}};

@@ -16,3 +16,7 @@
  // close menus on outside tap
  document.addEventListener('pointerdown',e=>{P.querySelectorAll('details.pDd[open]').forEach(d=>{if(!d.contains(e.target))d.open=false})},true);
 })();
+// bpm-v103: the Pins panel menus (Export, Edit, Delete) open as the same floating wheel, anchored to the tapped button
+(()=>{if(!window.wheelOpen)return;document.querySelectorAll('#panel details.pDd, details.pDd').forEach(d=>{const s=d.querySelector('summary');if(!s||s.dataset.wh)return;s.dataset.wh=1;
+ s.addEventListener('click',e=>{e.preventDefault();d.open=false;const B=[...d.querySelectorAll('.pDm button')].filter(b=>!b.disabled&&!b.hidden&&b.style.display!=='none');if(!B.length)return;window.wheelAnchor&&wheelAnchor(s);
+  wheelOpen(s.textContent.replace('▾','').trim(),B.map(b=>({l:b.textContent.trim(),b})),0,it=>it&&it.b.click())})})})();

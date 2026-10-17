@@ -110,17 +110,47 @@
    while(sp){const j=st[--sp],x=j%W,y=(j/W)|0;cnt++;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;if(x1-x0>80||y1-y0>80)big=true;
     for(const k of [j-1,j+1,j-W,j+W,j-W-1,j-W+1,j+W-1,j+W+1]){if(k<0||k>=W*H||seen[k]||G.g[k]<MT.dark)continue;const kx=k%W;if(Math.abs(kx-x)>1)continue;seen[k]=1;if(sp<st.length)st[sp++]=k}}
    if(big||x1-x0<5||y1-y0<5)continue;const cx=(x0+x1)/2,cy=(y0+y1)/2;if(TX&&TX.some(b=>cx>b.x0&&cx<b.x1&&cy>b.y0&&cy<b.y1))continue;out.push({x0,y0,x1,y1})}return out}
- window.masterItems=async(pg,n,vp,existing)=>{const L=(await load()).filter(m=>m.tpl&&dgOf(m.type)&&detOf(dgOf(m.type)));if(!L.length)return[];
+ /* bpm-v103: taught / master-legend matches go through the same pin geometry as built-in Detect:
+    bw/bh = OUTER edge of the printed black outline, measured on a 4x render (same meaning as the worker's vector bw/bh),
+    x/y = that outline's true center, ang 0 (templates match unrotated), shape = the type's pin shape (PSH), or the
+    template's ink outline (shk) when the type has no shape of its own or the print clearly uses another shape.
+    The pin then gets the same locked fill/outset/de-overlap as any built-in pin. Types without a vector detector
+    (heat, panel, other) are matched too. */
+ const GS=4;
+ function outlineAt(G,cx,cy,tw,th){const W=G.w,H=G.h,seen=new Uint8Array(W*H),st=new Int32Array(W*H);let best=null;
+  for(let i=0;i<W*H;i++){if(seen[i]||G.g[i]<MT.dark)continue;let sp=0,x0=W,y0=H,x1=-1,y1=-1;const px=[];st[sp++]=i;seen[i]=1;
+   while(sp){const j=st[--sp],x=j%W,y=(j/W)|0;px.push(j);if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
+    for(const k of[j-1,j+1,j-W,j+W,j-W-1,j-W+1,j+W-1,j+W+1]){if(k<0||k>=W*H||seen[k]||G.g[k]<MT.dark)continue;if(Math.abs(k%W-x)>1)continue;seen[k]=1;st[sp++]=k}}
+   const w=x1-x0+1,h=y1-y0+1;if(!(cx>=x0-1&&cx<=x1+1&&cy>=y0-1&&cy<=y1+1))continue;if(w<tw*.55||h<th*.55||w>tw*1.35||h>th*1.35)continue;
+   if(!best||w*h>best.w*best.h)best={x0,y0,x1,y1,w,h,px}}
+  return best}
+ function kindOf(O,W){/* filled-silhouette widths: rect ~1 at 25% height, circle ~.87, hex ~.75, diamond ~.5; area ratio rect 1, circ .785, hex .75, dia .5 */
+  const w=O.w,h=O.h,M=new Uint8Array(w*h);for(const j of O.px){const x=j%W-O.x0,y=((j/W)|0)-O.y0;M[y*w+x]=1}
+  const out=new Uint8Array(w*h),q=[];for(let x=0;x<w;x++)for(const y of[0,h-1]){const k=y*w+x;if(!M[k]&&!out[k]){out[k]=1;q.push(k)}}for(let y=0;y<h;y++)for(const x of[0,w-1]){const k=y*w+x;if(!M[k]&&!out[k]){out[k]=1;q.push(k)}}
+  while(q.length){const k=q.pop(),x=k%w,y=(k/w)|0;for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const X=x+dx,Y=y+dy;if(X<0||Y<0||X>=w||Y>=h)continue;const kk=Y*w+X;if(!M[kk]&&!out[kk]){out[kk]=1;q.push(kk)}}}
+  let A=0;for(let i=0;i<w*h;i++)if(!out[i])A++;const row=f=>{const y=Math.round((h-1)*f);let a=w,b=-1;for(let x=0;x<w;x++)if(!out[y*w+x]){if(x<a)a=x;b=x}return b<a?0:(b-a+1)/w};
+  const ar=A/(w*h),r25=(row(.25)+row(.75))/2,r05=(row(.06)+row(.94))/2;
+  if(ar>.9&&r05>.85)return'rect';if(ar<.62&&r25<.65)return'dia';if(r05>.4&&r25<.84)return'hex';if(ar>.7&&ar<.86)return'circ';return null}
+ async function geomAt(pg,x,y,T){const R={x:x-T.w,y:y-T.h,w:T.w*2,h:T.h*2},c=await render(pg,GS,R),G=grayOf(c),cx=(x-c._ox)*GS,cy=(y-c._oy)*GS;
+  const O=outlineAt(G,cx,cy,T.w*GS,T.h*GS);if(!O)return null;const bw=(O.w)/GS,bh=(O.h)/GS;
+  return{x:c._ox+(O.x0+O.x1+1)/2/GS,y:c._oy+(O.y0+O.y1+1)/2/GS,bw:+bw.toFixed(2),bh:+bh.toFixed(2),kind:kindOf(O,G.w)}}
+ const shkFor=(type,kind)=>{const v=PSH[type];if(!kind)return null;if(!v||type==='other')return kind;return v[0]===kind?null:kind};
+ window.masterGeom=geomAt;
+ window.masterItems=async(pg,n,vp,existing)=>{const L=(await load()).filter(m=>m.tpl&&dgOf(m.type));if(!L.length)return[];
   // scale: plan symbols are usually drawn smaller than the legend; estimate from Detect's own sized items on this page (same type first, else all)
   const tw=m=>m.tpl.w/m.tpl.s,sized=existing.filter(i=>i.bw>0),allR=med(sized.map(i=>i.bw))/(med(L.map(tw))||1);
   const c=await render(pg,1),G=grayOf(c),out=[],TX=await textBoxes(pg),LR=await legendRects(pg,n).catch(()=>null),BL=inkBlobs(G,TX);
-  for(const m of L){const same=sized.filter(i=>i.type===detOf(dgOf(m.type))),k=same.length?med(same.map(i=>i.bw))/tw(m):allR,ks=k>0?[Math.min(1,k)]:[1,.75,.55,.4];
+  for(const m of L){const same=sized.filter(i=>i.type===detOf(dgOf(m.type))),k=same.length?med(same.map(i=>i.bw))/tw(m):allR,ks0=k>0?[Math.min(1,k)]:[1,.75,.55,.4],ks=m.src==='tap'&&!ks0.includes(1)?[1,...ks0]:ks0; // bpm-v103: a symbol taught on a plan is already at plan scale
    for(const kk of ks){const T=tplAt(m,kk),T2=tplAt(m,kk/2);if(T.w*T.h>6000||T.w<8||T.h<6)continue;const keep=[];
     // bpm-v99 (speed): test only real dark-ink blobs about the template's size, never a full-page sliding window
     for(const bl of BL){const bw=bl.x1-bl.x0+1,bh=bl.y1-bl.y0+1;if(bw<T.w*.6||bw>T.w*1.5||bh<T.h*.6||bh>T.h*1.5)continue;const cx=Math.round((bl.x0+bl.x1+1-T.w)/2),cy=Math.round((bl.y0+bl.y1+1-T.h)/2);
      const best=nccAt(G,T,cx-3,cy-3,cx+3,cy+3);if(!best)continue;if(keep.some(q=>Math.abs(q.x-best.x)<T.w*.7&&Math.abs(q.y-best.y)<T.h*.7))continue;keep.push(best)}
     for(const h of keep){const x=h.x+T.w/2,y=h.y+T.h/2;if(h.r<MT.r||!realInk(G,T,h)||(TX&&TX.some(b=>x>b.x0&&x<b.x1&&y>b.y0&&y<b.y1))||(LR&&LR.some(b=>x>b.x&&x<b.x+b.w&&y>b.y&&y<b.y+b.h)))continue;if(m.bb&&m.planId===plan?.id&&m.page===n&&x>m.bb.x-2&&x<m.bb.x+m.bb.w+2&&y>m.bb.y-2&&y<m.bb.y+m.bb.h+2)continue;
-     if([...existing,...out].some(o=>Math.hypot(o.x-x,o.y-y)<Math.max(10,T.w*.6)))continue;if(window.tagsNear){let t='';try{t=(await tagsNear(pg,n,x,y,Math.max(T.w,T.h))).mods.join('+')}catch{}if(t!==(m.tag||''))continue}out.push({type:detOf(dgOf(m.type)),x,y,fp:{s:'master',gl:m.name.slice(0,12),v:[0,0,0,0,0,0,0]},master:m.id})}}}
+     if([...existing,...out].some(o=>Math.hypot(o.x-x,o.y-y)<Math.max(10,T.w*.6)))continue;if(window.tagsNear){let t='';try{t=(await tagsNear(pg,n,x,y,Math.max(T.w,T.h))).mods.join('+')}catch{}if(t!==(m.tag||''))continue}out.push({type:detOf(dgOf(m.type))||null,g:dgOf(m.type),x,y,fp:{s:'master',gl:m.name.slice(0,12),v:[0,0,0,0,0,0,0]},master:m.id,_T:[T.w,T.h],_mt:m.type})}if(keep.length&&m.src==='tap')break}}
+  // bpm-v103: geometry for every match: vector outline via Detect's geom() first, raster outline (4x render) as the fallback for scanned plans
+  let V=[];try{V=out.length&&window.vecProbe?await vecProbe(pg,out.map(o=>({x:o.x,y:o.y,w:o._T[0],h:o._T[1]}))):[]}catch(e){console.warn('vector probe',e)}
+  for(let i=0;i<out.length;i++){const o=out[i],T={w:o._T[0],h:o._T[1]};let gm=V[i]||null,src='vec';if(!gm){gm=await geomAt(pg,o.x,o.y,T).catch(()=>null);src='ras'}
+   if(gm&&Math.hypot(gm.x-o.x,gm.y-o.y)<Math.max(T.w,T.h)*.35&&gm.bw>4&&gm.bh>4){o.x=gm.x;o.y=gm.y;o.bw=+gm.bw.toFixed(3);o.bh=+gm.bh.toFixed(3);if(gm.ang)o.ang=gm.ang;o.gsrc=src;const sk=shkFor(o._mt,gm.kind);if(sk)o.shk=sk}delete o._T;delete o._mt}
   return out};
  // ---- Symbols guide ----
  window.symbolGuide=()=>{const el=ce('div','gBody');const draw=async()=>{await load();

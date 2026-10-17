@@ -11,9 +11,17 @@
  const ST=24,R=118,IH=40;let WH=null;
  function wheelOpen(title,items,cur,cb){const d=W.querySelector('.whDrum');W.querySelector('.whT').textContent=title;
   d.innerHTML=items.map((it,i)=>`<div class="whI" data-i="${i}" style="transform:rotateX(${-i*ST}deg) translateZ(${R}px)">${it.html||esc(it.l)}</div>`).join('');
-  WH={items,cb,pos:Math.max(0,cur),v:0,raf:0,lastI:-1};W.hidden=false;W.classList.remove('in');requestAnimationFrame(()=>W.classList.add('in'));paint()}
+  WH={items,cb,pos:Math.max(0,cur),v:0,raf:0,lastI:-1};W.hidden=false;whPlace(W.querySelector('.whBox'),LASTA,WH.pos,items.length);W.classList.remove('in');requestAnimationFrame(()=>W.classList.add('in'));paint()}
+ // bpm-v103: floating borderless wheel anchored to the tapped control (below it, or above if no room; clamped to the viewport)
+ let LASTA=null;document.addEventListener('pointerdown',e=>{if(W.contains(e.target))return;const a=e.target.closest&&e.target.closest('button,summary,label,.btn,select,[data-w]');if(a)LASTA=a},true);
+ function whPlace(box,a,cur,n){const bw=Math.min(300,innerWidth-16),bh=210,ih=40;box.style.width=bw+'px';let x=(innerWidth-bw)/2,y=(innerHeight-bh)/2;
+  if(a&&a.isConnected){const r=a.getBoundingClientRect();x=r.left+r.width/2-bw/2;const up=Math.min(cur,2),dn=Math.min(n-1-cur,2),need=(up+dn+1)*ih;
+   // the visible items sit directly below the button (or above it when there is no room); the selected one is the bright center row
+   const cB=r.bottom+6+ih/2+up*ih,cA=r.top-6-ih/2-dn*ih;let c=r.bottom+6+need<=innerHeight-6?cB:r.top-6-need>=6?cA:Math.max(ih/2+6,Math.min(innerHeight-ih/2-6,r.top+r.height/2));y=c-bh/2}
+  x=Math.max(8,Math.min(innerWidth-bw-8,x));box.style.left=x+'px';box.style.top=y+'px'}
+ window.wheelAnchor=a=>{LASTA=a};
  function paint(){const d=W.querySelector('.whDrum'),p=WH.pos;d.style.transform=`translateZ(-${R}px) rotateX(${p*ST}deg)`;const c=Math.round(p);
-  d.querySelectorAll('.whI').forEach((e,i)=>{const a=Math.abs(i-p)*ST;e.style.opacity=a>80?0:1-a/110;e.classList.toggle('cen',i===c)});if(c!==WH.lastI){if(WH.lastI>=0&&navigator.vibrate)try{navigator.vibrate(4)}catch{}WH.lastI=c}}
+  d.querySelectorAll('.whI').forEach((e,i)=>{const a=Math.abs(i-p)*ST;e.style.opacity=a>80?0:1-a/100;e.style.fontSize=Math.max(12,21-a/9)+'px';e.classList.toggle('cen',i===c)});if(c!==WH.lastI){if(WH.lastI>=0&&navigator.vibrate)try{navigator.vibrate(4)}catch{}WH.lastI=c}}
  const clampP=p=>Math.max(0,Math.min(WH.items.length-1,p));
  function settle(){cancelAnimationFrame(WH.raf);const step=()=>{if(Math.abs(WH.v)>.002){WH.pos=clampP(WH.pos+WH.v);WH.v*=.92;if(WH.pos===0||WH.pos===WH.items.length-1)WH.v=0}else{const t=Math.round(WH.pos);WH.pos+=(t-WH.pos)*.3;if(Math.abs(t-WH.pos)<.01){WH.pos=t;paint();return}}paint();WH.raf=requestAnimationFrame(step)};step()}
  const win=W.querySelector('.whWin');let dr=null;
@@ -22,7 +30,7 @@
  win.addEventListener('pointerup',e=>{if(!dr)return;const tap=dr.moved<6;dr=null;if(tap){const r=win.getBoundingClientRect(),off=Math.round((e.clientY-(r.top+r.height/2))/IH);if(off===0)return choose();WH.pos=clampP(Math.round(WH.pos)+off);WH.v=0}settle()});
  win.addEventListener('wheel',e=>{e.preventDefault();WH.v+=e.deltaY/IH/12;settle()},{passive:false});
  const close=()=>{W.classList.remove('in');setTimeout(()=>W.hidden=true,150)};function choose(){const i=Math.round(WH.pos),cb=WH.cb;close();cb(WH.items[i],i)}
- W.querySelector('[data-w=x]').onclick=close;W.querySelector('[data-w=ok]').onclick=choose;W.addEventListener('click',e=>{if(e.target===W)close()});
+ W.querySelector('[data-w=x]').onclick=close;W.querySelector('[data-w=ok]').onclick=choose;W.addEventListener('click',e=>{if(e.target===W)close()});document.addEventListener('keydown',e=>{if(W.hidden||!WH)return;if(e.key==='Escape'){e.preventDefault();close()}else if(e.key==='Enter'){e.preventDefault();choose()}else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();WH.pos=clampP(Math.round(WH.pos)+(e.key==='ArrowDown'?1:-1));paint()}});
  window.wheelOpen=wheelOpen;window.wheelPos=()=>WH&&WH.pos;
  // ---- grouped wheel buttons (tap = last pick; tap again or ▾ = wheel) ----
  const mkWheelBtn=(key,label,items,isOn)=>{const b=ce('button','tool tbw');b.type='button';b.dataset.w=key;
