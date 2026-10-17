@@ -140,7 +140,11 @@
  window.masterGeom=geomAt;
  // bpm-v106: seeded entries only cover types Detect has no glyph for (VESDA, PAD-4/PAD-5, dampers…), and only on plans whose text names that device (legend), so other plans see no new suggestions
  const PTX=new Map();async function planText(){const k=plan?.id||'';if(PTX.has(k))return PTX.get(k);let t='';try{for(let i=1;i<=pdf.numPages;i++){const tc=await (await pdf.getPage(i)).getTextContent();t+=' '+tc.items.map(o=>o.str).join(' ')}}catch{}PTX.set(k,t);return t}
- window.masterItems=async(pg,n,vp,existing)=>{const PT=await planText();const L=(await load()).filter(m=>m.tpl&&dgOf(m.type)&&(m.src!=='seed'||(DG[dgOf(m.type)]?.x&&m.kw&&new RegExp(m.kw,'i').test(PT))));if(!L.length)return[];
+ // bpm-v108: seeded legend templates for the no-glyph types match only when this plan's text (its legend) names the device
+ const SKW={heat:'\\bHEAT\\s+DET',multi:'MULTI[- ]?CRITERI',pad:'\\bPAD-?[45]\\b|NOTIFICATION APPLIANCE (PANEL|EXTENDER)',damper:'\\bDAMPER',scs:'SMOKE CONTROL STATION|\\bFSCS\\b',loc:"LOCAL OPERATOR'?S? CONSOLE",oss:'OPERATOR SAFETY SWITCH',eol:'END[- ]OF[- ]LINE',bfp:'BACKFLOW',pullbox:'ELECTRICAL PULL ?BOX',
+  speaker:'SPEAKER ONLY',lfs:'LOW[- ]FREQUENCY SOUNDER',bell:'\\bBELL\\b',vesda:'VESDA',vpsu:'VESDA POWER SUPPLY',vsp:'VESDA SAMPLING POINT',vcap:'CAPILLARY',vlf:'LASER FOCUS',vnet:'VESDA NETWORK',vrem:'VESDA REMOTE',vtee:'SAMPLING (TUBE )?TEE'};window.SKW=SKW;
+ window.planTextAll=()=>planText();
+ window.masterItems=async(pg,n,vp,existing)=>{const PT=await planText();const L=(await load()).filter(m=>{if(!m.tpl||!dgOf(m.type))return false;if(m.src!=='seed')return true;const kw=m.kw||SKW[m.type];return !!(DG[dgOf(m.type)]?.x&&kw&&new RegExp(kw,'i').test(PT))});if(!L.length)return[];
   // scale: plan symbols are usually drawn smaller than the legend; estimate from Detect's own sized items on this page (same type first, else all)
   const tw=m=>m.tpl.w/m.tpl.s,sized=existing.filter(i=>i.bw>0),allR=med(sized.map(i=>i.bw))/(med(L.map(tw))||1);
   const c=await render(pg,1),G=grayOf(c),out=[],TX=await textBoxes(pg),LR=await legendRects(pg,n).catch(()=>null),BL=inkBlobs(G,TX);

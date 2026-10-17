@@ -37,9 +37,11 @@
     x=side==='left'?edgeL-14-w:edgeR+14;y=Math.max(lo+hU,Math.min(hi-hD,acy));if(y-hU<lo-.5||y+hD>hi+.5)return null}
    else{x=Math.max(m,Math.min(VW-m-w,acx-w/2));if(side==='above'){y=(ar?ar.top:VH/2)-g-pt-hD}else{y=(ar?ar.bottom:VH/2)+g+pt+hU}y=Math.min(y,hi-hD);y=Math.max(y,lo+hU);
     if(side==='above'&&ar&&y+hD>ar.top-g)return null;if(side==='below'&&ar&&y-hU<ar.bottom+g)return null}
-   const r={left:x,right:x+w,top:y-hU,bottom:y+hD};if(r.top<lo-.5||r.bottom>hi+.5||r.left<m-.5||r.right>VW-m+.5)return null;if(K.some(k=>hit(r,k)))return null;return{side,rows,x,y,w,hU,hD,r}};
+   const r={left:x,right:x+w,top:y-hU,bottom:y+hD};if(r.top<lo-.5||r.bottom>hi+.5||r.left<m-.5||r.right>VW-m+.5)return null;if(K.some(k=>hit(r,k))||XK.some(k=>hit(r,k)))return null;return{side,rows,x,y,w,hU,hD,r}};let XK=[];
   const inSt=a&&a.closest&&a.closest('#stage');let order=P?['left','right','below','above']:inSt?(acx>VW/2?['left','right','above','below']:['right','left','above','below']):(()=>{const o=[];if(ar){if(acy>VH*.5)o.push('above','below');else o.push('below','above');if(acx>VW/2)o.push('left','right');else o.push('right','left')}else o.push('below','above');return o})();
-  let best=null;for(const rows of[3,2,1]){for(const sd of order){best=tryAt(sd,rows);if(best)break}if(best)break}
+  // bpm-v108: wheels opened from the plan (e.g. Delete) avoid covering nearby pins when there is room; else fall back to the normal rule
+  let PK=[];if(inSt){try{const sr=$('#stage').getBoundingClientRect();for(const p of pins){if(p.page!==page)continue;const q=toS(p.x,p.y),h=pinHalf(p)*view.s+4,x=sr.left+q.x,y=sr.top+q.y;if(x<-h||y<-h||x>VW+h||y>VH+h)continue;PK.push({left:x-h,right:x+h,top:y-h,bottom:y+h})}}catch{}}
+  let best=null;for(const pk of PK.length?[PK,[]]:[[]]){XK=pk;for(const rows of[3,2,1]){for(const sd of order){best=tryAt(sd,rows);if(best)break}if(best)break}if(best)break}XK=[];
   if(!best){const rows=1,hU=Math.abs(proj(-1.5)),hD=hU;best={side:'none',rows,w:W0,x:Math.max(m,Math.min(VW-m-W0,acx-W0/2)),y:Math.max(lo+hU,Math.min(hi-hD,acy)),hU,hD}}
   WH.rows=best.rows;WH.hU=best.hU;WH.side=best.side;box.style.width=best.w+'px';box.style.left=best.x+'px';box.style.top=(best.y-best.hU)+'px';
   const win=box.querySelector('.whWin');win.style.height=(best.hU+best.hD)+'px';win.style.perspectiveOrigin=`50% ${best.hU}px`;box.querySelector('.whDrum').style.top=best.hU+'px';box.style.setProperty('--whF',fs+'px');
@@ -52,7 +54,7 @@
  window.wheelAnchor=a=>{LASTA=a};
  function paint(){const d=W.querySelector('.whDrum'),p=WH.pos,c=Math.round(p),F=parseFloat(W.querySelector('.whBox').style.getPropertyValue('--whF'))||16,lim=WH.rows+.5;d.style.transform='';
   d.querySelectorAll('.whS,.whI').forEach(e=>{const i=+e.dataset.i,dd=i-p,an=dd*ST,on=Math.abs(dd)<=lim,tf=`translateZ(-${R}px) rotateX(${-an}deg) translateZ(${R+(e.classList.contains('whI')?1.5:0)}px)`;e.style.transform=tf;e.style.visibility=on?'':'hidden';
-   const op=Math.max(0,1-Math.abs(an)/105);if(e.classList.contains('whS')){e.classList.toggle('cen',i===c);e.style.background=i===c?'':`rgba(15,23,42,${Math.min(.94,.7*op+.3).toFixed(2)})`}
+   const op=Math.max(0,1-Math.abs(an)/105);if(e.classList.contains('whS')){e.classList.toggle('cen',i===c);e.style.background=i===c?'':`rgba(15,23,42,${Math.min(.97,.25*op+.8).toFixed(2)})`}
    else{e.style.opacity=Math.max(.15,op).toFixed(2);e.style.fontSize=Math.max(11,F-Math.abs(an)/10)+'px';e.classList.toggle('cen',i===c)}});
   if(c!==WH.lastI){if(WH.lastI>=0&&navigator.vibrate)try{navigator.vibrate(4)}catch{}WH.lastI=c}}
  const clampP=p=>Math.max(0,Math.min(WH.items.length-1,p));
