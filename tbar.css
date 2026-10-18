@@ -109,3 +109,63 @@ body.light .whI{color:#e5e7eb;text-shadow:none}body.light .whI.cen{color:#fff}
 .whPtr.left{border-left-color:#60a5fa;border-right-width:0}.whPtr.right{border-right-color:#60a5fa;border-left-width:0}
 .whPtr.above{border-top-color:#60a5fa;border-bottom-width:0}.whPtr.below{border-bottom-color:#60a5fa;border-top-width:0}
 .whPressed{outline:2px solid #60a5fa!important;outline-offset:1px}
+/* bpm-v112: LEFT task rail (tab row on phone) + one left slot (page strip OR one rail panel) + resize grips + pin card */
+#rail{position:fixed;left:0;width:74px;z-index:7;display:flex;flex-direction:column;gap:4px;padding:6px;background:var(--sf);border-right:1px solid #ffffff14;overflow-y:auto;overscroll-behavior:contain}
+body.light #rail{border-right-color:#cbd5e1}
+body.rl #stage{margin-left:calc(var(--rlW,0px) + var(--slW,0px))}
+#rail .rlB{display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:100%;min-width:0;min-height:54px;flex:none;padding:4px 2px!important;border:0;border-radius:12px;background:transparent;color:var(--tx);font-size:14px}
+#rail .rlB .tb2i{font-size:19px;line-height:22px}#rail .rlB .tl{font-size:10.5px;line-height:12px;color:var(--mu2);white-space:nowrap}
+#rail .rlB.open,#rail #thBtn.pri.open{background:var(--sf2);box-shadow:inset 3px 0 0 var(--acc)}#rail .rlB.open .tl{color:var(--tx);font-weight:600}
+#rail #thBtn.pri:not(.open){background:transparent}
+body.rlPh #rail{position:static;order:3;flex-direction:row;width:auto;padding:3px 4px;gap:2px;justify-content:space-around;border-right:0;border-top:1px solid #ffffff14;overflow:visible;flex:none}
+body.light.rlPh #rail{border-top-color:#cbd5e1}
+body.rlPh #rail .rlB{flex:1 1 0;min-height:46px;width:auto}body.rlPh #rail .rlB.open{box-shadow:inset 0 -3px 0 var(--acc)}
+body.rlPh #rail .sp,body.rlPh #rail .rlCz{display:none!important}
+body.rlWalk #rail{display:none!important}
+#railP{position:fixed;z-index:6;width:var(--rpW,212px);background:var(--sf);color:var(--tx);border-right:1px solid #ffffff14;display:flex;flex-direction:column;overflow:hidden}
+@keyframes rpIn{from{opacity:.4;transform:translateX(-12px)}to{opacity:1;transform:none}}
+body.light #railP{border-right-color:#cbd5e1}
+#railP .rpH{display:flex;align-items:center;gap:6px;padding:8px 8px 4px;font-size:13.5px}
+#railP .rpX{min-height:32px;padding:3px 9px;font-size:12px;background:transparent;border:1px solid #ffffff26;border-radius:10px;color:var(--mu2)}
+body.light #railP .rpX{border-color:#cbd5e1}
+#railP .rpB{flex:1;min-height:0;overflow-y:auto;padding:0 8px 12px;display:flex;flex-direction:column;gap:6px;overscroll-behavior:contain}
+#railP .rpS{font:600 9.5px/1.2 system-ui,sans-serif;letter-spacing:.07em;text-transform:uppercase;color:var(--mu2);margin-top:6px}
+#railP .rpG{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px}
+#railP .rpI{display:flex;align-items:center;justify-content:center;gap:6px;min-height:42px;border-radius:12px;background:var(--sf2);border:1px solid #ffffff12;color:var(--tx);font-size:13px;padding:6px 8px;text-align:center;line-height:1.15}
+body.light #railP .rpI{border-color:#d5dde8}
+#railP .rpI .rpIc{flex:none}#railP .rpI.pri{background:var(--acc);color:#fff;grid-column:1/-1}#railP .rpI.danger{background:#b91c1c;color:#fff}#railP .rpI:disabled{opacity:.4}
+#railP .rpE{grid-column:1/-1;color:var(--mu2);font-size:12px}
+body.rl:not(.rlPh) #thumbs{position:fixed;right:auto;bottom:auto;width:var(--thW,124px);z-index:6;flex-direction:row;flex-wrap:wrap;align-content:flex-start;align-items:flex-start;justify-content:center;overflow-y:auto;overflow-x:hidden;background:var(--sf);border-right:1px solid #ffffff14;padding:6px}
+body.light.rl:not(.rlPh) #thumbs{border-right-color:#cbd5e1}
+body.rl:not(.rlPh) #thumbs .thh{flex:0 0 100%;flex-direction:row;width:100%;color:var(--tx)}
+body.rlPh #railP{box-shadow:6px 0 18px #0009;z-index:8}body.rlPh #thumbs{box-shadow:0 -6px 18px #0009}
+.pGrip{position:fixed;width:16px;z-index:55;cursor:col-resize;touch-action:none;display:flex;align-items:center;justify-content:center}
+.pGrip .pgBar{width:5px;height:46px;border-radius:3px;background:var(--mu2);opacity:.55;box-shadow:0 0 0 1px #0004}
+.pGrip:hover .pgBar,.pGrip.drag .pgBar{background:var(--acc);opacity:1}
+.pGrip .pgX{position:absolute;bottom:10px;left:9px;display:flex;align-items:center;gap:3px;min-height:32px;padding:3px 9px;font-size:11.5px;border-radius:0 10px 10px 0;background:var(--sf);color:var(--tx);border:1px solid #ffffff26;box-shadow:var(--shd);white-space:nowrap;cursor:pointer}
+.pGrip.R .pgX{left:auto;right:9px;border-radius:10px 0 0 10px}
+body.light .pGrip .pgX{border-color:#cbd5e1}
+@media(min-width:800px){#panel,#lyrP{position:relative}}
+.pcDel{display:none}
+body.pcOn #pinDlg{position:fixed;margin:0;inset:auto;right:auto;bottom:auto;height:auto;border-radius:16px;box-shadow:0 14px 36px #000a;border:1px solid #ffffff22;overflow:auto;animation:rpIn .14s ease-out}
+body.pcOn #pinDlg::backdrop{background:#0f172a40}
+body.pcOn .pcDel{display:flex;position:fixed;align-items:center;gap:4px;min-height:40px;padding:4px 12px;border-radius:20px;font-size:13px;box-shadow:0 6px 16px #0008;z-index:2}
+body.pcOn .pcDel[hidden]{display:none}
+#railP .rpI .tl{display:inline;font-size:12.5px;margin:0;color:inherit;white-space:normal}
+@media(min-width:600px) and (max-width:879px){#top #rotBtn,#top #micBtn{display:none!important}}
+body.rlPh #railP,body.rlPh #thumbs{z-index:45}
+.pGrip.in .pgX{left:auto;right:9px;border-radius:10px 0 0 10px}.pGrip.R.in .pgX{right:auto;left:9px;border-radius:0 10px 10px 0}
+/* bpm-v112: one slide motion for every side bar = the Layers panel's (translate from its edge, .18s ease-out), in and out */
+@keyframes rlInL{from{transform:translateX(-100%)}to{transform:none}}@keyframes rlOutL{from{transform:none}to{transform:translateX(-100%)}}
+@keyframes rlInR{from{transform:translateX(100%)}to{transform:none}}@keyframes rlOutR{from{transform:none}to{transform:translateX(100%)}}
+@keyframes rlInB{from{transform:translateY(100%)}to{transform:none}}@keyframes rlOutB{from{transform:none}to{transform:translateY(100%)}}
+#railP,body.rl:not(.rlPh) #thumbs{animation:rlInL .18s ease-out}#railP.rlOut,body.rl:not(.rlPh) #thumbs.rlOut{animation:rlOutL .18s ease-out forwards}
+body.rl #panel,body.rl #lyrP{animation:rlInR .18s ease-out}body.rl #panel.rlOut,body.rl #lyrP.rlOut{animation:rlOutR .18s ease-out forwards}
+body.rlPh #thumbs{animation:rlInB .18s ease-out}body.rlPh #thumbs.rlOut{animation:rlOutB .18s ease-out forwards}
+body.rlPh #panel,body.rlPh #lyrP{transition:width .18s ease-out}body.rlDrag #panel,body.rlDrag #lyrP{transition:none}
+#panel.rlOut,#lyrP.rlOut,#thumbs.rlOut,#railP.rlOut{display:flex!important;pointer-events:none}
+@media(prefers-reduced-motion:reduce){#railP,#thumbs,#panel,#lyrP{animation:none!important;transition:none!important}}
+body.rl #closeList{display:inline-flex!important;flex-direction:column;align-items:center;justify-content:center;width:auto!important;min-width:44px;padding:2px 8px!important;font-size:15px;line-height:1}body.rl #closeList .tl{font-size:10px}
+body.rlPh #thumbs{height:100px;overflow-y:hidden}body.rlPh #thumbs .thh{justify-content:center;gap:2px}body.rlPh #thumbs .thh .btn{min-height:26px}
+body.rl #stage{overflow:clip}
+.pGrip.top .pgX{bottom:auto;top:52px}
