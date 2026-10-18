@@ -7,6 +7,7 @@
  const O=s=>{const e=document.querySelector(s);if(e)hid.append(e);return e};
  const tb=s=>document.querySelector(`[data-t="${s}"]`);
  // ---- wheel picker ----
+ const REV=-1;/* bpm-v116 wheel direction, see edgeDir */
  const W=ce('div','whOv');W.hidden=true;W.innerHTML='<div class="whBox"><div class="whT"></div><div class="whWin"><div class="whBand"></div><div class="whDrum"></div><div class="whFade"></div><div class="whTick"></div></div><div class="whBtns"><button type="button" class="btn" data-w="x">Cancel</button><button type="button" class="btn pri" data-w="ok">Choose</button></div></div>';document.body.append(W);
  const ST=24,R=118,IH=40;let WH=null,WH0ox=42;
  // bpm-v106: curved drum band (option A look) + adjacent, never-overlapping placement (option B rules). Same API: wheelOpen(title,items,cur,cb).
@@ -69,9 +70,9 @@
  function settle(){cancelAnimationFrame(WH.raf);const step=()=>{if(Math.abs(WH.v)>.002){WH.pos=clampP(WH.pos+WH.v);WH.v*=.92;if(WH.pos===0||WH.pos===WH.items.length-1)WH.v=0}else{const t=Math.round(WH.pos);WH.pos+=(t-WH.pos)*.3;if(Math.abs(t-WH.pos)<.01){WH.pos=t;paint();return}}paint();WH.raf=requestAnimationFrame(step)};step()}
  const win=W.querySelector('.whWin');let dr=null;
  win.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse')return;win.setPointerCapture(e.pointerId);cancelAnimationFrame(WH.raf);dr={y:e.clientY,p:WH.pos,t:performance.now(),ly:e.clientY,lt:performance.now(),moved:0}});
- win.addEventListener('pointermove',e=>{if(!dr||e.pointerType!=='mouse')return;const dy=e.clientY-dr.y;dr.moved=Math.max(dr.moved,Math.abs(dy));WH.pos=clampP(dr.p-dy/IH);const n=performance.now();WH.v=-(e.clientY-dr.ly)/IH/Math.max(1,(n-dr.lt)/16);dr.ly=e.clientY;dr.lt=n;paint()});
+ win.addEventListener('pointermove',e=>{if(!dr||e.pointerType!=='mouse')return;const dy=e.clientY-dr.y;dr.moved=Math.max(dr.moved,Math.abs(dy));WH.pos=clampP(dr.p-REV*dy/IH);const n=performance.now();WH.v=-REV*(e.clientY-dr.ly)/IH/Math.max(1,(n-dr.lt)/16);dr.ly=e.clientY;dr.lt=n;paint()});
  win.addEventListener('pointerup',e=>{if(!dr||e.pointerType!=='mouse')return;const tap=dr.moved<6;dr=null;if(tap){const r=win.getBoundingClientRect(),dy=e.clientY-(r.top+(WH.hU||r.height/2));let off=0,bd=1e9;for(let k=-7;k<=7;k++){const q=Math.abs(proj(k)-dy);if(q<bd){bd=q;off=k}}if(off===0)return choose();WH.pos=clampP(Math.round(WH.pos)+off);WH.v=0}settle()});
- win.addEventListener('wheel',e=>{e.preventDefault();WH.v+=e.deltaY/IH/12;settle()},{passive:false});
+ win.addEventListener('wheel',e=>{e.preventDefault();WH.v+=REV*e.deltaY/IH/12;settle()},{passive:false});
  const close=()=>{W.classList.remove('in');if(PRESS){PRESS.classList.remove('whPressed');PRESS=null}setTimeout(()=>W.hidden=true,150)};function choose(){const i=Math.round(WH.pos),cb=WH.cb;close();cb(WH.items[i],i)}
  W.querySelector('[data-w=x]').onclick=close;W.querySelector('[data-w=ok]').onclick=choose;W.addEventListener('click',e=>{if(e.target===W)close()});document.addEventListener('keydown',e=>{if(W.hidden||!WH)return;if(e.key==='Escape'){e.preventDefault();close()}else if(e.key==='Enter'){e.preventDefault();choose()}else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();WH.pos=clampP(Math.round(WH.pos)+(e.key==='ArrowDown'?1:-1));paint()}});
  // bpm-v115: touch/pen = press-and-slide (radial-menu style). The row under the finger highlights; release over a row selects it (Cancel rows cancel);
@@ -80,8 +81,10 @@
  let TT=null;const DESTR=()=>WH&&/^(clear (pins|markups)|delete pins)$/i.test((W.querySelector('.whT').textContent||'').trim());
  const rowAt=(x,y)=>{const el=document.elementFromPoint(x,y),r=el&&el.closest&&el.closest('.whI,.whS');if(!r||!W.contains(r)||r.style.visibility==='hidden')return null;const i=+r.dataset.i;return Number.isFinite(i)?i:null};
  const hl=i=>{W.querySelectorAll('.whS.hov').forEach(e=>e.classList.remove('hov'));if(i!=null){const s_=W.querySelector(`.whS[data-i="${i}"]`);if(s_)s_.classList.add('hov')}};
+ /* bpm-v116: wheel direction reversed (user request): REV=-1 flips mouse drag + fling, mouse wheel and press-and-slide edge auto-scroll.
+  Now: drag DOWN moves the list UP (later rows come to the centre); wheel scroll down moves the list DOWN (earlier rows); hold at the bottom edge = list moves down */
  const edgeDir=(x,y)=>{const r=win.getBoundingClientRect();if(x<r.left||x>r.right)return 0;if(y<r.top+22&&y>r.top-60)return -1;if(y>r.bottom-22&&y<r.bottom+60)return 1;return 0};
- const auto=()=>{if(!TT||!TT.dir)return;const p0=WH.pos;WH.pos=clampP(WH.pos+TT.dir*.09);if(WH.pos!==p0){paint();hl(rowAt(TT.x,TT.y))}TT.raf=requestAnimationFrame(auto)};
+ const auto=()=>{if(!TT||!TT.dir)return;const p0=WH.pos;WH.pos=clampP(WH.pos+REV*TT.dir*.09);if(WH.pos!==p0){paint();hl(rowAt(TT.x,TT.y))}TT.raf=requestAnimationFrame(auto)};
  W.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'||W.hidden||!WH)return;e.preventDefault();cancelAnimationFrame(WH.raf);try{W.setPointerCapture(e.pointerId)}catch{}
   TT={id:e.pointerId,x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,t:performance.now(),moved:0,dir:0,raf:0};hl(rowAt(e.clientX,e.clientY))});
  W.addEventListener('pointermove',e=>{if(!TT||e.pointerId!==TT.id)return;TT.x=e.clientX;TT.y=e.clientY;TT.moved=Math.max(TT.moved,Math.hypot(e.clientX-TT.x0,e.clientY-TT.y0));

@@ -246,3 +246,9 @@ body.pcOn #pinDlg .btn,body.pcOn #pinDlg button{min-height:44px;font-size:15px}
 #mViewer .mvStage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none}
 #mViewer .mvM{max-width:100%;max-height:100%;object-fit:contain;transform-origin:center;user-select:none;-webkit-user-drag:none}#mViewer audio.mvM{width:min(480px,90vw)}
 #panel #closeList .tl,#lyrP .lpX .tl{display:block!important}
+/* bpm-v116: walk bar full-width strip below the panels when the free width is too narrow; right inset on the panels' clock */
+@property --wkR{syntax:'<length>';inherits:true;initial-value:0px}
+body.rl #stage>#walk,body.rl.walking #stage>#walk{right:var(--wkR,0px)}
+/* bpm-v116: device name in full: wraps (JS shrinks to >=12px for 2 lines), never an ellipsis */
+#walk .wName{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:anywhere;line-height:1.2;min-width:0}
+body.rlPh #panel.rlNoH,body.rlPh #lyrP.rlNoH{transition:width .18s ease-out!important}
