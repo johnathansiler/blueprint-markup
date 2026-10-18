@@ -7,7 +7,6 @@
  const O=s=>{const e=document.querySelector(s);if(e)hid.append(e);return e};
  const tb=s=>document.querySelector(`[data-t="${s}"]`);
  // ---- wheel picker ----
- const REV=-1;/* bpm-v116 wheel direction, see edgeDir */
  const W=ce('div','whOv');W.hidden=true;W.innerHTML='<div class="whBox"><div class="whT"></div><div class="whWin"><div class="whBand"></div><div class="whDrum"></div><div class="whFade"></div><div class="whTick"></div></div><div class="whBtns"><button type="button" class="btn" data-w="x">Cancel</button><button type="button" class="btn pri" data-w="ok">Choose</button></div></div>';document.body.append(W);
  const ST=24,R=118,IH=40;let WH=null,WH0ox=42;
  // bpm-v106: curved drum band (option A look) + adjacent, never-overlapping placement (option B rules). Same API: wheelOpen(title,items,cur,cb).
@@ -18,7 +17,7 @@
   d.innerHTML=items.map((it,i)=>`<div class="whS${i===0?' f':''}${i===n-1?' l':''}" data-i="${i}"></div><div class="whI" data-i="${i}">${it.html||esc(it.l)}</div>`).join('');
   {/* bpm-v114: left-aligned rows: fixed icon/dot column, then the label (same x on every row) */const rows=[...d.querySelectorAll('.whI')],anyIc=rows.some(r=>r.querySelector('.whIc'));
    for(const r of rows){const ic=r.querySelector('.whIc'),L=ce('span','whL');for(const nd of [...r.childNodes])if(nd!==ic)L.append(nd);const t0=L.firstChild;if(t0&&t0.nodeType===3)t0.textContent=t0.textContent.replace(/^[\s\u00a0]+/,'');r.innerHTML='';r.append(ic||ce('span','whIc'+(anyIc?'':' none')),L)}WH0ox=anyIc?42:12}
-  WH={items,cb,pos:Math.max(0,Math.min(n-1,cur)),v:0,raf:0,lastI:-1,rows:3};W.hidden=false;
+  WH={items,cb,pos:Math.max(0,Math.min(n-1,cur)),v:0,raf:0,lastI:-1,rows:3,pend:null};CF.hidden=true;W.hidden=false;
   if(PRESS)PRESS.classList.remove('whPressed');PRESS=LASTA&&LASTA.isConnected?LASTA:null;if(PRESS)PRESS.classList.add('whPressed');
   whPlace(W.querySelector('.whBox'),PRESS,WH.pos,n);W.classList.remove('in');requestAnimationFrame(()=>W.classList.add('in'));paint()}
  let LASTA=null;document.addEventListener('pointerdown',e=>{if(W.contains(e.target))return;const a=e.target.closest&&e.target.closest('button,summary,label,.btn,select,[data-w]');if(a)LASTA=a},true);
@@ -65,37 +64,47 @@
   d.querySelectorAll('.whS,.whI').forEach(e=>{const i=+e.dataset.i,dd=i-p,an=dd*ST,on=Math.abs(dd)<=lim,tf=`translateZ(-${R}px) rotateX(${-an}deg) translateZ(${R+(e.classList.contains('whI')?1.5:0)}px)`;e.style.transform=tf;e.style.visibility=on?'':'hidden';
    const op=Math.max(0,1-Math.abs(an)/105);if(e.classList.contains('whS')){e.classList.toggle('cen',i===c);e.style.background=i===c?'':`rgba(15,23,42,${Math.min(.97,.25*op+.8).toFixed(2)})`}
    else{e.style.opacity=Math.max(.15,op).toFixed(2);e.style.fontSize=Math.max(11,F-Math.abs(an)/10)+'px';e.classList.toggle('cen',i===c)}});
-  if(c!==WH.lastI){if(WH.lastI>=0&&navigator.vibrate)try{navigator.vibrate(4)}catch{}WH.lastI=c}}
+  if(c!==WH.lastI){if(WH.lastI>=0&&navigator.vibrate)try{navigator.vibrate(5)}catch{}WH.lastI=c}}
  const clampP=p=>Math.max(0,Math.min(WH.items.length-1,p));
- function settle(){cancelAnimationFrame(WH.raf);const step=()=>{if(Math.abs(WH.v)>.002){WH.pos=clampP(WH.pos+WH.v);WH.v*=.92;if(WH.pos===0||WH.pos===WH.items.length-1)WH.v=0}else{const t=Math.round(WH.pos);WH.pos+=(t-WH.pos)*.3;if(Math.abs(t-WH.pos)<.01){WH.pos=t;paint();return}}paint();WH.raf=requestAnimationFrame(step)};step()}
- const win=W.querySelector('.whWin');let dr=null;
- win.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse')return;win.setPointerCapture(e.pointerId);cancelAnimationFrame(WH.raf);dr={y:e.clientY,p:WH.pos,t:performance.now(),ly:e.clientY,lt:performance.now(),moved:0}});
- win.addEventListener('pointermove',e=>{if(!dr||e.pointerType!=='mouse')return;const dy=e.clientY-dr.y;dr.moved=Math.max(dr.moved,Math.abs(dy));WH.pos=clampP(dr.p-REV*dy/IH);const n=performance.now();WH.v=-REV*(e.clientY-dr.ly)/IH/Math.max(1,(n-dr.lt)/16);dr.ly=e.clientY;dr.lt=n;paint()});
- win.addEventListener('pointerup',e=>{if(!dr||e.pointerType!=='mouse')return;const tap=dr.moved<6;dr=null;if(tap){const r=win.getBoundingClientRect(),dy=e.clientY-(r.top+(WH.hU||r.height/2));let off=0,bd=1e9;for(let k=-7;k<=7;k++){const q=Math.abs(proj(k)-dy);if(q<bd){bd=q;off=k}}if(off===0)return choose();WH.pos=clampP(Math.round(WH.pos)+off);WH.v=0}settle()});
- win.addEventListener('wheel',e=>{e.preventDefault();WH.v+=REV*e.deltaY/IH/12;settle()},{passive:false});
- const close=()=>{W.classList.remove('in');if(PRESS){PRESS.classList.remove('whPressed');PRESS=null}setTimeout(()=>W.hidden=true,150)};function choose(){const i=Math.round(WH.pos),cb=WH.cb;close();cb(WH.items[i],i)}
- W.querySelector('[data-w=x]').onclick=close;W.querySelector('[data-w=ok]').onclick=choose;W.addEventListener('click',e=>{if(e.target===W)close()});document.addEventListener('keydown',e=>{if(W.hidden||!WH)return;if(e.key==='Escape'){e.preventDefault();close()}else if(e.key==='Enter'){e.preventDefault();choose()}else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();WH.pos=clampP(Math.round(WH.pos)+(e.key==='ArrowDown'?1:-1));paint()}});
- // bpm-v115: touch/pen = press-and-slide (radial-menu style). The row under the finger highlights; release over a row selects it (Cancel rows cancel);
- // release anywhere else (outside the wheel, between/off rows) closes with no selection; a quick tap on a row selects it; holding near the drum's top/bottom
- // edge auto-scrolls. Destructive wheels (Clear…/Delete…): a slide-release only highlights (centres) the row; a tap on it is the confirm. Mouse unchanged.
- let TT=null;const DESTR=()=>WH&&/^(clear (pins|markups)|delete pins)$/i.test((W.querySelector('.whT').textContent||'').trim());
- const rowAt=(x,y)=>{const el=document.elementFromPoint(x,y),r=el&&el.closest&&el.closest('.whI,.whS');if(!r||!W.contains(r)||r.style.visibility==='hidden')return null;const i=+r.dataset.i;return Number.isFinite(i)?i:null};
- const hl=i=>{W.querySelectorAll('.whS.hov').forEach(e=>e.classList.remove('hov'));if(i!=null){const s_=W.querySelector(`.whS[data-i="${i}"]`);if(s_)s_.classList.add('hov')}};
- /* bpm-v116: wheel direction reversed (user request): REV=-1 flips mouse drag + fling, mouse wheel and press-and-slide edge auto-scroll.
-  Now: drag DOWN moves the list UP (later rows come to the centre); wheel scroll down moves the list DOWN (earlier rows); hold at the bottom edge = list moves down */
- const edgeDir=(x,y)=>{const r=win.getBoundingClientRect();if(x<r.left||x>r.right)return 0;if(y<r.top+22&&y>r.top-60)return -1;if(y>r.bottom-22&&y<r.bottom+60)return 1;return 0};
- const auto=()=>{if(!TT||!TT.dir)return;const p0=WH.pos;WH.pos=clampP(WH.pos+REV*TT.dir*.09);if(WH.pos!==p0){paint();hl(rowAt(TT.x,TT.y))}TT.raf=requestAnimationFrame(auto)};
- W.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'||W.hidden||!WH)return;e.preventDefault();cancelAnimationFrame(WH.raf);try{W.setPointerCapture(e.pointerId)}catch{}
-  TT={id:e.pointerId,x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,t:performance.now(),moved:0,dir:0,raf:0};hl(rowAt(e.clientX,e.clientY))});
- W.addEventListener('pointermove',e=>{if(!TT||e.pointerId!==TT.id)return;TT.x=e.clientX;TT.y=e.clientY;TT.moved=Math.max(TT.moved,Math.hypot(e.clientX-TT.x0,e.clientY-TT.y0));
-  hl(rowAt(e.clientX,e.clientY));const d=TT.moved>8?edgeDir(e.clientX,e.clientY):0;if(d!==TT.dir){TT.dir=d;cancelAnimationFrame(TT.raf);if(d)TT.raf=requestAnimationFrame(auto)}});
- const endT=e=>{if(!TT||e.pointerId!==TT.id)return;const T_=TT;TT=null;cancelAnimationFrame(T_.raf);const cancel=e.type==='pointercancel';const i=cancel?null:rowAt(e.clientX,e.clientY);hl(null);
-  const tap=T_.moved<8&&performance.now()-T_.t<600;W._noClick=1;setTimeout(()=>{W._noClick=0},350);
-  if(i==null){close();return}
-  if(DESTR()&&!tap){WH.pos=i;WH.v=0;paint();return}
-  WH.pos=i;WH.v=0;paint();choose()};
- W.addEventListener('pointerup',endT);W.addEventListener('pointercancel',endT);
- W.addEventListener('click',e=>{if(W._noClick){e.stopPropagation();e.preventDefault()}},true);
+ /* bpm-v121: iPhone-style picker for EVERY wheel (touch, pen and mouse share one engine).
+  - Drag: the content follows the pointer 1:1 on the curve (the row under the finger stays under it). Replaces the v115 press-and-slide/edge-hold and the v116 reversal.
+  - Release: velocity over the last 80 ms; a paused pointer (no motion in the last 80 ms) does not coast. Coast <= 4 rows, then an ease-out settle onto the centre row (~0.25 s).
+  - After a drag/flick the row that settles in the centre is picked (Cancel rows cancel). A tap (<8 px) on any visible row picks it (an off-centre row rolls to the centre first).
+  - Destructive wheels (Clear pins / Clear markups / Delete pins): settling or tapping only highlights the row with "Tap again to confirm"; tapping the highlighted row confirms.
+  - Mouse wheel: one row per notch, natural direction (scroll down = later row). Keys: arrows step, Enter picks the centre row, Escape closes; a tap outside closes. */
+ const DESTR=()=>WH&&/^(clear (pins|markups)|delete pins)$/i.test((W.querySelector('.whT').textContent||'').trim());
+ const win=W.querySelector('.whWin');
+ // inverse of proj(): screen y offset from the centre line -> row offset (curve + perspective); linear beyond +-3.4 rows
+ const PI_={};const projInv=dy=>{const L=3.4,yL=proj(L),k=(proj(L)-proj(L-.1))/.1;if(dy>yL)return L+(dy-yL)/k;if(dy<-yL)return -L+(dy+yL)/k;let lo=-L,hi=L;for(let j=0;j<30;j++){const m=(lo+hi)/2;if(proj(m)<dy)lo=m;else hi=m}return (lo+hi)/2};
+ const cy=()=>win.getBoundingClientRect().top+(WH.hU||win.getBoundingClientRect().height/2);
+ const CF=W.querySelector('.whBox').appendChild(ce('div','whCf'));CF.setAttribute('role','status');CF.setAttribute('aria-live','polite');CF.hidden=true;
+ const setPend=i=>{WH.pend=i;W.querySelectorAll('.whS.hov').forEach(e=>e.classList.remove('hov'));if(i==null){CF.hidden=true;return}const s_=W.querySelector(`.whS[data-i="${i}"]`);if(s_)s_.classList.add('hov');const it=WH.items[i];CF.textContent='Tap again to confirm';CF.hidden=false};
+ function anim(to,D,done){cancelAnimationFrame(WH.raf);const p0=WH.pos,t0=performance.now();to=clampP(to);if(Math.abs(to-p0)<.002){WH.pos=to;paint();done&&done();return}
+  const step=n=>{const k=Math.min(1,(n-t0)/D),e=1-Math.pow(1-k,3);WH.pos=p0+(to-p0)*e;paint();if(k<1)WH.raf=requestAnimationFrame(step);else{WH.pos=to;paint();WH.raf=0;done&&done()}};WH.raf=requestAnimationFrame(step)}
+ const isCancel=i=>{const it=WH.items[i];const t=(it&&(it.l||String(it.html||'').replace(/<[^>]*>/g,'')))||'';return /^\W*cancel\b/i.test(t.trim())};
+ // pick row i (after a settle or a tap); destructive rows need a second tap on the highlighted row
+ function pickAt(i,confirmTap){if(!WH)return;WH.pos=i;paint();if(DESTR()&&!isCancel(i)){if(confirmTap&&WH.pend===i){setPend(null);choose();return}setPend(i);return}setPend(null);choose()}
+ let dr=null;
+ win.addEventListener('pointerdown',e=>{if(!WH||W.hidden)return;if(e.button>0)return;e.preventDefault();try{win.setPointerCapture(e.pointerId)}catch{}const wasMoving=!!WH.raf;cancelAnimationFrame(WH.raf);WH.raf=0;
+  const u=projInv(e.clientY-cy()),n=performance.now();dr={id:e.pointerId,x0:e.clientX,y0:e.clientY,p0:WH.pos,u0:u,moved:0,S:[[n,WH.pos]],wasMoving}});
+ win.addEventListener('pointermove',e=>{if(!dr||e.pointerId!==dr.id)return;dr.moved=Math.max(dr.moved,Math.hypot(e.clientX-dr.x0,e.clientY-dr.y0));if(dr.moved<4&&!dr.drag)return;dr.drag=1;
+  const p=clampP(dr.p0+dr.u0-projInv(e.clientY-cy()));if(WH.pend!=null&&Math.round(p)!==WH.pend)setPend(null);WH.pos=p;const n=performance.now();dr.S.push([n,p]);while(dr.S.length>2&&n-dr.S[0][0]>80)dr.S.shift();paint()});
+ const endP=e=>{if(!dr||e.pointerId!==dr.id)return;const d=dr;dr=null;if(e.type==='pointercancel'){anim(Math.round(WH.pos),250);return}
+  if(d.moved<8){/* tap: the visible row under the pointer is picked with one tap */const r=win.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right){anim(Math.round(WH.pos),200);return}
+   const i=Math.round(d.p0+d.u0);if(d.wasMoving&&Math.abs(i-d.p0)>.5){/* tap during a coast just stops it */anim(Math.round(WH.pos),200);return}
+   if(i<0||i>WH.items.length-1||Math.abs(i-WH.pos)>(WH.rows||3)+.5){anim(Math.round(WH.pos),200);return}
+   if(Math.abs(i-WH.pos)<.5)return pickAt(i,true);anim(i,180,()=>pickAt(i,false));return}
+  const n=performance.now(),S=d.S,a=S[0],b=S[S.length-1];let v=0;/* rows per ms; 0 if the pointer paused */if(n-b[0]<=80&&b[0]-a[0]>8)v=(b[1]-a[1])/(b[0]-a[0]);if(Math.abs(v)<.0006)v=0;
+  const dist=Math.max(-4,Math.min(4,v*300)),to=clampP(Math.round(WH.pos+dist)),D=v?Math.max(220,Math.min(450,3*Math.abs(to-WH.pos)/Math.abs(v))):250;
+  anim(to,D,()=>pickAt(to,false))};
+ win.addEventListener('pointerup',endP);win.addEventListener('pointercancel',endP);
+ // mouse wheel / trackpad: one row per notch (or per 40 px of trackpad travel), natural direction; no auto-pick
+ let wAcc=0,wTo=null;win.addEventListener('wheel',e=>{e.preventDefault();if(!WH)return;const dy=e.deltaMode===1?e.deltaY*40:e.deltaMode===2?e.deltaY*400:e.deltaY;let st=0;
+  if(Math.abs(dy)>=40){st=Math.sign(dy);wAcc=0}else{wAcc+=dy;if(Math.abs(wAcc)>=40){st=Math.sign(wAcc);wAcc=0}}if(!st)return;
+  const base=WH.raf&&wTo!=null?wTo:Math.round(WH.pos);wTo=clampP(base+st);if(WH.pend!=null&&wTo!==WH.pend)setPend(null);anim(wTo,160,()=>{wTo=null})},{passive:false});
+ const close=()=>{W.classList.remove('in');if(PRESS){PRESS.classList.remove('whPressed');PRESS=null}if(WH){cancelAnimationFrame(WH.raf);WH.raf=0;setPend(null)}dr=null;setTimeout(()=>W.hidden=true,150)};function choose(){const i=Math.round(WH.pos),cb=WH.cb;close();cb(WH.items[i],i)}
+ W.querySelector('[data-w=x]').onclick=close;W.querySelector('[data-w=ok]').onclick=()=>pickAt(Math.round(WH.pos),true);W.addEventListener('click',e=>{if(e.target===W)close()});
+ document.addEventListener('keydown',e=>{if(W.hidden||!WH)return;if(e.key==='Escape'){e.preventDefault();close()}else if(e.key==='Enter'){e.preventDefault();pickAt(Math.round(WH.pos),true)}else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();WH.pos=clampP(Math.round(WH.pos)+(e.key==='ArrowDown'?1:-1));if(WH.pend!=null&&WH.pos!==WH.pend)setPend(null);paint()}});
  window.wheelOpen=wheelOpen;window.wheelPos=()=>WH&&WH.pos;
  // ---- grouped wheel buttons (tap = last pick; tap again or ▾ = wheel) ----
  const mkWheelBtn=(key,label,items,isOn)=>{const b=ce('button','tool tbw');b.type='button';b.dataset.w=key;
