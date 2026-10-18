@@ -39,7 +39,7 @@
    g.addEventListener('pointermove',mv);g.addEventListener('pointerup',up);g.addEventListener('pointercancel',up)})}
  const shown=e=>e&&(!e.hidden||OUT.has(e))&&getComputedStyle(e).display!=='none';
  // bpm-v116: walk bar needs ~260px for its buttons in one or two labeled rows
-const WALKMIN=260;let WKH=0,WKSTRIP=0;
+const WALKMIN=260,LEGMIN=210;let WKH=0,WKSTRIP=0,LGH=0;
 // bpm-v116: device name always in full: wrap to 2 lines, then shrink down to 12px; never an ellipsis (a 3rd line only if even 12px cannot fit)
 function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)return;const k=n.textContent+'|'+n.clientWidth;if(n._fk===k)return;n.style.fontSize='';
  let fs=parseFloat(getComputedStyle(n).fontSize);const two=()=>{const lh=parseFloat(getComputedStyle(n).lineHeight)||fs*1.2;return n.scrollHeight<=lh*2+2&&n.scrollWidth<=n.clientWidth+1};
@@ -65,7 +65,12 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
   B.classList.toggle('rlWF',wf);
   {const v=(wf?0:(ph&&rk?wr:0))+'px';if(ST.style.getPropertyValue('--wkR')!==v)ST.style.setProperty('--wkR',v)}
   if(wkOn)fitName(wk);
+  // bpm-v117: legend banner. Phone with a right panel and a free area narrower than LEGMIN: the banner leaves the plan top and takes the full-width strip
+  // above the walk bar / Pages strip / toolbar (never one letter per line); the panels stop above it. Otherwise it stays centred in the free area.
+  const lg=by('legChip'),lgOn=lg&&!lg.hidden;const lf=!!(lgOn&&ph&&rk&&innerWidth-wr<LEGMIN);B.classList.toggle('rlLF',lf);
   WKH=0;if(wf){const o=wk.style.right;wk.style.right='0px';WKH=Math.ceil(wk.getBoundingClientRect().height);wk.style.right=o}
+  if(B.style.getPropertyValue('--wkH')!==WKH+'px')B.style.setProperty('--wkH',WKH+'px');
+  LGH=lf?Math.ceil(lg.getBoundingClientRect().height)+12:0;
   applyBottom(sr);
   {const v=(ph&&thOn?TH.offsetHeight:0)+'px';WKSTRIP=ph&&thOn?TH.offsetHeight:0;if(B.style.getPropertyValue('--phStrip')!==v)B.style.setProperty('--phStrip',v)}/* phone: plan-bottom bars (pen, shape, freehand, stamp, Detect, walk, toast) sit above the strip */
   // plan margins: target = the panels' final widths, moved with the SAME duration/easing as the panel slide/width tween (one CSS clock, so the plan edge and the
@@ -82,7 +87,7 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
   openR=rk}
  // right panels: exactly the stage's vertical extent; phone: above the Pages strip (followed frame by frame while it slides)
  function applyBottom(sr){sr=sr||ST.getBoundingClientRect();/* phone: stop at the strip's FINAL top; the height transition (same .18s ease-out as the strip's slide) keeps the two edges together every frame */
-  const bot=PH()&&!TH.hidden&&getComputedStyle(TH).display!=='none'?Math.min(sr.bottom,TH.offsetTop):sr.bottom;/* v116: full-width walk bar below the panels */const bot2=WKH?Math.min(bot,sr.bottom-(B.style.getPropertyValue('--phStrip')?parseFloat(B.style.getPropertyValue('--phStrip'))||0:0)-WKH):bot;
+  const bot=PH()&&!TH.hidden&&getComputedStyle(TH).display!=='none'?Math.min(sr.bottom,TH.offsetTop):sr.bottom;/* v116: full-width walk bar below the panels */const bot2=WKH||LGH?Math.min(bot,sr.bottom-(B.style.getPropertyValue('--phStrip')?parseFloat(B.style.getPropertyValue('--phStrip'))||0:0)-WKH-LGH):bot;
   for(const e of [by('panel'),by('lyrP')]){if(!e)continue;
   /* v116: a panel sliding out keeps its height (it never grows over the walk strip); a panel opening takes its height at once, then slides in */
   if(e.hidden){e._op=0;continue}const fresh=!e._op;e._op=1;
@@ -91,6 +96,9 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
  let folT=0,SLID=0;function follow(ms){folT=Math.max(folT,performance.now()+ms);if(follow.on)return;follow.on=1;try{if(!SLIDING){SLIDING=1;SLID=1}}catch{}
   const st=()=>{try{sync()}catch(e){console.error(e)}if(performance.now()<folT)requestAnimationFrame(st);else{follow.on=0;if(SLID){SLID=0;try{SLIDING=0;scheduleRender()}catch{}}}};requestAnimationFrame(st)}/* no PDF re-render during a slide; one real render at the end */
  window.railSync=sync;
+// bpm-v117: re-run the layout when the legend banner shows/hides
+{let q=0;const hook=()=>{const lg=by('legChip');if(!lg||lg._rlObs)return!!lg;lg._rlObs=1;new MutationObserver(()=>{if(q)return;q=1;requestAnimationFrame(()=>{q=0;try{sync()}catch(e){console.error(e)}})}).observe(lg,{attributes:true,attributeFilter:['hidden'],childList:true});return true};
+ if(!hook()){const mo=new MutationObserver(()=>{if(hook()){mo.disconnect();try{sync()}catch{}}});mo.observe(ST,{childList:true})}}
 // bpm-v116: re-run the layout when the walk bar shows/hides or re-renders (name fit, full-width strip, panel bottoms)
 {const wk=by('walk');if(wk){let q=0;new MutationObserver(()=>{if(q)return;q=1;requestAnimationFrame(()=>{q=0;try{sync()}catch(e){console.error(e)}})}).observe(wk,{attributes:true,attributeFilter:['hidden'],childList:true,subtree:true,characterData:true})}}
  new MutationObserver(()=>{if(!TH.hidden)T_.pages=performance.now();sync();follow(360)}).observe(TH,{attributes:true,attributeFilter:['hidden']});

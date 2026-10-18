@@ -252,3 +252,17 @@ body.rl #stage>#walk,body.rl.walking #stage>#walk{right:var(--wkR,0px)}
 /* bpm-v116: device name in full: wraps (JS shrinks to >=12px for 2 lines), never an ellipsis */
 #walk .wName{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:anywhere;line-height:1.2;min-width:0}
 body.rlPh #panel.rlNoH,body.rlPh #lyrP.rlNoH{transition:width .18s ease-out!important}
+/* bpm-v117: legend banner never squeezed into a column of single letters: wraps at word boundaries with a sensible minimum width; phone + narrow free
+   area: full-width strip above the walk bar / Pages strip / toolbar (layout manager: body.rlLF; panels stop above it) */
+.legChip{min-width:min(210px,calc(100% - var(--frR,0px) - 12px))}
+.legChip #legRev{overflow-wrap:normal!important;word-break:normal!important;hyphens:none}
+body.rlLF #stage>#legChip{left:6px!important;right:6px!important;top:auto!important;bottom:calc(var(--phStrip,0px) + var(--wkH,0px) + 6px)!important;transform:none!important;max-width:none!important;min-width:0;justify-content:center;box-sizing:border-box}
+/* bpm-v117: walk bar: opaque themed background in every placement (plan text never shows through) */
+#walk,body.walking #walk{background:#1e293b!important}
+#walk:has(.wfS){background:#0b1220!important}
+body.light #walk,body.light.walking #walk,body.light #walk:has(.wfS){background:#f8fafc!important;color:#0f172a;border-top-color:#1d4ed8}
+body.light #walk .wName,body.light #walk .wh{color:#0f172a}
+body.light #walk .wInfo,body.light #walk .wCnt,body.light #walk small{color:#334155}
+body.light #walk .btn:not(.ok):not(.danger):not(.pri){background:#eef2f7;color:#0f172a;border-color:#64748b}
+body.light #walk .wMore summary{background:#eef2f7;color:#0f172a;border-color:#64748b}
+body.rlLF #stage>#legChip{transition:bottom .18s ease-out}@media (prefers-reduced-motion:reduce){body.rlLF #stage>#legChip{transition:none}}
