@@ -77,7 +77,7 @@
  new MutationObserver(()=>{if(!TH.hidden)T_.pages=performance.now();sync();follow(360)}).observe(TH,{attributes:true,attributeFilter:['hidden']});
  watch(TH,'pages');watch(by('panel'),'right');
  // labeled Close on every panel header
- const cl=by('closeList');if(cl){cl.innerHTML='✕<span class="tl">Close</span>';cl.setAttribute('aria-label','Close the Pins panel');cl.title='Close the Pins panel'}
+ const cl=by('closeList');const clL=()=>{if(!cl)return;if(!cl.querySelector('.tl'))cl.innerHTML='✕<span class="tl">Close</span>';if(cl.getAttribute('aria-label')!=='Close the Pins panel'){cl.setAttribute('aria-label','Close the Pins panel');cl.title='Close the Pins panel'}};clL();if(cl)new MutationObserver(clL).observe(cl,{childList:true,characterData:true,subtree:true});
  const thx=()=>{const x=TH.querySelector('#thX');if(x&&!x.dataset.rl){x.dataset.rl=1;x.innerHTML='✕<span class="tl">Close</span>';x.setAttribute('aria-label','Close the page preview');x.title='Close the page preview'}const r=TH.querySelector('#thRn');if(r&&!r.getAttribute('aria-label'))r.setAttribute('aria-label','Rename the current page')};new MutationObserver(thx).observe(TH,{childList:true,subtree:true});thx();
  addEventListener('resize',()=>{for(const k in PAN)W_[k]=getW(k);NOTR=1;sync();clearTimeout(rzT);rzT=setTimeout(()=>{NOTR=0},300);follow(120)});
  new ResizeObserver(()=>sync()).observe(ST);
@@ -91,12 +91,12 @@
  function placeCard(){if(!D||!D.open){off();return}const p=pinNow();if(!p){off();return}
   const sr=ST.getBoundingClientRect(),s=toS(p.x,p.y),X=sr.left+s.x,Y=sr.top+s.y,m=8,ph=PH(),gap=ph?30:104,L0=sr.left+m,T0=sr.top+m;let R0=sr.right-m,B0=sr.bottom-m;
   if(ph){/* phone panels overlay the plan: the card keeps to the free part */if(shown(TH)&&!TH.hidden)B0=Math.min(B0,TH.offsetTop-m);for(const e of [by('panel'),by('lyrP')])if(e&&!e.hidden&&shown(e))R0=Math.min(R0,e.getBoundingClientRect().left-m)}
-  const cw=Math.min(ph?R0-L0:340,R0-L0);
+  const cw=Math.min(ph?340:370,R0-L0);/* v115: larger card: ~340 on phone (free width - margins), ~370 on tablet */
   if(X<sr.left||X>sr.right||Y<sr.top||Y>sr.bottom||cw<220){off();return}
   let x,y,mh,compact=false;const fullH=Math.min(B0-T0,620);
   if(!ph&&X+gap+cw<=R0){x=X+gap;mh=fullH;y=Math.max(T0,Math.min(B0-mh,Y-120))}
   else if(!ph&&X-gap-cw>=L0){x=X-gap-cw;mh=fullH;y=Math.max(T0,Math.min(B0-mh,Y-120))}
-  else{compact=true;x=Math.max(L0,Math.min(R0-cw,X-cw/2));const below=B0-(Y+gap),above=Y-gap-T0;if(below>=260||below>=above){y=Y+gap;mh=Math.min(below,480)}else{mh=Math.min(above,480);y=Y-gap-mh}if(mh<200){off();return}}
+  else{compact=true;x=Math.max(L0,Math.min(R0-cw,X-cw/2));const below=B0-(Y+gap),above=Y-gap-T0;if(below>=320||below>=above){y=Y+gap;mh=Math.min(below,520)}else{mh=Math.min(above,520);y=Y-gap-mh}if(mh<260){off();return}}
   B.classList.add('pcOn');B.classList.toggle('pcC',compact);DB.hidden=!pins.some(x=>x.id===p.id);DB.style.left=Math.round(Math.min(R0-80,X+14))+'px';DB.style.top=Math.round(Y-20)+'px';
   D.style.left=Math.round(x)+'px';D.style.top=Math.round(y)+'px';D.style.width=Math.round(cw)+'px';D.style.maxHeight=Math.round(mh)+'px'}
  if(D){new MutationObserver(()=>{if(D.open)requestAnimationFrame(placeCard);else off()}).observe(D,{attributes:true,attributeFilter:['open']});addEventListener('resize',()=>D.open&&placeCard())}
