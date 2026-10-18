@@ -8,13 +8,15 @@
  const tb=s=>document.querySelector(`[data-t="${s}"]`);
  // ---- wheel picker ----
  const W=ce('div','whOv');W.hidden=true;W.innerHTML='<div class="whBox"><div class="whT"></div><div class="whWin"><div class="whBand"></div><div class="whDrum"></div><div class="whFade"></div><div class="whTick"></div></div><div class="whBtns"><button type="button" class="btn" data-w="x">Cancel</button><button type="button" class="btn pri" data-w="ok">Choose</button></div></div>';document.body.append(W);
- const ST=24,R=118,IH=40;let WH=null;
+ const ST=24,R=118,IH=40;let WH=null,WH0ox=42;
  // bpm-v106: curved drum band (option A look) + adjacent, never-overlapping placement (option B rules). Same API: wheelOpen(title,items,cur,cb).
  const PSP=520,SLH=50,proj=d=>{const t=d*ST*Math.PI/180,y=R*Math.sin(t),z=R*Math.cos(t)-R;return y*PSP/(PSP-z)};
  const PT=W.appendChild(ce('div','whPtr'));let PRESS=null;
  const mcv=document.createElement('canvas').getContext('2d');
  function wheelOpen(title,items,cur,cb){const d=W.querySelector('.whDrum');W.querySelector('.whT').textContent=title;const n=items.length;
   d.innerHTML=items.map((it,i)=>`<div class="whS${i===0?' f':''}${i===n-1?' l':''}" data-i="${i}"></div><div class="whI" data-i="${i}">${it.html||esc(it.l)}</div>`).join('');
+  {/* bpm-v114: left-aligned rows: fixed icon/dot column, then the label (same x on every row) */const rows=[...d.querySelectorAll('.whI')],anyIc=rows.some(r=>r.querySelector('.whIc'));
+   for(const r of rows){const ic=r.querySelector('.whIc'),L=ce('span','whL');for(const nd of [...r.childNodes])if(nd!==ic)L.append(nd);const t0=L.firstChild;if(t0&&t0.nodeType===3)t0.textContent=t0.textContent.replace(/^[\s\u00a0]+/,'');r.innerHTML='';r.append(ic||ce('span','whIc'+(anyIc?'':' none')),L)}WH0ox=anyIc?42:12}
   WH={items,cb,pos:Math.max(0,Math.min(n-1,cur)),v:0,raf:0,lastI:-1,rows:3};W.hidden=false;
   if(PRESS)PRESS.classList.remove('whPressed');PRESS=LASTA&&LASTA.isConnected?LASTA:null;if(PRESS)PRESS.classList.add('whPressed');
   whPlace(W.querySelector('.whBox'),PRESS,WH.pos,n);W.classList.remove('in');requestAnimationFrame(()=>W.classList.add('in'));paint()}
@@ -24,27 +26,33 @@
  const hit=(a,b)=>a.left<b.right-.5&&a.right>b.left+.5&&a.top<b.bottom-.5&&a.bottom>b.top+.5;
  function whPlace(box,a,cur,n){const VW=innerWidth,VH=innerHeight,m=8,g=6,pt=8,phone=VW<600,fs=phone?14.5:16;mcv.font=`800 ${fs}px Roboto,Arial,sans-serif`;
   const tw=Math.max(...WH.items.map(it=>{const t=it.l||String(it.html||'').replace(/<[^>]*>/g,'');return mcv.measureText(t).width+(it.html&&/whIc/.test(it.html)?30:0)}));
-  const W0=Math.max(140,Math.min(phone?200:240,tw+40));
+  // bpm-v114: size to the longest label (never clipped): smaller font, then 2-line wrap, if the screen is too narrow; >=8px margin
+  const pad=12*2+30+6,maxW=VW-2*m-6;let F=fs,tw2=tw;const lab=it=>(it.l||String(it.html||'').replace(/<i[^>]*class="whIc[^"]*"[^>]*>.*?<\/i>/,'').replace(/<[^>]*>/g,'')).trim();
+  // measure the real rows (actual font) at the selected-row size and weight
+  box.classList.remove('wr');const IR=[...box.querySelectorAll('.whI')];const meas=f=>{let mx=0;for(const e of IR){const a=e.style.fontSize,b=e.style.fontWeight;e.style.fontSize=f+'px';e.style.fontWeight='800';const l=e.querySelector('.whL');if(l){l.style.flex='none';l.style.width='max-content';mx=Math.max(mx,l.offsetWidth);l.style.flex=l.style.width=''}e.style.fontSize=a;e.style.fontWeight=b}return mx+2};
+  tw2=meas(F);while(tw2+pad>maxW&&F>12){F=Math.max(12,F-.5);tw2=meas(F)}
+  const wrap=tw2+pad>maxW;WH.F=F;box.classList.toggle('wr',wrap);
+  const W0=Math.min(maxW,Math.max(140,Math.ceil(tw2+pad)));
   const top=$('#top'),tools=$('#tools'),sb=$('#selBar'),P=a&&a.closest('#panel,#lyrP'),K=[];
-  const lo=(vis(top)?top.getBoundingClientRect().bottom:0)+m;let hi=VH-m;for(const e of[tools,sb,$('#mBar')])if(vis(e)){const r=e.getBoundingClientRect();if(r.top>VH/2)hi=Math.min(hi,r.top-m)}
+  const lo=(vis(top)?top.getBoundingClientRect().bottom:0)+m;let hi=VH-m;for(const e of[tools,sb,$('#mBar'),$('#thumbs')])if(vis(e)){const r=e.getBoundingClientRect();if(r.top>VH/2&&r.width>VW/2)hi=Math.min(hi,r.top-m)}/* v114: phone Pages strip too */
   for(const e of[top,tools,sb,$('#mBar'),$('#proj')])if(vis(e))K.push(R4(e.getBoundingClientRect()));
   let ar=a&&a.isConnected?R4(a.getBoundingClientRect()):null;if(ar)K.push(ar);
   let pr=null;if(P){pr=R4(P.getBoundingClientRect());const sl=P.querySelector('.pSumL,.pFB'),bb=[...P.querySelectorAll('.pBB')].find(vis);K.push({...pr,bottom:sl&&vis(sl)?sl.getBoundingClientRect().bottom+2:pr.top+60});if(bb)K.push({...pr,top:bb.getBoundingClientRect().top-2})}
   // the dialog/sheet a control sits in (e.g. the Fail sheet) is a keep-out for its header; the control itself always is
   const acx=ar?ar.left+ar.width/2:VW/2,acy=ar?ar.top+ar.height/2:VH/2;
   const tryAt=(side,rows)=>{const up=Math.min(cur,rows),dn=Math.min(n-1-cur,rows),hU=up?Math.abs(proj(-up-.5))+6:SLH/2,hD=dn?Math.abs(proj(dn+.5))+6:SLH/2;let w=W0,x,y;
-   if(side==='left'||side==='right'){const edgeL=pr?pr.left:ar?ar.left:VW/2,edgeR=pr?pr.right:ar?ar.right:VW/2,room=side==='left'?edgeL-14-m:VW-m-edgeR-14;if(room<130)return null;w=Math.min(W0,room);
+   if(side==='left'||side==='right'){const edgeL=pr?pr.left:ar?ar.left:VW/2,edgeR=pr?pr.right:ar?ar.right:VW/2,room=side==='left'?edgeL-14-m:VW-m-edgeR-14;if(room<W0)return null;w=W0;
     x=side==='left'?edgeL-14-w:edgeR+14;y=Math.max(lo+hU,Math.min(hi-hD,acy));if(y-hU<lo-.5||y+hD>hi+.5)return null}
-   else{x=Math.max(m,Math.min(VW-m-w,acx-w/2));if(side==='above'){y=(ar?ar.top:VH/2)-g-pt-hD}else{y=(ar?ar.bottom:VH/2)+g+pt+hU}y=Math.min(y,hi-hD);y=Math.max(y,lo+hU);
+   else{x=Math.max(m+2,Math.min(VW-m-3-w,acx-w/2));if(side==='above'){y=(ar?ar.top:VH/2)-g-pt-hD}else{y=(ar?ar.bottom:VH/2)+g+pt+hU}y=Math.min(y,hi-hD);y=Math.max(y,lo+hU);
     if(side==='above'&&ar&&y+hD>ar.top-g)return null;if(side==='below'&&ar&&y-hU<ar.bottom+g)return null}
-   const r={left:x,right:x+w,top:y-hU,bottom:y+hD};if(r.top<lo-.5||r.bottom>hi+.5||r.left<m-.5||r.right>VW-m+.5)return null;if(K.some(k=>hit(r,k))||XK.some(k=>hit(r,k)))return null;return{side,rows,x,y,w,hU,hD,r}};let XK=[];
+   const r={left:x,right:x+w,top:y-hU,bottom:y+hD};if(r.top<lo-.5||r.bottom>hi+.5||r.left<m-.5||r.right>VW-m-3+.5)return null;if(K.some(k=>hit(r,k))||XK.some(k=>hit(r,k)))return null;return{side,rows,x,y,w,hU,hD,r}};let XK=[];
   const inSt=a&&a.closest&&a.closest('#stage');let order=P?['left','right','below','above']:inSt?(acx>VW/2?['left','right','above','below']:['right','left','above','below']):(()=>{const o=[];if(ar){if(acy>VH*.5)o.push('above','below');else o.push('below','above');if(acx>VW/2)o.push('left','right');else o.push('right','left')}else o.push('below','above');return o})();
   // bpm-v108: wheels opened from the plan (e.g. Delete) avoid covering nearby pins when there is room; else fall back to the normal rule
   let PK=[];if(inSt){try{const sr=$('#stage').getBoundingClientRect();for(const p of pins){if(p.page!==page)continue;const q=toS(p.x,p.y),h=pinHalf(p)*view.s+4,x=sr.left+q.x,y=sr.top+q.y;if(x<-h||y<-h||x>VW+h||y>VH+h)continue;PK.push({left:x-h,right:x+h,top:y-h,bottom:y+h})}}catch{}}
   let best=null;for(const pk of PK.length?[PK,[]]:[[]]){XK=pk;for(const rows of[3,2,1]){for(const sd of order){best=tryAt(sd,rows);if(best)break}if(best)break}if(best)break}XK=[];
-  if(!best){const rows=1,hU=Math.abs(proj(-1.5)),hD=hU;best={side:'none',rows,w:W0,x:Math.max(m,Math.min(VW-m-W0,acx-W0/2)),y:Math.max(lo+hU,Math.min(hi-hD,acy)),hU,hD}}
+  if(!best){const rows=1,hU=Math.abs(proj(-1.5)),hD=hU;best={side:'none',rows,w:W0,x:Math.max(m,Math.min(VW-m-3-W0,acx-W0/2)),y:Math.max(lo+hU,Math.min(hi-hD,acy)),hU,hD}}
   WH.rows=best.rows;WH.hU=best.hU;WH.side=best.side;box.style.width=best.w+'px';box.style.left=best.x+'px';box.style.top=(best.y-best.hU)+'px';
-  const win=box.querySelector('.whWin');win.style.height=(best.hU+best.hD)+'px';win.style.perspectiveOrigin=`50% ${best.hU}px`;box.querySelector('.whDrum').style.top=best.hU+'px';box.style.setProperty('--whF',fs+'px');
+  const win=box.querySelector('.whWin');win.style.height=(best.hU+best.hD)+'px';win.style.perspectiveOrigin=`${WH0ox}px ${best.hU}px`;/* v114: perspective pivots on the label column so every row's label starts at the same x */box.querySelector('.whDrum').style.top=best.hU+'px';box.style.setProperty('--whF',(WH.F||fs)+'px');
   // pointer at the tapped control, on the band edge, ≥14px from the band's ends
   PT.className='whPtr '+best.side;if(!ar||best.side==='none'){PT.hidden=true;return}PT.hidden=false;const y0=best.y-best.hU,y1=best.y+best.hD;
   if(best.side==='left'){Object.assign(PT.style,{left:best.x+best.w-1+'px',top:Math.max(y0+14,Math.min(y1-14,acy))-8+'px'})}
