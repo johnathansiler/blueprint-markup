@@ -99,7 +99,7 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
   const st=()=>{try{sync()}catch(e){console.error(e)}if(performance.now()<folT)requestAnimationFrame(st);else{follow.on=0;if(SLID){SLID=0;try{SLIDING=0;scheduleRender()}catch{}}}};requestAnimationFrame(st)}/* no PDF re-render during a slide; one real render at the end */
  window.railSync=sync;
 // bpm-v117: re-run the layout when the legend banner shows/hides
-{let q=0;const hook=()=>{const lg=by('legChip');if(!lg||lg._rlObs)return!!lg;lg._rlObs=1;new MutationObserver(()=>{if(q)return;q=1;requestAnimationFrame(()=>{q=0;try{sync()}catch(e){console.error(e)}})}).observe(lg,{attributes:true,attributeFilter:['hidden'],childList:true});return true};
+{let q=0;const hook=()=>{const lg=by('legChip');if(!lg||lg._rlObs)return!!lg;lg._rlObs=1;new MutationObserver(()=>{if(q)return;q=1;requestAnimationFrame(()=>{q=0;try{sync();/* v120: the card keeps clear of a banner that appears/leaves while it is open */window.pinCardPlace&&by('pinDlg')&&by('pinDlg').open&&pinCardPlace()}catch(e){console.error(e)}})}).observe(lg,{attributes:true,attributeFilter:['hidden'],childList:true});return true};
  if(!hook()){const mo=new MutationObserver(()=>{if(hook()){mo.disconnect();try{sync()}catch{}}});mo.observe(ST,{childList:true})}}
 // bpm-v116: re-run the layout when the walk bar shows/hides or re-renders (name fit, full-width strip, panel bottoms)
 {const wk=by('walk');if(wk){let q=0;new MutationObserver(()=>{if(q)return;q=1;requestAnimationFrame(()=>{q=0;try{sync()}catch(e){console.error(e)}})}).observe(wk,{attributes:true,attributeFilter:['hidden'],childList:true,subtree:true,characterData:true})}}
@@ -118,14 +118,18 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
  if(D){D.append(DB);DB.onclick=e=>{e.preventDefault();const p=pinNow();D.close();if(!p)return;try{window.pdTap&&pdTap(p)}catch{}let n=0;const go=()=>{const b=by('pinDelF');if(b&&!b.hidden){window.wheelAnchor&&wheelAnchor(b);b.click()}else if(n++<20)requestAnimationFrame(go)};requestAnimationFrame(go)}}
  const off=()=>{B.classList.remove('pcOn','pcC');if(D)D.style.left=D.style.top=D.style.maxHeight=D.style.width=''};
  function placeCard(){if(!D||!D.open){off();return}const p=pinNow();if(!p){off();return}
-  const sr=ST.getBoundingClientRect(),s=toS(p.x,p.y),X=sr.left+s.x,Y=sr.top+s.y,m=8,ph=PH(),gap=ph?30:104,L0=sr.left+m,T0=sr.top+m;let R0=sr.right-m,B0=sr.bottom-m;
-  if(ph){/* phone panels overlay the plan: the card keeps to the free part */if(shown(TH)&&!TH.hidden)B0=Math.min(B0,TH.offsetTop-m);for(const e of [by('panel'),by('lyrP')])if(e&&!e.hidden&&shown(e))R0=Math.min(R0,e.getBoundingClientRect().left-m)}
+  const sr=ST.getBoundingClientRect(),s=toS(p.x,p.y),X=sr.left+s.x,Y=sr.top+s.y,m=8,ph=PH(),gap=ph?30:104,L0=sr.left+m;let T0=sr.top+m,R0=sr.right-m,B0=sr.bottom-m;
+  if(ph){/* phone panels overlay the plan: the card keeps to the free part */if(shown(TH)&&!TH.hidden)B0=Math.min(B0,(TH.offsetParent===ST?sr.top:0)+TH.offsetTop-m);/* v120: strip top in screen coordinates (offsetTop is stage-relative; final top, unaffected by the strip's slide) */for(const e of [by('panel'),by('lyrP')])if(e&&!e.hidden&&shown(e))R0=Math.min(R0,e.getBoundingClientRect().left-m)}
+  /* v120: bars below the free plan area (banner strip, walk bar) also bound the card's bottom */
+  let TB=0;
+  for(const e of [by('legChip'),by('walk')]){if(!e||e.hidden||!shown(e))continue;const q=e.getBoundingClientRect();if(!q.height||q.left>=R0||q.right<=L0)continue;if(q.top>sr.top+sr.height/2)B0=Math.min(B0,q.top-m);else if(e.id==='legChip')TB=q.bottom+m}
+  const T0n=T0;if(TB)T0=Math.max(T0,TB);/* top-floating banner: kept clear unless that leaves no room for the card (then the card may cover the transient banner rather than fall back to the dialog) */
   const cw=Math.min(ph?340:370,R0-L0);/* v115: larger card: ~340 on phone (free width - margins), ~370 on tablet */
   if(X<sr.left||X>sr.right||Y<sr.top||Y>sr.bottom||cw<220){off();return}
   let x,y,mh,compact=false;const fullH=Math.min(B0-T0,620);
   if(!ph&&X+gap+cw<=R0){x=X+gap;mh=fullH;y=Math.max(T0,Math.min(B0-mh,Y-120))}
   else if(!ph&&X-gap-cw>=L0){x=X-gap-cw;mh=fullH;y=Math.max(T0,Math.min(B0-mh,Y-120))}
-  else{compact=true;x=Math.max(L0,Math.min(R0-cw,X-cw/2));const below=B0-(Y+gap),above=Y-gap-T0;if(below>=320||below>=above){y=Y+gap;mh=Math.min(below,520)}else{mh=Math.min(above,520);y=Y-gap-mh}if(mh<260){off();return}}
+  else{compact=true;x=Math.max(L0,Math.min(R0-cw,X-cw/2));const below=B0-(Y+gap);let above=Y-gap-T0;if(TB&&below<260&&above<260)above=Y-gap-T0n;if(below>=320||below>=above){y=Y+gap;mh=Math.min(below,520)}else{mh=Math.min(above,520);y=Y-gap-mh}if(mh<260){off();return}}
   B.classList.add('pcOn');B.classList.toggle('pcC',compact);DB.hidden=!pins.some(x=>x.id===p.id);DB.style.left=Math.round(Math.min(R0-80,X+14))+'px';DB.style.top=Math.round(Y-20)+'px';
   D.style.left=Math.round(x)+'px';D.style.top=Math.round(y)+'px';D.style.width=Math.round(cw)+'px';D.style.maxHeight=Math.round(mh)+'px'}
  if(D){new MutationObserver(()=>{if(D.open)requestAnimationFrame(placeCard);else off()}).observe(D,{attributes:true,attributeFilter:['open']});addEventListener('resize',()=>D.open&&placeCard())}
