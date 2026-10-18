@@ -70,7 +70,7 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
   const lg=by('legChip'),lgOn=lg&&!lg.hidden;const lf=!!(lgOn&&ph&&rk&&innerWidth-wr<LEGMIN);B.classList.toggle('rlLF',lf);
   WKH=0;if(wf){const o=wk.style.right;wk.style.right='0px';WKH=Math.ceil(wk.getBoundingClientRect().height);wk.style.right=o}
   if(B.style.getPropertyValue('--wkH')!==WKH+'px')B.style.setProperty('--wkH',WKH+'px');
-  LGH=lf?Math.ceil(lg.getBoundingClientRect().height)+12:0;
+  LGH=lf?Math.ceil(lg.getBoundingClientRect().height)+6:0;/* v119: banner sits 6px above the bar below it; the panel sits flush on the banner */
   applyBottom(sr);
   {const v=(ph&&thOn?TH.offsetHeight:0)+'px';WKSTRIP=ph&&thOn?TH.offsetHeight:0;if(B.style.getPropertyValue('--phStrip')!==v)B.style.setProperty('--phStrip',v)}/* phone: plan-bottom bars (pen, shape, freehand, stamp, Detect, walk, toast) sit above the strip */
   // plan margins: target = the panels' final widths, moved with the SAME duration/easing as the panel slide/width tween (one CSS clock, so the plan edge and the
@@ -87,12 +87,14 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
   openR=rk}
  // right panels: exactly the stage's vertical extent; phone: above the Pages strip (followed frame by frame while it slides)
  function applyBottom(sr){sr=sr||ST.getBoundingClientRect();/* phone: stop at the strip's FINAL top; the height transition (same .18s ease-out as the strip's slide) keeps the two edges together every frame */
-  const bot=PH()&&!TH.hidden&&getComputedStyle(TH).display!=='none'?Math.min(sr.bottom,TH.offsetTop):sr.bottom;/* v116: full-width walk bar below the panels */const bot2=WKH||LGH?Math.min(bot,sr.bottom-(B.style.getPropertyValue('--phStrip')?parseFloat(B.style.getPropertyValue('--phStrip'))||0:0)-WKH-LGH):bot;
-  for(const e of [by('panel'),by('lyrP')]){if(!e)continue;
+  const bot=PH()&&!TH.hidden&&getComputedStyle(TH).display!=='none'?Math.min(sr.bottom,(TH.offsetParent===ST?sr.top:0)+TH.offsetTop):sr.bottom;/* v119: on phone the strip is position:absolute inside #stage, so offsetTop is stage-relative: add the stage top (was off by the stage top = gap above the strip) *//* v116: full-width walk bar below the panels */const bot2=WKH||LGH?Math.min(bot,sr.bottom-(B.style.getPropertyValue('--phStrip')?parseFloat(B.style.getPropertyValue('--phStrip'))||0:0)-WKH-LGH):bot;
+  /* v119: the banner / walk strip appear and disappear at once (no slide), so a change of that reserve resizes the panel at once too (no gap, no overlap) */
+ const rsv=WKH+'|'+LGH,rsvCh=applyBottom._r!==undefined&&applyBottom._r!==rsv;applyBottom._r=rsv;
+ for(const e of [by('panel'),by('lyrP')]){if(!e)continue;
   /* v116: a panel sliding out keeps its height (it never grows over the walk strip); a panel opening takes its height at once, then slides in */
   if(e.hidden){e._op=0;continue}const fresh=!e._op;e._op=1;
   e.style.top=Math.round(sr.top)+'px';const hv=Math.max(80,Math.round(bot2-sr.top))+'px';
-  if(e.style.height!==hv){if(fresh){e.classList.add('rlNoH');e.style.height=hv;void e.offsetHeight;requestAnimationFrame(()=>e.classList.remove('rlNoH'))}else e.style.height=hv}e.style.bottom='auto'}}
+  if(e.style.height!==hv){if(fresh||rsvCh){e.classList.add('rlNoH');e.style.height=hv;void e.offsetHeight;requestAnimationFrame(()=>e.classList.remove('rlNoH'))}else e.style.height=hv}e.style.bottom='auto'}}
  let folT=0,SLID=0;function follow(ms){folT=Math.max(folT,performance.now()+ms);if(follow.on)return;follow.on=1;try{if(!SLIDING){SLIDING=1;SLID=1}}catch{}
   const st=()=>{try{sync()}catch(e){console.error(e)}if(performance.now()<folT)requestAnimationFrame(st);else{follow.on=0;if(SLID){SLID=0;try{SLIDING=0;scheduleRender()}catch{}}}};requestAnimationFrame(st)}/* no PDF re-render during a slide; one real render at the end */
  window.railSync=sync;
