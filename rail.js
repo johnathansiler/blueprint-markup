@@ -57,10 +57,12 @@
   {const v=(ph&&thOn?TH.offsetHeight:0)+'px';if(B.style.getPropertyValue('--phStrip')!==v)B.style.setProperty('--phStrip',v)}/* phone: plan-bottom bars (pen, shape, freehand, stamp, Detect, walk, toast) sit above the strip */
   // plan margins: target = the panels' final widths, moved with the SAME duration/easing as the panel slide/width tween (one CSS clock, so the plan edge and the
  // panel edge are in step in every frame); instant while dragging, rotating or with reduced motion
- const L=!ph&&thOn?wl:0,Rr=!ph&&rk?wr:0,tr=RM.matches||B.classList.contains('rlDrag')||NOTR?'none':'margin-left .18s ease-out,margin-right .18s ease-out';
+ const L=!ph&&thOn?wl:0,Rr=!ph&&rk?wr:0,tr=RM.matches||B.classList.contains('rlDrag')||NOTR?'none':'margin-left .18s ease-out,margin-right .18s ease-out,--frR .18s ease-out';
  if(ST.style.transition!==tr)ST.style.transition=tr;if(ST.style.marginLeft!==L+'px')ST.style.marginLeft=L+'px';if(ST.style.marginRight!==Rr+'px')ST.style.marginRight=Rr+'px';
  // Detect pop-up: on phone the right panel overlays the plan, so the pop-up keeps to the free part (and steps aside if there is no room)
-  const gb=by('ghBar');if(gb){let free=sr.width-16;if(ph)for(const e of [pn,ly])if(shown(e))free=Math.min(free,e.getBoundingClientRect().left-sr.left-16);gb.style.maxWidth=Math.max(0,Math.round(free))+'px';gb.classList.toggle('rlAside',free<150)}
+  // floating banners/pills/toasts (legend chip, Detect pop-up, toast, selection/pen/shape bars): kept inside the FREE plan area. On phone the right panel overlays
+  // the plan, so the free area ends at the panel's final left edge; --frR moves on the same .18s ease-out clock as the panel slide (registered @property)
+  {const fr=(ph&&rk?wr:0)+'px';if(ST.style.getPropertyValue('--frR')!==fr)ST.style.setProperty('--frR',fr)}
   // grips
   for(const k in PAN){const g=G[k],el=PAN[k].el,on=shown(el)&&!OUT.has(el)&&!walkOn&&!(ph&&k==='pages');if(!on){if(!g.hidden)g.hidden=true;continue}const r=el.getBoundingClientRect();g.hidden=false;
    const x=PAN[k].side==='L'?r.right:r.left;g.style.left=Math.round(x-12)+'px';g.style.top=Math.round(r.top)+'px';g.style.height=Math.round(r.height)+'px'}
