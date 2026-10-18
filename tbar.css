@@ -266,3 +266,10 @@ body.light #walk .wInfo,body.light #walk .wCnt,body.light #walk small{color:#334
 body.light #walk .btn:not(.ok):not(.danger):not(.pri){background:#eef2f7;color:#0f172a;border-color:#64748b}
 body.light #walk .wMore summary{background:#eef2f7;color:#0f172a;border-color:#64748b}
 body.rlLF #stage>#legChip{transition:bottom .18s ease-out}@media (prefers-reduced-motion:reduce){body.rlLF #stage>#legChip{transition:none}}
+/* bpm-v118: light theme, Pins/Layers row secondary text at WCAG AA against the real row background (the Pins list rows sit on the dark panel surface) */
+body.light #pinList .pA{color:#cbd5e1}
+body.light #lyrP .lpC{color:#475569}
+/* bpm-v118: Pins filters = Type, Status, Page: one row of equal widths when they fit, else 2 columns with the last spanning (no empty cell) */
+#panel.pC .pFB{grid-template-columns:repeat(2,minmax(0,1fr))}
+#panel.pC .pFB.f3{grid-template-columns:repeat(3,minmax(0,1fr))}
+#panel.pC .pFB:not(.f3)>.pF:last-child:nth-child(odd){grid-column:1/-1}
