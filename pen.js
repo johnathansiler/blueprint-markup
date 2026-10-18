@@ -108,7 +108,7 @@ function penBar(){let b=$('#penBar');if(!b){b=ce('div');b.id='penBar';b.setAttri
  if(pen){b.querySelector('#pbUndo').onclick=()=>{PD?.N.pop();if(PD)PD.sel=-1;if(!PD?.N.length)PD=null;penBar();requestDraw(false)};b.querySelector('#pbX').onclick=()=>{PD=null;PM='add';penBar();requestDraw(false)};b.querySelector('#pbOk').onclick=()=>penDone(false)}
  else b.querySelector('#pbOk').onclick=()=>{NE.mode='sel';setEdit(null);toast('Points saved')};
  // sit just above the selection bar when it is showing
- const sb=$('#selBar');if(sb&&!sb.hidden){const S=stage.getBoundingClientRect(),Q=sb.getBoundingClientRect();b.style.bottom=Math.max(8,S.bottom-Q.top+6)+'px'}else b.style.bottom='';
+ const sb=$('#selBar');if(sb&&!sb.hidden){const S=stage.getBoundingClientRect(),Q=sb.getBoundingClientRect();b.style.bottom=Math.max(8,S.bottom-Q.top+6)+'px'}else b.style.bottom='';/* v113: selBar already rides above the phone Pages strip, so this stays above both */
  toastLift();const a=b.querySelector('.on');if(a&&b.scrollWidth>b.clientWidth&&(a.offsetLeft<b.scrollLeft||a.offsetLeft+a.offsetWidth>b.scrollLeft+b.clientWidth))b.scrollLeft=Math.max(0,a.offsetLeft-40)}
 window.penBar=penBar;
 // keep toasts above the floating tool bars so they never cover a button

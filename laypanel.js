@@ -11,7 +11,7 @@
  function render(){if(!isOpen())return;try{tlayLoad&&tlayLoad()}catch{}const H=window.HT||new Set(),ks=Object.keys(N).filter(k=>TYPES[k]).sort((a,b)=>TYPES[a].n.localeCompare(TYPES[b].n));
   const nm=(()=>{try{return markups.length}catch{return 0}})(),hid=ks.filter(k=>H.has(k)).length+(mkOn()?0:1);
   const row=(k,on,sw,lab,c,tt)=>`<button type="button" class="lpRow${on?'':' off'}" data-k="${k}" aria-pressed="${on}" title="${esc(tt)}">${eye(on)}${sw}<span class="lpN">${esc(lab)}</span><small class="lpC">${c}</small></button>`;
-  P.innerHTML=`<div class="lpHead"><b>Layers</b><span class="sp"></span><button type="button" class="btn lpX" id="lpX" title="Close the Layers panel">✕<span class="tl">Close</span></button></div>
+  P.innerHTML=`<div class="lpHead"><b>Layers</b><span class="sp"></span><button type="button" class="btn lpX" id="lpX" title="Close the Layers panel" aria-label="Close the Layers panel">✕<span class="tl">Close</span></button></div>
    <div class="lpAN"><button type="button" class="btn" id="lpAll" title="Show every layer">👁<span class="tl">Show all</span></button><button type="button" class="btn" id="lpNone" title="Hide every layer">🚫<span class="tl">Hide all</span></button></div>
    <small class="lpInfo">${!project?'Open a project':hid?hid+' hidden':'All shown'}</small>
    <div class="lpList">${row('__mk',mkOn(),'<i class="tlSw lpMk">✎</i>','Markups',nm,'Markups (shapes, clouds, text) on this plan')}

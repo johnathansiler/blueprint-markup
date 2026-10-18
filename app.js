@@ -1308,7 +1308,7 @@ async function walkPick(){if(!plan)return uiAlert('Open a plan first.');if(!pins
  $('#wkGo').onclick=async()=>{const sel_=bx().filter(b=>b.checked).map(b=>b.value);if(!sel_.length){uiAlert('Tick at least one device type.');return}await put('meta',sel_,'walkTypes');$('#walkDlg').close();startWalk('',sel_.length===types.length?null:sel_)};$('#walkDlg').showModal()}
 // ---------- v15: page thumbnails ----------
 var THB={},thObs=null;
-function thumbsWanted(){return innerWidth>=800}
+function thumbsWanted(){return true}/* bpm-v113: page preview open by default on every viewport */
 async function thumbFor(n){const key=plan.id+':'+n;if(THB[key])return THB[key];let url=null;try{
   if(pdf){const pg=await pdf.getPage(n),vp=pg.getViewport({scale:1}),sc=Math.min(150/vp.width,150/vp.height),c=document.createElement('canvas');c.width=Math.ceil(vp.width*sc);c.height=Math.ceil(vp.height*sc);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
    if(n===page&&baseBm)x.drawImage(baseBm.c,0,0,c.width,c.height);else await pg.render({canvasContext:x,viewport:pg.getViewport({scale:sc})}).promise;url=c.toDataURL('image/jpeg',.7)}

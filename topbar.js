@@ -26,7 +26,7 @@
  const sp=()=>{const s=document.createElement('span');s.className='sp';return s},br=document.createElement('i');br.className='tb2Br';
  const s1=sp(),s2=sp();s1.classList.add('tb2S1');s2.classList.add('tb2S2');// bpm-v105: Undo / Redo live in the top bar (same #undo/#redo buttons, so updUR() greys them out); phone: first on row 2, Rotate moves into More
  const und=relabel(by('undo'),'↶','Undo'),red=relabel(by('redo'),'↷','Redo');und.classList.remove('tool');red.classList.remove('tool');und.title='Undo (Ctrl+Z)';red.title='Redo (Ctrl+Y)';
- T.append(projB,planB,und,red,prev,pageB,next,zoomB,br,s1,rot,pg,layB,exW,mic,pinsB,s2,moreB);[s1,rot,pg,layB,exW,mic,pinsB,s2,moreB].forEach(e=>e&&e.classList.add('tb2R2'));T.classList.add('tb2T');
+ T.append(projB,planB,und,red,prev,pageB,next,pg,zoomB,br,s1,rot,layB,exW,mic,pinsB,s2,moreB);/* bpm-v113: Pages toggle sits with Prev/Page/Next */[s1,rot,pg,layB,exW,mic,pinsB,s2,moreB].forEach(e=>e&&e.classList.add('tb2R2'));T.classList.add('tb2T');
  by('czBtn')&&H.append(by('czBtn'));
  const upd=()=>{crumb();try{pageB.querySelector('.tb2n').textContent=plan?`${page}/${plan.pages||1}`:'–';by('tb2Z').textContent=by('zoomPct').textContent}catch{}};setInterval(upd,400);upd();window.tb2Upd=upd;
 })();
