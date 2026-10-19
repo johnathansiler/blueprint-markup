@@ -209,7 +209,7 @@ body.light #panel .pF,body.light #panel .pB{border-color:#64748b}body.light #pan
 body.light #tb2Crumb{color:#475569}body.light #tb2Crumb b{color:#0f172a}
 /* bpm-v114: floating banners live in the free plan area (never under/over a side panel or the page preview) */
 @property --frR{syntax:'<length>';inherits:true;initial-value:0px}
-#stage>#legChip,#stage>#toast,#stage>#penBar,#stage>#shpChip,#stage>#fhBar,#stage>#stBar,body.rlPh #stage>#selBar{left:calc((100% - var(--frR,0px))/2);max-width:calc(100% - var(--frR,0px) - 12px)}
+#stage>#legChip,#stage>#toast,#stage>#updBar,#stage>#penBar,#stage>#shpChip,#stage>#fhBar,#stage>#stBar,body.rlPh #stage>#selBar{left:calc((100% - var(--frR,0px))/2);max-width:calc(100% - var(--frR,0px) - 12px)}
 #stage>#ghBar{right:calc(6px + var(--frR,0px))}
 #stage>#mBar{max-width:calc(100% - var(--frR,0px) - 12px)}
 .legChip{white-space:normal;max-width:calc(100% - var(--frR,0px) - 12px)}.legChip #legRev{min-width:0;flex:0 1 auto;text-align:center;line-height:1.2}.legChip #legX{flex:none;align-self:center}
