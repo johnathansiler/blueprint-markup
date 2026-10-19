@@ -165,7 +165,7 @@ body.rlPh #thumbs{animation:rlInB .18s ease-out}body.rlPh #thumbs.rlOut{animatio
 body.rlPh #panel,body.rlPh #lyrP{transition:width .18s ease-out,height .18s ease-out}body.rlDrag #panel,body.rlDrag #lyrP{transition:none}
 #panel.rlOut,#lyrP.rlOut,#thumbs.rlOut,#railP.rlOut{display:flex!important;pointer-events:none}
 @media(prefers-reduced-motion:reduce){#railP,#thumbs,#panel,#lyrP{animation:none!important;transition:none!important}}
-body.rl #closeList{display:inline-flex!important;flex-direction:column;align-items:center;justify-content:center;width:auto!important;min-width:44px;padding:2px 8px!important;font-size:15px;line-height:1}body.rl #closeList .tl{font-size:10px}
+body.rl #closeList{display:inline-flex!important;flex-direction:column;align-items:center;justify-content:center;width:auto!important;min-width:44px;padding:2px 8px!important;font-size:15px;line-height:1}body.rl #closeList .tl{font-size:11px}
 body.rlPh #thumbs{height:100px;overflow-y:hidden}body.rlPh #thumbs .thh{justify-content:center;gap:2px}body.rlPh #thumbs .thh .btn{min-height:26px}
 body.rl #stage{overflow:clip}
 .pGrip.top .pgX{bottom:auto;top:52px}
@@ -191,7 +191,7 @@ body.rlPh #thumbs .thh b{grid-column:1/-1;font-size:12.5px}
 #panel.pC #pinList li{font-size:11px;min-height:34px}
 #panel.pC .pSumL{flex-direction:column;gap:2px}#panel.pC .pSumL>details{font-size:10.5px}
 body.rl:not(.rlPh) #panel.pC{padding:5px;gap:5px;font-size:12px}
-#lyrP .lpX,#panel #closeList{min-width:44px;min-height:40px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;padding:2px 6px;line-height:1.05;font-size:14px}#lyrP .lpX .tl,#panel #closeList .tl{display:block;font-size:10px}
+#lyrP .lpX,#panel #closeList{min-width:44px;min-height:40px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;padding:2px 6px;line-height:1.05;font-size:14px}#lyrP .lpX .tl,#panel #closeList .tl{display:block}#lyrP .lpX .tl{font-size:10px}#panel #closeList .tl{font-size:11px}
 #panel.pC .ph::before{font-size:13px}#lyrP .lpHead b{font-size:13px}
 /* v113: phone Pages strip owns the plan's bottom edge; floating plan bars ride above it, moving with the same .18s ease-out */
 body.rlPh #selBar,body.rlPh #penBar,body.rlPh #shpChip,body.rlPh #fhBar,body.rlPh #stBar{bottom:calc(8px + var(--phStrip,0px));transition:bottom .18s ease-out}
@@ -281,7 +281,9 @@ body.light #lyrP .lpC{color:#475569}
 #pinDlg[open] .btn,#pinDlg[open] button{min-height:44px;font-size:15px}
 body.pcOn .pcDel,#pinDlg .pcDel{min-height:44px}
 /* bpm-v121: iPhone-style picker: destructive confirm hint + highlighted (pending) row; drag cursor */
-.whCf{position:absolute;left:8px;right:8px;top:-30px;display:flex;justify-content:center;pointer-events:none;z-index:3}
+/* bpm-v125: the confirm pill sits above the wheel, and below it when above would cover the top bar or the floating Delete button */
+.whCf{position:absolute;left:8px;right:8px;top:auto;bottom:calc(100% + 6px);display:flex;justify-content:center;pointer-events:none;z-index:3}
+.whCf.below{bottom:auto;top:calc(100% + 6px)}
 .whCf::before{content:'';display:none}
 .whCf{font:700 13px/1.2 system-ui,sans-serif;color:#fff;background:#b91c1c;border-radius:12px;padding:5px 10px;box-shadow:0 4px 12px #0008;width:max-content;max-width:calc(100% - 16px);margin:0 auto}
 .whCf[hidden]{display:none!important}

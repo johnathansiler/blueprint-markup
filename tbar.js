@@ -78,7 +78,20 @@
  const PI_={};const projInv=dy=>{const L=3.4,yL=proj(L),k=(proj(L)-proj(L-.1))/.1;if(dy>yL)return L+(dy-yL)/k;if(dy<-yL)return -L+(dy+yL)/k;let lo=-L,hi=L;for(let j=0;j<30;j++){const m=(lo+hi)/2;if(proj(m)<dy)lo=m;else hi=m}return (lo+hi)/2};
  const cy=()=>win.getBoundingClientRect().top+(WH.hU||win.getBoundingClientRect().height/2);
  const CF=W.querySelector('.whBox').appendChild(ce('div','whCf'));CF.setAttribute('role','status');CF.setAttribute('aria-live','polite');CF.hidden=true;
- const setPend=i=>{WH.pend=i;W.querySelectorAll('.whS.hov').forEach(e=>e.classList.remove('hov'));if(i==null){CF.hidden=true;return}const s_=W.querySelector(`.whS[data-i="${i}"]`);if(s_)s_.classList.add('hov');const it=WH.items[i];CF.textContent='Tap again to confirm';CF.hidden=false};
+ // bpm-v125: keep "Tap again to confirm" off the top bar and the floating Delete button. Prefer above the wheel; drop below (or slide sideways) when that spot is taken.
+ function cfBox(el){if(!el||el.hidden)return null;const st=getComputedStyle(el);if(st.display==='none'||st.visibility==='hidden'||Number(st.opacity)===0)return null;const r=el.getBoundingClientRect();return r.width>2&&r.height>2?r:null}
+ function placeCf(){if(!WH||CF.hidden||!W.querySelector('.whBox'))return;const box=W.querySelector('.whBox'),br=box.getBoundingClientRect(),obs=[];
+  for(const id of['proj','top','tools','thumbs','pinDelF','walk','panel','lyrP']){const r=cfBox(document.getElementById(id));if(r)obs.push(r)}
+  const hit=(a,b)=>a.left<b.right-1&&a.right>b.left+1&&a.top<b.bottom-1&&a.bottom>b.top+1;
+  const bad=r=>r.top<8||r.bottom>innerHeight-8||r.left<8||r.right>innerWidth-8||obs.some(o=>hit(r,{left:o.left-4,right:o.right+4,top:o.top-4,bottom:o.bottom+4}));
+  CF.classList.remove('below');CF.style.top=CF.style.bottom=CF.style.left=CF.style.right=CF.style.margin='';
+  let pr=CF.getBoundingClientRect();if(!bad(pr))return;
+  CF.classList.add('below');pr=CF.getBoundingClientRect();if(!bad(pr))return;
+  const w=pr.width||160,h=pr.height||28,base=br.left+(br.width-w)/2;
+  const tops=[[br.bottom+6,true],[br.top-6-h,false]];
+  for(const[top,below]of tops)for(const left0 of[base,8,innerWidth-8-w,br.right-w,br.left]){const left=Math.max(8,Math.min(innerWidth-8-w,left0)),r={left,right:left+w,top,bottom:top+h};if(bad(r))continue;
+   CF.classList.toggle('below',below);CF.style.top=(r.top-br.top)+'px';CF.style.bottom='auto';CF.style.left=(r.left-br.left)+'px';CF.style.right='auto';CF.style.margin='0';return}}
+ const setPend=i=>{WH.pend=i;W.querySelectorAll('.whS.hov').forEach(e=>e.classList.remove('hov'));if(i==null){CF.hidden=true;CF.classList.remove('below');CF.style.top=CF.style.bottom=CF.style.left=CF.style.right=CF.style.margin=CF.style.visibility='';return}const s_=W.querySelector(`.whS[data-i="${i}"]`);if(s_)s_.classList.add('hov');CF.textContent='Tap again to confirm';CF.style.visibility='hidden';CF.hidden=false;requestAnimationFrame(()=>{try{placeCf()}catch(e){console.warn('pill',e)}CF.style.visibility=''})};
  function anim(to,D,done){cancelAnimationFrame(WH.raf);const p0=WH.pos,t0=performance.now();to=clampP(to);if(Math.abs(to-p0)<.002){WH.pos=to;paint();done&&done();return}
   const step=n=>{const k=Math.min(1,(n-t0)/D),e=1-Math.pow(1-k,3);WH.pos=p0+(to-p0)*e;paint();if(k<1)WH.raf=requestAnimationFrame(step);else{WH.pos=to;paint();WH.raf=0;done&&done()}};WH.raf=requestAnimationFrame(step)}
  const isCancel=i=>{const it=WH.items[i];const t=(it&&(it.l||String(it.html||'').replace(/<[^>]*>/g,'')))||'';return /^\W*cancel\b/i.test(t.trim())};

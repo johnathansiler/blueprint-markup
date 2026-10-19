@@ -343,7 +343,7 @@ body.light #lyrP{background:#f8fafc;color:#0f172a}body.light #lyrP .lpRow{backgr
 #panel.pC .pB i{font-style:normal;font-size:14px;line-height:16px}#panel.pC .pB small{font-size:10px;color:#cbd5e1;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 body.light #panel.pC .pSeg,body.light #panel.pC .pQ #q{background:#f1f5f9;border-color:#cbd5e1}body.light #panel.pC .pF,body.light #panel.pC .pB{background:#fff;border-color:#cbd5e1;color:#0f172a}body.light #panel.pC .pF .v{color:#0f172a}body.light #panel.pC .pB small{color:#334155}
 #panel.pC.defmode .pBB.pinsOnly{display:none}
-#panel.pC #closeList .tl{font-size:10px}
+#panel.pC #closeList .tl{font-size:11px}
 #panel.pC #closeList{width:34px}#panel.pC #closeList .tl{display:none}
 #panel.pC .pSeg .tab{font-size:11.5px!important}
 @media(max-width:799px){#panel.pC{z-index:50}}
