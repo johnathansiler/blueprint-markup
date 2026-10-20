@@ -75,7 +75,9 @@
  const DESTR=()=>WH&&/^(clear (pins|markups)|delete pins)$/i.test((W.querySelector('.whT').textContent||'').trim());
  const win=W.querySelector('.whWin');
  // inverse of proj(): screen y offset from the centre line -> row offset (curve + perspective); linear beyond +-3.4 rows
- const PI_={};const projInv=dy=>{const L=3.4,yL=proj(L),k=(proj(L)-proj(L-.1))/.1;if(dy>yL)return L+(dy-yL)/k;if(dy<-yL)return -L+(dy+yL)/k;let lo=-L,hi=L;for(let j=0;j<30;j++){const m=(lo+hi)/2;if(proj(m)<dy)lo=m;else hi=m}return (lo+hi)/2};
+ /* bpm-v129: the curve peaks at ~3.3 rows, so the old edge slope at 3.4 rows was NEGATIVE (-0.78 px/row): a finger past the drum's edge ran the wheel backwards at ~1.3 rows per px (spun round, jumped to the far end).
+  Now the curve is used only where it rises (|rows|<=2.6) and past it the wheel keeps moving the same way at one row per IH px, so dragging outside the wheel scrolls smoothly and clamps at the ends. */
+ const PI_={};const projInv=dy=>{const L=2.6,yL=proj(L),k=IH;if(dy>yL)return L+(dy-yL)/k;if(dy<-yL)return -L+(dy+yL)/k;let lo=-L,hi=L;for(let j=0;j<30;j++){const m=(lo+hi)/2;if(proj(m)<dy)lo=m;else hi=m}return (lo+hi)/2};
  const cy=()=>win.getBoundingClientRect().top+(WH.hU||win.getBoundingClientRect().height/2);
  const CF=W.querySelector('.whBox').appendChild(ce('div','whCf'));CF.setAttribute('role','status');CF.setAttribute('aria-live','polite');CF.hidden=true;
  // bpm-v125: keep "Tap again to confirm" off the top bar and the floating Delete button. Prefer above the wheel; drop below (or slide sideways) when that spot is taken.
