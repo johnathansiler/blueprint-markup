@@ -297,3 +297,18 @@ body.pcOn .pcDel,#pinDlg .pcDel{min-height:44px}
 #pinDlg .pcTopRow{flex-wrap:nowrap;align-items:center;gap:8px}#pinDlg .pcTopRow h3{margin:0!important;white-space:nowrap}
 #pinDlg .pcTopRow .btn{flex:0 0 auto;min-width:64px}
 body.light #pinDlg .pcTop{background:#fff}
+/* bpm-v129: Width bar (Width / Style / Opacity side by side above the Width button) and the Opacity slider */
+.widBar,.wbOp{position:fixed;z-index:58;display:flex;align-items:center;gap:6px;padding:6px;background:#1e293b;color:#e2e8f0;border:1px solid #ffffff26;border-radius:14px;box-shadow:0 10px 28px #000a}
+.widBar[hidden],.wbOp[hidden]{display:none}
+.widBar .btn{min-height:44px;min-width:86px;display:flex;align-items:center;justify-content:center;gap:7px;font-size:15px;font-weight:600;padding:6px 12px}
+.widBar .btn.on{background:var(--acc,#3b82f6);color:#fff;border-color:transparent}
+.wbOp{padding:8px 14px;gap:10px;font-size:15px}.wbOp .wbOL{font-weight:600}.wbOp b{min-width:44px;text-align:right}
+.wbOp input[type=range]{width:min(200px,52vw);height:36px;accent-color:var(--acc,#3b82f6)}
+body.light .widBar,body.light .wbOp{background:#fff;color:#0f172a;border-color:#cbd5e1}
+/* bpm-v129: pin card Resize handle: sticky at the bottom-right of the card, labelled, 44 px, finger drag (no page scroll while dragging) */
+#pinDlg .pcRszRow{position:sticky;bottom:0;z-index:5;display:flex;justify-content:flex-end;align-items:center;margin:8px -14px 0;padding:6px 10px;background:#1e293b;border-top:1px solid #94a3b833}
+body.light #pinDlg .pcRszRow{background:#fff}
+#pinDlg .pcRsz{pointer-events:auto;touch-action:none;display:flex;align-items:center;gap:6px;min-height:44px;min-width:44px;padding:4px 14px;border-radius:12px;border:1px solid #94a3b866;background:#334155;color:#f1f5f9;font-size:15px;font-weight:600;cursor:nwse-resize;}
+#pinDlg .pcRsz span[aria-hidden]{font-size:20px;line-height:1}#pinDlg .pcRsz.drag{background:var(--acc,#3b82f6);color:#fff}
+body.light #pinDlg .pcRsz{background:#e2e8f0;color:#0f172a;border-color:#94a3b8}
+#pinDlg[open],body.pcOn #pinDlg[open]{padding-bottom:0}#pinDlg .pcRszRow{padding-bottom:calc(6px + env(safe-area-inset-bottom))}/* v129: the footer is the card's bottom edge (no content peeking below it) */
