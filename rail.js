@@ -131,6 +131,7 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
   const cx=r.left+r.width/2,cy=r.top+Math.min(r.height/2,Math.max(90,r.height*.45)),W=innerWidth,H=innerHeight,cl=(v,a,b)=>Math.max(a,Math.min(b,v));
   const put=(g,x,y)=>{g.style.left=Math.round(cl(x,0,W-g.offsetWidth))+'px';g.style.top=Math.round(cl(y,0,H-g.offsetHeight))+'px'};
   put(EG.t,cx-EG.t.offsetWidth/2,r.top-34);put(EG.b,cx-EG.b.offsetWidth/2,r.bottom-10);put(EG.l,r.left-34,cy-EG.l.offsetHeight/2);put(EG.r,r.right-10,cy-EG.r.offsetHeight/2)}
+ setInterval(()=>{if(D&&D.open&&!D._rsz)edgeSync()},400);/* v130: safety re-sync so grips never stay where an old layout put them */
  function startRz(e,dirs,el){if(e.button>0)return;e.preventDefault();e.stopPropagation();try{el.setPointerCapture(e.pointerId)}catch{}const r=D.getBoundingClientRect(),x0=e.clientX,y0=e.clientY,m=8;D._rsz=1;el.classList.add('drag');
   const minW=Math.min(260,r.width),minH=Math.min(220,r.height),cl=(v,a,b)=>Math.max(a,Math.min(b,v));
   D.style.position='fixed';D.style.margin='0';D.style.inset='auto';D.style.maxWidth='none';
