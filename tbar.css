@@ -331,4 +331,14 @@ body.light #vGuide .vgHeard.ok{color:#15803d}body.light #vGuide .vgHeard.bad{col
 #pinDlg .pcEdge[hidden]{display:none}#pinDlg .pcE-t,#pinDlg .pcE-b{width:72px;height:44px;cursor:ns-resize}#pinDlg .pcE-l,#pinDlg .pcE-r{width:44px;height:72px;cursor:ew-resize}
 #pinDlg .pcEdge.drag{background:var(--acc,#3b82f6);color:#fff}body.light #pinDlg .pcEdge{background:#e2e8f0;color:#0f172a;border-color:#94a3b8}
 #vGuide{padding-bottom:0}#vGuide .vgB{position:sticky;bottom:0;background:inherit;margin:10px -14px 0;padding:8px 14px 12px;border-top:1px solid #94a3b833}/* v130: Stop listening / Close always visible, even when the list scrolls */
-#pinDlg .pcEdge{gap:3px}#pinDlg .pcEdge .tl{font-size:11px;font-weight:600;line-height:1;margin:0;position:static;display:block}#pinDlg .pcE-l,#pinDlg .pcE-r{flex-direction:column;width:48px}#pinDlg .pcE-t,#pinDlg .pcE-b{width:84px}
+/* bpm-v131: resize grips are invisible 44 px touch areas; the only visible mark is a thin line on the card edge */
+#pinDlg .pcEdge,#pinDlg .pcEdge.drag,body.light #pinDlg .pcEdge{background:transparent;border:0;box-shadow:none;border-radius:0;color:transparent;font-size:0;overflow:visible}
+#pinDlg .pcEdge::before{content:'';position:absolute;border-radius:2px;background:#cbd5e1;opacity:.9}
+#pinDlg .pcE-t::before,#pinDlg .pcE-b::before{left:50%;width:44px;height:4px;margin-left:-22px;top:calc(var(--o,22px) - 2px)}
+#pinDlg .pcE-l::before,#pinDlg .pcE-r::before{top:50%;height:44px;width:4px;margin-top:-22px;left:calc(var(--o,22px) - 2px)}
+#pinDlg .pcEdge.drag::before,#pinDlg .pcEdge:hover::before{background:var(--acc,#3b82f6);opacity:1}body.light #pinDlg .pcEdge::before{background:#64748b}
+/* bpm-v131: the bottom-right resize is a plain corner line (no word, no footer tab): a 44 px invisible touch area in the card's corner */
+#pinDlg .pcRszRow,body.light #pinDlg .pcRszRow{height:0;min-height:0;margin:0;padding:0;border:0;background:none;overflow:visible;display:block}
+#pinDlg .pcRsz,body.light #pinDlg .pcRsz,#pinDlg .pcRsz.drag{position:absolute;right:-12px;bottom:0;width:48px;height:48px;min-width:44px;min-height:44px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;color:transparent;font-size:0}
+#pinDlg .pcRsz::before{content:'';position:absolute;right:6px;bottom:6px;width:18px;height:18px;border-right:4px solid #cbd5e1;border-bottom:4px solid #cbd5e1;border-bottom-right-radius:6px;opacity:.9}
+#pinDlg .pcRsz.drag::before,#pinDlg .pcRsz:hover::before{border-color:var(--acc,#3b82f6);opacity:1}body.light #pinDlg .pcRsz::before{border-color:#64748b}
