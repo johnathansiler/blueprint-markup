@@ -1,11 +1,11 @@
 // bpm-v94: device-identifying text tags beside a detected glyph. TYPE ONLY — never touches x/y/ang/bw/bh/outset.
-// RI = remote indicator, WP = weatherproof variant, R = relay. Status tags (N)/(E)/(ER) are ignored for typing and kept as metadata.
+// RI = remote indicator, WP = weatherproof variant, R = relay. Status tags (N)/(E)/(ER)/(ETN)/(ETR) are ignored for typing and kept as metadata. They never touch x/y/ang/bw/bh/outset.
 (()=>{
-const STATUS=new Set(['N','E','ER','EX','NEW','EXISTING']),MODS=['RI','WP','R'];
+const STATUS=new Set(['N','E','ER','EX','NEW','EXISTING','ETN','ETR']),MODS=['RI','WP','R'];
 // Which detect groups a modifier re-types. RI on any light/notification glyph → Remote indicator; R on a module glyph → Relay. WP never changes type.
 const RETYPE={RI:{from:['strobe','spkw','spkc','horn','la'],to:'rai',det:'RAI'},R:{from:['module'],to:'relay',det:'RELAY'}};
 function parseTags(words){const toks=[];for(const w of words)for(const t of String(w).toUpperCase().replace(/[^A-Z0-9()]+/g,' ').split(/\s+/))if(t)toks.push(t);
- const mods=new Set(),status=new Set();for(let t of toks){const par=/^\(.*\)$/.test(t);t=t.replace(/[()]/g,'');if(!t)continue;if(STATUS.has(t)&&(par||t.length<=2)){status.add(t==='EX'||t==='EXISTING'?'E':t==='NEW'?'N':t);continue}if(MODS.includes(t))mods.add(t)}
+ const mods=new Set(),status=new Set();for(let t of toks){const par=/^\(.*\)$/.test(t);t=t.replace(/[()]/g,'');if(!t)continue;if(STATUS.has(t)&&(par||t.length<=2||t==='ETN'||t==='ETR')){status.add(t==='EX'||t==='EXISTING'?'E':t==='NEW'?'N':t);continue}if(MODS.includes(t))mods.add(t)}
  return{mods:[...mods].sort(),status:[...status][0]||''}}
 window.parseTags=parseTags;
 // ---- text layer, cached per page ----

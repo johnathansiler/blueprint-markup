@@ -170,8 +170,8 @@ def main():
         wait_controller(page)
         t_ctrl = time.time()
         sw_txt = urllib.request.urlopen(BASE + "sw.js", timeout=10).read().decode()
-        if "const C='bpm-v124'" not in sw_txt:
-            fail("sw.js is not bpm-v124")
+        if "const C='bpm-v125'" not in sw_txt:
+            fail("sw.js is not bpm-v125")
         at_ctrl = ocr_summary(cache_report(page))
         wait_ocr(page)
         t_ocr = time.time()
@@ -184,8 +184,8 @@ def main():
             "controller": round(t_ctrl-t_nav, 3),
             "ocrReady": round(t_ocr-t_nav, 3),
         }))
-        if summary["versionFiles"] != 41 or summary["versionBytes"] != 3799920:
-            fail(f"versioned cache is {summary['versionFiles']} files / {summary['versionBytes']} bytes, expected 41 / 3799920 (precache only)")
+        if summary["versionFiles"] != 41 or summary["versionBytes"] != 3803772:
+            fail(f"versioned cache is {summary['versionFiles']} files / {summary['versionBytes']} bytes, expected 41 / 3803772 (precache only)")
         if summary["versionOcr"] or at_ctrl["versionOcr"]:
             fail("OCR files are inside the versioned cache: " + json.dumps(summary["versionOcr"] or at_ctrl["versionOcr"]))
         cores = [f["path"] for f in summary["ocrFiles"] if "tesseract-core" in f["path"]]
