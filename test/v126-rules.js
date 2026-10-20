@@ -138,7 +138,7 @@ const geom = detSrc.slice(geomAt, detSrc.indexOf('function shape('));
 expect(detSrc.slice(geomAt - 80, geomAt).includes('pin center = OBB center of outline') && geom.includes('return{bw,bh,ang:a,cx,cy}'), 'geom() still returns the v50 outline center');
 expect(!/outset|de-?overlap/.test(geom), 'geom() has no outset or de-overlap edit');
 const sw = fs.readFileSync(path.join(__dirname, '../sw.js'), 'utf8');
-expect(sw.includes("const C='bpm-v126'") && sw.includes("O='bpm-ocr'"), 'cache ids are bpm-v126 and bpm-ocr');
+expect(/const C='bpm-v(12[6-9]|1[3-9]\d|[2-9]\d\d)'/.test(sw) && sw.includes("O='bpm-ocr'"), 'cache ids are bpm-v126+ and bpm-ocr'); // bpm-v127: any release from v126 on
 for (const f of ['detect.js', 'tags.js', 'symseed.json', 'app.js', 'defs.js']) expect(sw.includes(`'${f}'`), `service worker still precaches ${f}`);
 
 console.log(lines.join('\n'));
