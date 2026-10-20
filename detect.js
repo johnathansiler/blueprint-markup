@@ -29,6 +29,27 @@ function walk(fn,args,O,vt){const out=[];let ctm=vt.slice(),st=[],stroke=[0,0,0]
   else if(f===O.closeFillStroke||f===O.closeEOFillStroke){close();paint(1,1)}else if(f===O.endPath){segs=[];cur=start=null}}
  return out}
 const dark=g=>{const c=g.color||g.fill;return!!c&&Math.max(...c)<=.3};
+// bpm-v126: EOL size only. Short side under 11k (was 10.5k). Long side also under 23 pt so a legend-sized box (~27 pt) is not pinned. Pin center/size/rotation stay in geom().
+function eolrSize(mn,mx,k){return mn>=7*k&&mn<11*k&&mx>=14*k&&mx<19*k&&mx<23&&mx/mn>1.45&&mx/mn<2.6}
+// Letter O in its own frame is tall (~3.6 x 7.6, ratio ~0.48), not round. Reject a hairline and a near-circle.
+function oLetterOk(w,h){const mx=Math.max(w,h),mn=Math.min(w,h);if(!(mx>=2&&mx<=16&&mn>=1.2))return false;const r=mn/mx;return r>=0.28&&r<=0.8}
+function frameExt(path,box,k){const pp=poly(box,.6*k);if(!pp||pp.length<3)return null;let bi=0,bl=0;for(let i=0;i<pp.length;i++){const L=dist(pp[i],pp[(i+1)%pp.length]);if(L>bl){bl=L;bi=i}}
+ const p=pp[bi],q=pp[(bi+1)%pp.length],a=Math.atan2(q[1]-p[1],q[0]-p[0]),c=Math.cos(-a),s=Math.sin(-a);let X0=1e9,X1=-1e9,Y0=1e9,Y1=-1e9;
+ for(const seg of path.segs)for(const pt of seg.p){const u=pt[0]*c-pt[1]*s,v=pt[0]*s+pt[1]*c;if(u<X0)X0=u;if(u>X1)X1=u;if(v<Y0)Y0=v;if(v>Y1)Y1=v}
+ return{w:X1-X0,h:Y1-Y0}}
+function oIsEolLetter(O,box,k){if(!O||O.segs.length<16||O.segs.length>24)return false;const f=O.segs[0].p[0],Ls=O.segs[O.segs.length-1].p,e=Ls[Ls.length-1];if(dist(f,e)>=.6*k)return false;const ex=frameExt(O,box,k);return !!ex&&oLetterOk(ex.w,ex.h)}
+// bpm-v126: vector status labels. Two 9-seg parens, letter strokes between them. Segment-count signature → status. Type only; no geometry.
+const STATUS_SIG={'1,1,2':'E','1,1,1,2,10':'ER','1,1,1,1,2,3':'ETN','3':'N'};
+function statusFromSig(sig){return STATUS_SIG[sig]||null}
+function sigBetween(L,R,P){const x0=Math.min(L.cx,R.cx),x1=Math.max(L.cx,R.cx),y=(L.cy+R.cy)/2,h=Math.max(L.h,R.h),gap=x1-x0,counts=[];
+ for(const g of P){if(g===L||g===R||g.fill!=null||!dark(g))continue;if(!(g.cx>x0&&g.cx<x1))continue;if(Math.abs(g.cy-y)>h*0.85)continue;if(g.w>gap*1.05||g.h>h*1.6)continue;counts.push(g.segs.length)}
+ counts.sort((a,b)=>a-b);return counts.join(',')}
+function statusLabels(P){const par=[];for(const g of P){if(g.fill!=null||!dark(g)||g.segs.length!==9)continue;if(g.h<4.5||g.h>9.6||g.w<0.3)continue;par.push(g)}
+ par.sort((a,b)=>a.cx-b.cx||a.cy-b.cy);const used=new Set(),out=[];
+ for(let i=0;i<par.length;i++){const L=par[i];if(used.has(L))continue;let best=null;
+  for(let j=i+1;j<par.length;j++){const R=par[j];if(used.has(R))continue;const dx=R.cx-L.cx;if(dx<3||dx>48)continue;const h=Math.max(L.h,R.h);if(Math.abs(R.cy-L.cy)>h*0.55||Math.abs(R.h-L.h)>h*0.3)continue;const sig=sigBetween(L,R,P),st=statusFromSig(sig);if(!st)continue;best={R,st,sig};break}
+  if(!best)continue;used.add(L);used.add(best.R);out.push({status:best.st,sig:best.sig,x:(L.cx+best.R.cx)/2,y:(L.cy+best.R.cy)/2})}
+ return out}
 function poly(g,tol){if(!/^l+$/.test(g.k))return null;const pts=[g.segs[0].p[0]].concat(g.segs.map(s=>s.p[1]));if(dist(pts[0],pts[pts.length-1])>tol)return null;return pts.slice(0,-1)}
 const sides=p=>p.map((a,i)=>dist(a,p[(i+1)%p.length]));
 const area=p=>Math.abs(p.reduce((s,a,i)=>{const b=p[(i+1)%p.length];return s+a[0]*b[1]-b[0]*a[1]},0))/2;
@@ -48,7 +69,7 @@ function geom(pp,sk){if(!pp||pp.length<3)return null;const n=pp.length,cx0=pp.re
  if(Math.abs(a)<.02)a=0;return{bw,bh,ang:a,cx,cy}}
 function shape(g,k){if(g.k==='cccc')return Math.abs(g.w-g.h)<1*k?'circle':null;const pts=poly(g,.6*k);if(!pts)return null;
  const s=sides(pts),n=pts.length,A=area(pts),mx=Math.max(...s),mn=Math.min(...s),K2=k*k;
- if(n===4){if(mn>=11.5*k&&mx<=14.5*k&&A>155*K2)return'square';if(mn>=10.3*k&&mn<11.5*k&&mx<=12.5*k&&mx/mn<1.1)return'sqs';/* bpm-v108: slightly small square — a speaker/strobe only when it holds the strobe disc AND has the speaker cone beside it */if(mn>12*k&&mx<17*k&&A<160*K2)return'diamond';if(mn>14.5*k&&mx<=16.5*k&&mx/mn<1.1&&A>200*K2)return'sqp';/* bpm-v111: a bit larger square, any angle — only a "PB" pull box (test plan, drawn rotated on the wire) */if(mn>5.5*k&&mn<8.5*k&&mx>12*k&&mx<16*k)return'rect_small';if(mn>=7*k&&mn<10.5*k&&mx>=14*k&&mx<19*k&&mx/mn>1.45&&mx/mn<2.6)return'eolr';/* bpm-v108: EOL resistor box */
+ if(n===4){if(mn>=11.5*k&&mx<=14.5*k&&A>155*K2)return'square';if(mn>=10.3*k&&mn<11.5*k&&mx<=12.5*k&&mx/mn<1.1)return'sqs';/* bpm-v108: slightly small square — a speaker/strobe only when it holds the strobe disc AND has the speaker cone beside it */if(mn>12*k&&mx<17*k&&A<160*K2)return'diamond';if(mn>14.5*k&&mx<=16.5*k&&mx/mn<1.1&&A>200*K2)return'sqp';/* bpm-v111: a bit larger square, any angle — only a "PB" pull box (test plan, drawn rotated on the wire) */if(mn>5.5*k&&mn<8.5*k&&mx>12*k&&mx<16*k)return'rect_small';if(eolrSize(mn,mx,k))return'eolr';/* bpm-v108/v126: EOL resistor box */
   // FACP/DACT/annunciator-style labeled boxes on the legend (wide shallow rectangles)
   if(mx>=22*k&&mx<=90*k&&mn>=8*k&&mn<=30*k&&mx>=mn*1.55&&A>180*K2)return'panel_rect';
   // large square with lettering (e.g. "SS" transient voltage surge suppressor)
@@ -100,7 +121,7 @@ function detect(P,W,H,want){const TB=W>H?W*.825:W;let G=P.filter(g=>dark(g)&&g.x
    else if(glyph.includes(2))t='FLOW';else t='TAMPER';
   }else if(sk==='rect_small')t=ins.length>=2?'DOOR_HOLDER':null;
   else if(sk==='sq_big'){const gl=ins.filter(h=>h.fill==null&&h.k!=='cccc'&&Math.max(h.w,h.h)<R*1.2);t=gl.length===2&&gl.every(h=>h.segs.length>=4)?'SURGE':null}
-  else if(sk==='eolr'){/* bpm-v108: "EOL" lettering: one closed O (many segments) between two short-stroke letters */const big=ins.filter(h=>h.fill==null&&h.segs.length>=12),sm=ins.filter(h=>h.fill==null&&h.segs.length<=3),mid=ins.filter(h=>h.fill==null&&h.segs.length>3&&h.segs.length<12),O0=big[0],cl=O0&&(()=>{const f=O0.segs[0].p[0],L=O0.segs[O0.segs.length-1].p,e=L[L.length-1];return dist(f,e)<.6*k&&Math.abs(O0.w-O0.h)<.35*Math.max(O0.w,O0.h)})();t=big.length===1&&cl&&!mid.length&&sm.length>=2&&sm.length<=6&&dist([O0.cx,O0.cy],c)<3*k?'EOL':inBox()==='1,1,2,2,10'?'VESDA':inBox()==='1,2,3,17'?'PAD':null}/* "NAC" = PAD-4/PAD-5 NAC extender (legend test plan) *//* bpm-v108: a short "VEP" VESDA detector box has this size too */
+  else if(sk==='eolr'){/* bpm-v108/v126: "EOL" lettering. The O is a closed ~20-seg path; its extents are taken in the box frame, not the page-aligned bbox */const big=ins.filter(h=>h.fill==null&&h.segs.length>=12),sm=ins.filter(h=>h.fill==null&&h.segs.length<=3),mid=ins.filter(h=>h.fill==null&&h.segs.length>3&&h.segs.length<12),O0=big[0],cl=O0&&oIsEolLetter(O0,g,k);t=big.length===1&&cl&&!mid.length&&sm.length>=2&&sm.length<=6&&dist([O0.cx,O0.cy],c)<3*k?'EOL':inBox()==='1,1,2,2,10'?'VESDA':inBox()==='1,2,3,17'?'PAD':null}/* "NAC" = PAD-4/PAD-5 NAC extender (legend test plan) *//* bpm-v108: a short "VEP" VESDA detector box has this size too */
   else if(sk==='panel_rect'){const gl=glyph.length,ar=Math.max(g.w,g.h)/Math.max(1e-3,Math.min(g.w,g.h));
    // FATC often shorter label; FACP/DACT longer — text refine in app overrides when labels exist as paths only
    // v18: classify by the lettering inside the box (glyph segment signature), checked against the test plan legend:
@@ -139,4 +160,5 @@ function probeAt(P,q){let best=null;const R=Math.max(q.w,q.h);for(const g of P){
  if(n===4){const onEdge=pp.filter(p=>Math.abs(p[0]-g.cx)<g.w*.15||Math.abs(p[1]-g.cy)<g.h*.15).length;if(onEdge>=4){sk='diamond';kind='dia'}else{const sd=sides(pp),mx=Math.max(...sd),mn=Math.min(...sd);sk=mx/mn<1.15?'square':'panel_rect';kind='rect'}}
  else if(n===6){sk='hex';kind='hex'}else return null;
  const G2=geom(pp,sk);return G2?{x:G2.cx,y:G2.cy,bw:G2.bw,bh:G2.bh,ang:G2.ang||0,kind}:null}
-self.onmessage=e=>{const{id,fn,args,O,vt,W,H,want,probe}=e.data;self.K0=e.data.k0||0;const t0=performance.now();if(probe){try{const P=walk(fn,args,O,vt);self.postMessage({id,ok:1,probe:probe.map(q=>probeAt(P,q))})}catch(err){self.postMessage({id,ok:0,err:String(err&&err.message||err)})}return}try{const P=walk(fn,args,O,vt);const r=detect(P,W,H,want);self.postMessage({id,ok:1,...r,kf:!!self.KF,paths:P.length,ms:performance.now()-t0})}catch(err){self.postMessage({id,ok:0,err:String(err&&err.message||err)})}};
+if(typeof self!=='undefined')self.onmessage=e=>{const{id,fn,args,O,vt,W,H,want,probe,labels}=e.data;self.K0=e.data.k0||0;const t0=performance.now();if(labels){try{const P=walk(fn,args,O,vt);self.postMessage({id,ok:1,labels:statusLabels(P)})}catch(err){self.postMessage({id,ok:0,err:String(err&&err.message||err)})}return}if(probe){try{const P=walk(fn,args,O,vt);self.postMessage({id,ok:1,probe:probe.map(q=>probeAt(P,q))})}catch(err){self.postMessage({id,ok:0,err:String(err&&err.message||err)})}return}try{const P=walk(fn,args,O,vt);const r=detect(P,W,H,want);self.postMessage({id,ok:1,...r,kf:!!self.KF,paths:P.length,ms:performance.now()-t0})}catch(err){self.postMessage({id,ok:0,err:String(err&&err.message||err)})}};
+if(typeof module!=='undefined'&&module.exports)module.exports={eolrSize,oLetterOk,oIsEolLetter,frameExt,statusFromSig,statusLabels,STATUS_SIG};

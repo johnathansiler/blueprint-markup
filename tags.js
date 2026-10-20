@@ -56,10 +56,19 @@ window.ocrPass=async(pages,groups,pl)=>{const G=ocrPass.gen=(ocrPass.gen||0)+1;l
 // bpm-v106: horn/strobe vs speaker/strobe (user-confirmed rule) for the triangle-on-box (SPK_*) glyph. TYPE ONLY, background, after ocrPass (reuses its OCR cache).
 //  plan legend lists only ONE of the two → that one (a legend that only has speaker/strobes can't hold horn/strobes; guards a missed wattage line)
 //  else adjacent tag: wattage tap (1/2W, 1W, 2W…) → speaker/strobe; candela only → horn/strobe; unreadable → speaker/strobe (default)
+// bpm-v126: when the legend lists BOTH, candela/wattage is not enough. A status label that belongs only to the horn row (vector segment counts) types the nearest SPK_* (≤30 pt) as horn.
 const WATT=/(?:^|[^A-Z0-9.\/])(?:\d+(?:\.\d+)?|\d\/\d|\/\d)\s?W(?![A-Z])/,CDR=/\d+\s?CD(?![A-Z])/;
 window.hornTag=ws=>{const s=' '+ws.join(' ').toUpperCase();return WATT.test(s)?'spk':CDR.test(s)?'horn':null};
-const LG=new Map();window.legendNA=async pl=>{if(LG.has(pl.id))return LG.get(pl.id);let t='';for(let n=1;n<=pdf.numPages;n++){try{t+=' '+(await textOf(await pdf.getPage(n),n)).map(o=>o.s).join(' ')}catch{}}t=t.toUpperCase();
- const spk=/SPEAKER\s*[\/-]?\s*STROBE|SPKR\s*[\/-]?\s*STROBE/.test(t),horn=/HORN\s*[\/-]?\s*STROBE/.test(t),r=spk&&!horn?'spk':horn&&!spk?'horn':null;LG.set(pl.id,r);return r};
+function hornAssign(spec){if(spec.legendOnly==='horn'||spec.legendOnly==='spk')return spec.legendOnly;
+ const only=spec.hornOnly,has=spec.status&&only&&(typeof only.has==='function'?only.has(spec.status):only.indexOf(spec.status)>=0);
+ if(spec.both){if(has)return 'horn';if(spec.status)return 'spk';if(spec.watt)return 'spk';if(spec.rowHorn)return 'horn';return 'spk'}
+ if(spec.watt)return 'spk';if(spec.candela)return 'horn';if(spec.rowHorn)return 'horn';return 'spk'}
+window.hornAssign=hornAssign;
+function nearestStatus(labels,x,y,maxD){let b=null,bd=maxD;for(const lb of labels||[]){const d=Math.hypot(x-lb.x,y-lb.y);if(d<=bd){bd=d;b=lb}}return b}
+window.nearestStatus=nearestStatus;
+const LG=new Map();async function legendKind(pl){if(LG.has(pl.id))return LG.get(pl.id);let t='';for(let n=1;n<=pdf.numPages;n++){try{t+=' '+(await textOf(await pdf.getPage(n),n)).map(o=>o.s).join(' ')}catch{}}t=t.toUpperCase();
+ const spk=/SPEAKER\s*[\/-]?\s*STROBE|SPKR\s*[\/-]?\s*STROBE/.test(t),horn=/HORN\s*[\/-]?\s*STROBE/.test(t),r={spk,horn,only:spk&&!horn?'spk':horn&&!spk?'horn':null};LG.set(pl.id,r);return r}
+window.legendNA=async pl=>(await legendKind(pl)).only;
 const SPKG=new Set(['spkw','spkc']);
 // bpm-v110: legend lists BOTH horn/strobe and speaker/strobe → read which drawing each legend row uses (filled cone = *_BOH, open = *_FOH) and let the rows decide per drawing (majority of rows; tie → speaker/strobe)
 const LHS=new Map();window.legendHS=async pl=>{if(LHS.has(pl.id))return LHS.get(pl.id);const M={BOH:{horn:0,spk:0},FOH:{horn:0,spk:0}},RX=/(HORN|SPEAKER|SPKR)\s*\/\s*STROBE/i;let w=null;
@@ -69,15 +78,37 @@ const LHS=new Map();window.legendHS=async pl=>{if(LHS.has(pl.id))return LHS.get(
   w=w||new Worker('detect.js');const r=await new Promise((res,rej)=>{w.onmessage=e=>e.data.ok?res(e.data):rej(new Error(e.data.err));w.onerror=e=>{e.preventDefault?.();rej(new Error(e.message||'legend worker'))};w.postMessage({id:'leg'+n,fn,args,O,vt:vp.transform,W:vp.width,H:vp.height,want:null})});
   for(const h of rows){let b=null,bd=1e9;for(const o of r.items){if(!/^SPK_(BOH|FOH)/.test(o.type))continue;const dy=Math.abs(o.y-h.y),dx=h.x-o.x;if(dy<22&&dx>0&&dx<260&&dx+dy*3<bd){bd=dx+dy*3;b=o}}if(b)M[/BOH/.test(b.type)?'BOH':'FOH'][h.k]++}}}
  catch(e){console.warn('legend horn rows',e)}finally{try{w&&w.terminate()}catch{}}LHS.set(pl.id,M);window.__hornRows=M;return M};
-window.hornPass=async(pages,groups,pl,opt={})=>{const G=hornPass.gen=(hornPass.gen||0)+1,st={legend:null,pages:{},changed:[]};window.__horn=st;let k=0;
- if(groups&&!groups.includes('horn')&&!opt.force)return 0;const leg=opt.noLegend?null:await legendNA(pl);st.legend=leg;
- for(const n of pages){if(plan!==pl||G!==hornPass.gen)return k;const gh=ghosts.filter(g=>g.page===n),cand=gh.filter(g=>SPKG.has(g.g)&&!g.fromG);if(!cand.length)continue;const ps=st.pages[n]={spk:0,horn:0,tagW:0,tagCD:0,none:0,by:leg?'legend':'tag'};
-  let own=null;if(!leg){const pg=await pdf.getPage(n),toks=[];for(const g of cand){const r=await (window.wordsNearX)(pg,n,g.x,g.y,Math.max(g.bw||0,g.bh||0)||13);for(const w of r.words)if(!toks.some(o=>o.s===w.s&&Math.hypot(o.x-w.x,o.y-w.y)<3))toks.push(w)}
-   own=new Map(cand.map(g=>[g,[]]));for(const t of toks){let b=null,bd=1e9;for(const g of gh){const d=Math.hypot(g.x-t.x,g.y-t.y)/(Math.max(g.bw||0,g.bh||0)||13);if(d<bd){bd=d;b=g}}if(b&&own.has(b))own.get(b).push(t.s)}}
-  const LM=leg?null:await legendHS(pl);st.rows=LM;
-  for(const g of cand){let v=leg,byRow=0;if(!v){const tg=hornTag(own.get(g));if(tg==='spk')ps.tagW++;else if(tg==='horn')ps.tagCD++;else ps.none++;const rm=LM&&LM[/BOH/.test(g.det||'')?'BOH':'FOH'];if(!tg&&rm&&rm.horn>rm.spk)byRow=1;v=tg||(byRow?'horn':'spk')}g.hornBy=leg?'legend':byRow?'legend-row':(v&&own&&hornTag(own.get(g))?'tag':'default');
-   if(v==='horn'){ps.horn++;if(plan!==pl)return k;g.fromG=g.g;g.shp=DG[g.g]?.t;g.g='horn';g.det=/BOH/.test(g.det||'')?'HORN_BOH':'HORN_FOH';g.low=g.low||'tag';st.changed.push({page:n,id:g.id,x:Math.round(g.x),y:Math.round(g.y)});k++}else ps.spk++}}
- if(k&&plan===pl){try{draw();renderGhostBar()}catch{}toast(`Tags read: ${k} speaker/strobe suggestion${k===1?'':'s'} re-typed to horn/strobe (candela only, marked ? to check)`)}return k};
+const LC=new Map();let labW=null;
+async function pageStatusLabels(n,pg){const ck=(plan&&plan.id||'')+':'+n;if(LC.has(ck))return LC.get(ck);
+ const O=pdfjsLib.OPS,keep=new Set(DOPS.map(k=>O[k]).filter(v=>v!==undefined)),ol=window.vecOL?await vecOL(n,pg):await pg.getOperatorList(),fn=[],args=[];
+ for(let j=0;j<ol.fnArray.length;j++)if(keep.has(ol.fnArray[j])){fn.push(ol.fnArray[j]);args.push(ol.argsArray[j])}
+ const vp=pg.getViewport({scale:1});if(!labW)labW=new Worker('detect.js');
+ const labels=await new Promise((res,rej)=>{labW.onmessage=e=>e.data.ok?res(e.data.labels||[]):rej(new Error(e.data.err));labW.onerror=e=>{e.preventDefault?.();try{labW.terminate()}catch{}labW=null;rej(new Error(e.message||'label worker'))};labW.postMessage({id:'st'+n,fn,args,O,vt:vp.transform,W:vp.width,H:vp.height,labels:1})});
+ LC.set(ck,labels);return labels}
+const LHO=new Map();
+async function legendHornOnly(pl){if(LHO.has(pl.id))return LHO.get(pl.id);const RX=/(HORN|SPEAKER|SPKR)\s*\/\s*STROBE/i,used=new Map();
+ try{for(let n=1;n<=pdf.numPages;n++){if(plan!==pl)break;const pg=window.detPage?await detPage(n):await pdf.getPage(n),tc=await pg.getTextContent(),vp=pg.getViewport({scale:1}),rows=[];
+  for(const q of tc.items){const s=(q.str||'').trim(),m=s.match(RX);if(!m||/^(WHERE|ALL|PROVIDE|NOTE)\b/i.test(s)||s.length>60)continue;const t=pdfjsLib.Util.transform(vp.transform,q.transform);rows.push({k:/HORN/i.test(m[1])?'horn':'spk',x:t[4],y:t[5]})}
+  if(!rows.some(r=>r.k==='horn')||!rows.some(r=>r.k==='spk'))continue;const labels=await pageStatusLabels(n,pg),ranked=[];
+  for(const h of rows){let b=null,bd=1e9;for(const lb of labels){const dy=Math.abs(lb.y-h.y),dx=h.x-lb.x;if(dy>18||dx<-40||dx>200)continue;const d=dy*3+Math.abs(dx)*.25;if(d<bd){bd=d;b=lb}}if(b)ranked.push({h,b,bd})}
+  ranked.sort((a,c)=>a.bd-c.bd);const taken=new Set();for(const {h,b} of ranked){if(taken.has(b))continue;taken.add(b);let set=used.get(b.status);if(!set)used.set(b.status,set=new Set());set.add(h.k)}}}
+ catch(e){console.warn('legend horn status',e)}
+ const only=new Set();for(const [st,set] of used)if(set.has('horn')&&!set.has('spk'))only.add(st);LHO.set(pl.id,only);window.__hornStatus={only:[...only],rows:[...used].map(([s,set])=>[s,[...set]])};return only}
+window.hornPass=async(pages,groups,pl,opt={})=>{const G=hornPass.gen=(hornPass.gen||0)+1,st={legend:null,pages:{},changed:[]};window.__horn=st;let k=0,byStatus=0;
+ if(groups&&!groups.includes('horn')&&!opt.force)return 0;const kind=opt.noLegend?{only:null,spk:false,horn:false}:await legendKind(pl);const leg=kind.only;st.legend=leg;st.both=!!(kind.spk&&kind.horn);
+ let hornOnly=null;if(st.both){try{hornOnly=await legendHornOnly(pl)}catch(e){console.warn('horn status',e);hornOnly=new Set()}}st.hornOnly=hornOnly?[...hornOnly]:null;
+ for(const n of pages){if(plan!==pl||G!==hornPass.gen)return k;const gh=ghosts.filter(g=>g.page===n),cand=gh.filter(g=>SPKG.has(g.g)&&!g.fromG);if(!cand.length)continue;const ps=st.pages[n]={spk:0,horn:0,tagW:0,tagCD:0,none:0,by:leg?'legend':st.both?'status':'tag'};
+  const near=new Map();if(st.both){try{const pg=window.detPage?await detPage(n):await pdf.getPage(n),labels=await pageStatusLabels(n,pg);for(const g of cand){const b=nearestStatus(labels,g.x,g.y,30);near.set(g,b);if(b)g.plan=b.status}}catch(e){console.warn('status labels',e)}}
+  let own=null;const need=st.both?cand.filter(g=>!near.get(g)):cand;
+  if(!leg&&need.length){const pg=await pdf.getPage(n),toks=[];for(const g of need){const r=await (window.wordsNearX)(pg,n,g.x,g.y,Math.max(g.bw||0,g.bh||0)||13);for(const w of r.words)if(!toks.some(o=>o.s===w.s&&Math.hypot(o.x-w.x,o.y-w.y)<3))toks.push(w)}
+   own=new Map(cand.map(g=>[g,[]]));for(const t of toks){let b=null,bd=1e9;for(const g of gh){const d=Math.hypot(g.x-t.x,g.y-t.y)/(Math.max(g.bw||0,g.bh||0)||13);if(d<bd){bd=d;b=g}}if(b&&own.has(b)&&need.includes(b))own.get(b).push(t.s)}}
+  const LM=leg||(st.both&&!need.length)?null:await legendHS(pl);st.rows=LM;
+  for(const g of cand){let tg=null,rowHorn=false;const lb=near.get(g),status=lb?lb.status:null;
+   if(!leg&&need.includes(g)){tg=hornTag(own.get(g));if(tg==='spk')ps.tagW++;else if(tg==='horn')ps.tagCD++;else ps.none++;const rm=LM&&LM[/BOH/.test(g.det||'')?'BOH':'FOH'];if(!tg&&rm&&rm.horn>rm.spk)rowHorn=1}else if(st.both)ps.none++;
+   const v=hornAssign({legendOnly:leg,both:st.both,status,hornOnly,watt:tg==='spk',candela:!st.both&&tg==='horn',rowHorn});
+   g.hornBy=leg?'legend':(st.both&&v==='horn'?'status':rowHorn?'legend-row':(tg&&!st.both?'tag':'default'));
+   if(v==='horn'){ps.horn++;if(g.hornBy==='status')byStatus++;if(plan!==pl)return k;g.fromG=g.g;g.shp=DG[g.g]?.t;g.g='horn';g.det=/BOH/.test(g.det||'')?'HORN_BOH':'HORN_FOH';g.low=g.low||'tag';st.changed.push({page:n,id:g.id,x:Math.round(g.x),y:Math.round(g.y)});k++}else ps.spk++}}
+ if(k&&plan===pl){try{draw();renderGhostBar()}catch{}toast(`Tags read: ${k} speaker/strobe suggestion${k===1?'':'s'} re-typed to horn/strobe (${byStatus?'legend status label':'candela only'}, marked ? to check)`)}return k};
 // bpm-v106: multi-criteria looks the same as smoke → only by legend text: a plan whose legend lists multi-criteria detectors and no plain smoke detector
 window.multiPass=async(pages,groups,pl)=>{let t='';for(let n=1;n<=pdf.numPages;n++){try{t+=' '+(await textOf(await pdf.getPage(n),n)).map(o=>o.s).join(' ')}catch{}}t=t.toUpperCase();
  const mc=/MULTI-?\s?CRITERIA/.test(t),sm=/PHOTOELECTRIC|SMOKE\s+DETECTOR|IONIZATION/.test(t.replace(/MULTI-?\s?CRITERIA[^\/]{0,40}/g,''));if(!mc||sm||plan!==pl)return 0;let k=0;
