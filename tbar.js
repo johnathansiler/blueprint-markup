@@ -139,18 +139,33 @@
  const WN=['Thin','Medium','Thick','Extra thick'];
  function mkWidthBtn(){const b=ce('button','tool tbw tbWid');b.type='button';b.dataset.w='width';
   const show=()=>{const i=+$('#size').value||0,c=$('#color').value,w=SZ[i];b.innerHTML=`<svg class="wPv" width="26" height="18" viewBox="0 0 26 18" aria-hidden="true"><line x1="3" y1="9" x2="23" y2="9" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/></svg><span class="tl">Width ▾</span>`;b.title=`Line width: ${WN[i]} (${w} px)`;b.setAttribute('aria-label',b.title)};
-  b.onclick=()=>widthSheet(show);b._show=show;show();$('#color').addEventListener('input',show);$('#color').addEventListener('change',show);$('#size').addEventListener('change',show);return b}
- function widthSheet(show){let d=$('#widDlg');if(!d){d=ce('dialog');d.id='widDlg';document.body.append(d)}const i0=+$('#size').value||0,c=$('#color').value,op=+$('#opac').value||100,mag=$('#mkSnap').classList.contains('on');
-  d.innerHTML=`<div class="cHead"><b>Line width</b><span class="sp"></span><button type="button" class="btn" id="wX">✕<span class="tl">Close</span></button></div><div class="wList" role="radiogroup" aria-label="Line width">${SZ.map((w,i)=>`<button type="button" role="radio" aria-checked="${i===i0}" class="wOpt${i===i0?' on':''}" data-i="${i}"><svg width="120" height="24" viewBox="0 0 120 24" aria-hidden="true"><line x1="8" y1="12" x2="112" y2="12" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/></svg><span class="wL">${WN[i]}</span><small>${w} px</small><b class="wCk">${i===i0?'✓':''}</b></button>`).join('')}</div>
-   <small class="wNote">Text markups use the same choice as font size (${SZT.join(' / ')} px).</small>
-   <h4>Line style</h4><div class="wOp" id="wLs" role="radiogroup" aria-label="Line style">${[['solid','Solid'],['dash','Dashed'],['dot','Dotted']].map(([k,l])=>`<button type="button" role="radio" aria-checked="${(window.lineStyle?lineStyle():'solid')===k}" class="btn${(window.lineStyle?lineStyle():'solid')===k?' on':''}" data-ls="${k}"><svg width="34" height="10" viewBox="0 0 34 10" aria-hidden="true"><line x1="3" y1="5" x2="31" y2="5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="${k==='dash'?'7 5':k==='dot'?'0.1 6':'none'}"/></svg> ${l}</button>`).join('')}</div><small class="wNote">Applies to new markups and to the selected ones.</small>
-   <h4>Opacity</h4><div class="wOp">${[25,50,75,100].map(o=>`<button type="button" class="btn${o===op?' on':''}" data-o="${o}">${o}%</button>`).join('')}</div>
-   <h4>Magnet snap</h4><button type="button" class="btn${mag?' on':''}" id="wMag">🧲<span class="tl">Magnet ${mag?'on (tap to turn off)':'off (tap to turn on)'}</span></button>`;
-  d.querySelectorAll('.wOpt').forEach(x=>x.onclick=()=>{$('#size').value=x.dataset.i;$('#size').dispatchEvent(new Event('change',{bubbles:true}));show();d.close()});
-  d.querySelectorAll('[data-o]').forEach(x=>x.onclick=()=>{const o=+x.dataset.o;$('#opac').value=o;$('#opac').dispatchEvent(new Event('input',{bubbles:true}));$('#opac').dispatchEvent(new Event('change',{bubbles:true}));widthSheet(show)});
-  d.querySelectorAll('[data-ls]').forEach(x=>x.onclick=async()=>{if(window.setLineStyle)await setLineStyle(x.dataset.ls);widthSheet(show)});
-  d.querySelector('#wMag').onclick=()=>{$('#mkSnap').click();widthSheet(show)};d.querySelector('#wX').onclick=()=>d.close();d.onclick=e=>{if(e.target===d)d.close()};if(!d.open)d.showModal()}
- window.widthSheet=()=>widthSheet(B.width._show);document.addEventListener('pointerup',()=>setTimeout(()=>B.width&&B.width._show(),0),true);
+  b.onclick=()=>widBar(b,show);b._show=show;show();$('#color').addEventListener('input',show);$('#color').addEventListener('change',show);$('#size').addEventListener('change',show);return b}
+ /* bpm-v129: Width opens a small bar of three labelled buttons side by side above it: Width and Style each open a wheel, Opacity opens a sliding bar.
+  The magnet is no longer repeated here (it is on the main bar). Tap Width again, tap outside or press Escape to close the bar. */
+ const LSN=[['solid','Solid'],['dash','Dashed'],['dot','Dotted']];
+ const lsSvg=(k,w=24)=>`<svg width="${w}" height="10" viewBox="0 0 ${w} 10" aria-hidden="true"><line x1="3" y1="5" x2="${w-3}" y2="5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="${k==='dash'?'6 4':k==='dot'?'0.1 5':'none'}"/></svg>`;
+ let WB=null,WBO=null,WBA=null,WBS=null;
+ function wbClose(){if(WB)WB.hidden=true;if(WBO)WBO.hidden=true;if(WBA)WBA.classList.remove('on')}
+ function wbPlace(el,a){const r=a.getBoundingClientRect(),w=el.offsetWidth,h=el.offsetHeight;el.style.left=Math.round(Math.max(8,Math.min(innerWidth-8-w,r.left+r.width/2-w/2)))+'px';el.style.top=Math.round(Math.max(8,r.top-8-h))+'px'}
+ function wbRender(){const i=+$('#size').value||0,c=$('#color').value,ls=window.lineStyle?lineStyle():'solid',op=+$('#opac').value||100;
+  WB.innerHTML=`<button type="button" class="btn" data-wb="width" title="Line width: ${WN[i]} (${SZ[i]} px)"><svg width="24" height="14" viewBox="0 0 24 14" aria-hidden="true"><line x1="3" y1="7" x2="21" y2="7" stroke="${c}" stroke-width="${SZ[i]}" stroke-linecap="round"/></svg><span class="wbL">Width</span></button>`+
+   `<button type="button" class="btn" data-wb="style" title="Line style: ${(LSN.find(x=>x[0]===ls)||LSN[0])[1]}">${lsSvg(ls)}<span class="wbL">Style</span></button>`+
+   `<button type="button" class="btn${WBO&&!WBO.hidden?' on':''}" data-wb="opacity" title="Opacity: ${op}%"><span aria-hidden="true">◐</span><span class="wbL">Opacity</span></button>`;
+  WB.querySelector('[data-wb=width]').onclick=e=>{const a=e.currentTarget,i0=+$('#size').value||0;if(WBO)WBO.hidden=true;wheelAnchor(a);
+   wheelOpen('Line width',[...SZ.map((w,k)=>({k,html:`<span class="whIc"><svg width="24" height="14" viewBox="0 0 24 14" aria-hidden="true"><line x1="3" y1="7" x2="21" y2="7" stroke="currentColor" stroke-width="${w}" stroke-linecap="round"/></svg></span>${WN[k]} · ${w} px`})),{k:null,html:'<span class="whIc">✕</span>Cancel'}],i0,x=>{if(!x||x.k==null)return;$('#size').value=x.k;$('#size').dispatchEvent(new Event('change',{bubbles:true}));WBS&&WBS();wbRender()})};
+  WB.querySelector('[data-wb=style]').onclick=e=>{const a=e.currentTarget,cur=window.lineStyle?lineStyle():'solid';if(WBO)WBO.hidden=true;wheelAnchor(a);
+   wheelOpen('Line style',[...LSN.map(([k,l])=>({k,html:`<span class="whIc">${lsSvg(k)}</span>${l}`})),{k:null,html:'<span class="whIc">✕</span>Cancel'}],Math.max(0,LSN.findIndex(x=>x[0]===cur)),async x=>{if(!x||x.k==null)return;if(window.setLineStyle)await setLineStyle(x.k);wbRender()})};
+  WB.querySelector('[data-wb=opacity]').onclick=e=>{const a=e.currentTarget;if(WBO&&!WBO.hidden){WBO.hidden=true;wbRender();return}
+   if(!WBO){WBO=ce('div','wbOp');WBO.id='wbOp';WBO.setAttribute('role','group');WBO.setAttribute('aria-label','Opacity');document.body.append(WBO)}
+   const o=$('#opac'),v=+o.value||100;WBO.innerHTML=`<span class="wbOL">Opacity</span><input type="range" id="wbOpR" min="${o.min||15}" max="${o.max||100}" step="1" value="${v}" aria-label="Opacity"><b id="wbOpV">${v}%</b>`;WBO.hidden=false;
+   const r=WBO.querySelector('#wbOpR');r.oninput=()=>{o.value=r.value;WBO.querySelector('#wbOpV').textContent=r.value+'%';o.dispatchEvent(new Event('input',{bubbles:true}))};r.onchange=()=>{o.dispatchEvent(new Event('change',{bubbles:true}));wbRender()};
+   wbRender();wbPlace(WBO,WB)}}
+ function widBar(btn,show){WBS=show;WBA=btn;if(WB&&!WB.hidden){wbClose();return}
+  if(!WB){WB=ce('div','widBar');WB.id='widBar';WB.setAttribute('role','toolbar');WB.setAttribute('aria-label','Line options');document.body.append(WB);
+   document.addEventListener('pointerdown',e=>{if(!WB||WB.hidden)return;const t=e.target;if(WB.contains(t)||(WBO&&WBO.contains(t))||(WBA&&WBA.contains(t))||t.closest&&t.closest('.whOv'))return;wbClose()},true);
+   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&WB&&!WB.hidden&&document.querySelector('.whOv')?.hidden!==false)wbClose()});addEventListener('resize',()=>{if(WB&&!WB.hidden&&WBA){wbPlace(WB,WBA);if(WBO&&!WBO.hidden)wbPlace(WBO,WB)}})}
+  if(WBO)WBO.hidden=true;wbRender();WB.hidden=false;btn.classList.add('on');wbPlace(WB,btn)}
+ window.widthSheet=()=>widBar(B.width,B.width._show);document.addEventListener('pointerup',()=>setTimeout(()=>B.width&&B.width._show(),0),true);
  const pinT=()=>Object.entries(TYPES).map(([k,v])=>({k,i:`<span class="tbDot" style="background:${v.c}"></span>`,l:v.n,run:()=>{$('#pinType').value=k;$('#pinType').dispatchEvent(new Event('change',{bubbles:true}));tb('pin').click()}}));
  const more=()=>[{k:'fit',i:'⤢',l:'Fit to screen',run:()=>$('#fit').click()},{k:'del',i:'🗑',l:'Delete selected',run:()=>$('#del').click()},{k:'mag',i:'🧲',l:'Magnet snap '+($('#mkSnap').classList.contains('on')?'(on)':'(off)'),run:()=>$('#mkSnap').click()},{k:'cz',i:'⚙',l:'Customize toolbar',run:()=>openCz()}];
  const share=()=>[{k:'split',i:'⇆',l:'Split for 2nd tech',run:()=>$('#splitBtn').click()},{k:'merge',i:'⇄',l:'Merge returned file',run:()=>$('#mergeBtn').click()}];
