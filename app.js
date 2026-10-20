@@ -1329,15 +1329,17 @@ async function thumbFor(n){const key=plan.id+':'+n;if(THB[key])return THB[key];l
 function renderThumbs(){const b=$('#thumbs');if(!plan||b.hidden)return;const N=plan.pages||1;
  b.innerHTML=`<div class="thh"><b>Pages</b><button type="button" class="btn thRn" id="thRn" title="Rename the current page (or long-press a thumbnail)">✎<span class="tl">Rename</span></button><button type="button" class="btn" id="thX" title="Hide">✕</button></div>`+Array.from({length:N},(_,i)=>{const n=i+1,ps=pins.filter(p=>p.page===n),f=ps.filter(p=>p.status==='failed').length,r=ROTS[n]||0;
   return`<button type="button" class="th${n===page?' on':''}" data-pg="${n}"><img alt="" data-n="${n}"${THB[plan.id+':'+n]?` src="${THB[plan.id+':'+n]}"`:''} style="transform:rotate(${r}deg)"><span class="thn">${n}</span>${pnm(plan.id,n)?`<span class="thNm" title="${esc(pnm(plan.id,n))}">${esc(pnm(plan.id,n))}</span>`:''}${ps.length?`<span class="thb${f?' f':''}">${f?f+'✖':ps.length}</span>`:''}</button>`}).join('');
- $('#thX').onclick=()=>{b.hidden=true;$('#thBtn').classList.remove('pri')};
+ $('#thX').onclick=()=>{b.hidden=true;thUserOff=true;$('#thBtn').classList.remove('pri')};
  $('#thRn').onclick=()=>pnRename(page);b.querySelectorAll('[data-pg]').forEach(x=>{let lt=0,lp=false;x.onpointerdown=()=>{lp=false;clearTimeout(lt);lt=setTimeout(()=>{lp=true;pnRename(+x.dataset.pg)},550)};x.onpointerup=x.onpointerleave=x.onpointercancel=()=>clearTimeout(lt);x.oncontextmenu=e=>{e.preventDefault()};x.addEventListener('click',e=>{if(lp){e.stopImmediatePropagation();e.preventDefault();lp=false}},true)});b.querySelectorAll('[data-pg]').forEach(x=>x.onclick=()=>{const n=+x.dataset.pg;if(n!==page){$('#pageSel').value=n;gotoPage(n).then(()=>{MS.pts=[];renderMBar();renderThumbs()})}});
  if(thObs)thObs.disconnect();thObs=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting){const im=e.target;thObs.unobserve(im);if(!im.src)setTimeout(async()=>{const u=await thumbFor(+im.dataset.n);if(u)im.src=u},30)}},{root:b});
  b.querySelectorAll('img[data-n]').forEach(im=>thObs.observe(im));b.querySelector('.th.on')?.scrollIntoView({block:'nearest',inline:'nearest'})}
-$('#thBtn').onclick=()=>{const b=$('#thumbs');b.hidden=!b.hidden;$('#thBtn').classList.toggle('pri',!b.hidden);renderThumbs()};
+/* bpm-v129: once the user closes Pages it stays closed (page changes, walk Pass/Fail/next device) until the user opens it again; a newly opened plan starts with Pages open as before */
+var thUserOff=false,thPlanId=null;
+$('#thBtn').onclick=()=>{const b=$('#thumbs');b.hidden=!b.hidden;thUserOff=b.hidden;$('#thBtn').classList.toggle('pri',!b.hidden);renderThumbs()};
 {const _ac=afterChange;afterChange=function(){_ac();if(!$('#thumbs').hidden)renderThumbs()}}
 // open the strip by default on wide screens, after first render
 setTimeout(()=>{if(thumbsWanted()&&plan&&$('#thumbs').hidden){$('#thumbs').hidden=false;$('#thBtn').classList.add('pri');renderThumbs()}},1500);
-{const _g=gotoPage;gotoPage=async function(n,seq){const r=await _g(n,seq);if(!$('#thumbs').hidden)renderThumbs();else if(thumbsWanted()&&plan){$('#thumbs').hidden=false;$('#thBtn').classList.add('pri');renderThumbs()}return r}}
+{const _g=gotoPage;gotoPage=async function(n,seq){const r=await _g(n,seq);if(plan&&plan.id!==thPlanId){thPlanId=plan.id;thUserOff=false}if(!$('#thumbs').hidden)renderThumbs();else if(thumbsWanted()&&plan&&!thUserOff){$('#thumbs').hidden=false;$('#thBtn').classList.add('pri');renderThumbs()}return r}}
 // ---------- v15: editable checklist templates ----------
 function sanTpl(o){const r={};for(const[k,v]of Object.entries(o||{}))if(TYPES[k]&&Array.isArray(v)){const it=v.map(x=>String(x||'').trim().slice(0,160)).filter(Boolean).slice(0,40);if(it.length)r[k]=it}return r}
 get('meta','cktpl').then(v=>{if(v)CKT=sanTpl(v)}).catch(()=>{});
