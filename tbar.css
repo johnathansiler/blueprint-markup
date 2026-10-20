@@ -297,3 +297,11 @@ body.pcOn .pcDel,#pinDlg .pcDel{min-height:44px}
 #pinDlg .pcTopRow{flex-wrap:nowrap;align-items:center;gap:8px}#pinDlg .pcTopRow h3{margin:0!important;white-space:nowrap}
 #pinDlg .pcTopRow .btn{flex:0 0 auto;min-width:64px}
 body.light #pinDlg .pcTop{background:#fff}
+/* bpm-v129: Width bar (Width / Style / Opacity side by side above the Width button) and the Opacity slider */
+.widBar,.wbOp{position:fixed;z-index:58;display:flex;align-items:center;gap:6px;padding:6px;background:#1e293b;color:#e2e8f0;border:1px solid #ffffff26;border-radius:14px;box-shadow:0 10px 28px #000a}
+.widBar[hidden],.wbOp[hidden]{display:none}
+.widBar .btn{min-height:44px;min-width:86px;display:flex;align-items:center;justify-content:center;gap:7px;font-size:15px;font-weight:600;padding:6px 12px}
+.widBar .btn.on{background:var(--acc,#3b82f6);color:#fff;border-color:transparent}
+.wbOp{padding:8px 14px;gap:10px;font-size:15px}.wbOp .wbOL{font-weight:600}.wbOp b{min-width:44px;text-align:right}
+.wbOp input[type=range]{width:min(200px,52vw);height:36px;accent-color:var(--acc,#3b82f6)}
+body.light .widBar,body.light .wbOp{background:#fff;color:#0f172a;border-color:#cbd5e1}
