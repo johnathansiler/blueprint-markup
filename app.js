@@ -839,9 +839,40 @@ function startVoice(){if(!SR)return;if(srec){try{srec.stop()}catch{}return}
  if(!navigator.onLine)toast('You are offline: on many phones voice recognition needs internet. If it fails, use the buttons.');
  let r;try{r=new SR()}catch(e){toast('Voice is not available: '+e.message);return}srec=r;r.lang=navigator.language||'en-US';r.interimResults=false;r.maxAlternatives=1;r.continuous=false;
  const on=b=>{for(const x of[$('#micBtn'),$('#wMic')])if(x)x.classList.toggle('danger',b)};on(true);
- r.onresult=e=>{const t=e.results[0][0].transcript;voiceHeard(t)};
- r.onerror=e=>{const m={network:'Voice recognition needs an internet connection on this device. Use the buttons while offline.','not-allowed':'Microphone access is blocked. Allow the microphone for this site in Chrome settings.','service-not-allowed':'Voice recognition is turned off or unavailable on this device.','no-speech':'Didn\u2019t hear anything. Tap 🎤 and speak again.','audio-capture':'No microphone was found.','language-not-supported':'Voice recognition does not support this language here.'}[e.error]||('Voice error: '+e.error);if(e.error!=='aborted')toast(m)};
- r.onend=()=>{srec=null;on(false)};try{r.start()}catch(e){srec=null;on(false);toast('Could not start voice: '+e.message)}}
+ vGuide('listen');r.onresult=e=>{const t=e.results[0][0].transcript;vGuide('heard',t);voiceHeard(t)};
+ r.onerror=e=>{const m={network:'Voice recognition needs an internet connection on this device. Use the buttons while offline.','not-allowed':'Microphone access is blocked. Allow the microphone for this site in Chrome settings.','service-not-allowed':'Voice recognition is turned off or unavailable on this device.','no-speech':'Didn\u2019t hear anything. Tap 🎤 and speak again.','audio-capture':'No microphone was found.','language-not-supported':'Voice recognition does not support this language here.'}[e.error]||('Voice error: '+e.error);if(e.error!=='aborted'){toast(m);vGuide('error',m)}};
+ r.onend=()=>{srec=null;on(false);vGuide('end')};try{r.start()}catch(e){srec=null;on(false);toast('Could not start voice: '+e.message);vGuide('error','Could not start voice: '+e.message)}}
+// bpm-v130: Voice guide. While Voice listens, a panel shows what to say (the real commands, with examples), what it heard, and that it needs internet.
+// It does not change what the commands do. Stop listening / Listen again / Close are labelled buttons. It hides itself 4 s after a command that was understood.
+function vGuide(st,txt){let g=$('#vGuide');if(!g){g=document.createElement('div');g.id='vGuide';g.setAttribute('role','dialog');g.setAttribute('aria-label','Voice commands');document.body.append(g);
+  g.innerHTML=`<div class="vgH"><span class="vgMic" aria-hidden="true">🎤</span><b class="vgS"></b></div>
+  <div class="vgT">Say one of these:</div>
+  <ul class="vgL">
+   <li><q>pass</q> or <q>good</q><small>passes this device</small></li>
+   <li><q>fail</q> + reason<small>e.g. <q>fail damaged</q>, <q>fail no alarm</q>. Add <q>critical</q> for a critical deficiency: <q>fail damaged critical</q>. Reasons: no alarm, trouble, damaged, missing, obstructed, dirty, wrong location</small></li>
+   <li><q>skip</q> or <q>next</q><small>skips this device</small></li>
+   <li><q>address L1D012</q><small>sets this device's address</small></li>
+   <li><q>loop 2</q><small>sets this device's loop</small></li>
+   <li><q>note</q> + your words<small>adds a note, e.g. <q>note cover cracked</q></small></li>
+   <li><q>L1D012 pass</q><small>passes (or <q>L1D012 fail damaged</q> fails) the device with that address</small></li>
+  </ul>
+  <div class="vgHeard" aria-live="polite"></div>
+  <div class="vgNet"></div>
+  <div class="vgB"><button type="button" class="btn danger" id="vgStop">⏹ Stop listening</button><button type="button" class="btn pri" id="vgAgain">🎤 Listen again</button><button type="button" class="btn" id="vgX">✕ Close</button></div>`;
+  g.querySelector('#vgStop').onclick=()=>{if(srec)try{srec.stop()}catch{}};g.querySelector('#vgAgain').onclick=()=>{if(!srec)startVoice()};g.querySelector('#vgX').onclick=()=>{clearTimeout(g._t);g.hidden=true;if(srec)try{srec.abort?srec.abort():srec.stop()}catch{}}}
+ const S=g.querySelector('.vgS'),H=g.querySelector('.vgHeard'),N=g.querySelector('.vgNet'),lis=st==='listen';clearTimeout(g._t);
+ N.textContent=navigator.onLine?'Needs an internet connection: the phone sends your voice to Google to turn it into text.':'You are offline. Voice needs an internet connection, so use the buttons until you are back online.';N.classList.toggle('off',!navigator.onLine);
+ if(lis){g.hidden=false;g._ok=false;S.textContent='Listening… speak now';H.textContent='';H.className='vgHeard'}
+ else if(st==='heard'){S.textContent='Got it';let c={cmd:'?'};try{c=parseVoice(txt)}catch{}g._ok=c.cmd!=='?';H.textContent=`Heard: “${txt}”`+(g._ok?'':' (not a command: try one of the above)');H.className='vgHeard '+(g._ok?'ok':'bad')}
+ else if(st==='error'){S.textContent='Voice stopped';H.textContent=txt||'';H.className='vgHeard bad';g._ok=false;g.hidden=false}
+ else if(st==='end'){if(S.textContent.startsWith('Listening')){S.textContent='Didn’t hear a command';if(!H.textContent){H.textContent='Tap Listen again and speak after the beep.';H.className='vgHeard bad'}}if(g._ok)g._t=setTimeout(()=>{g.hidden=true},4000)}
+ g.classList.toggle('on',!!srec||lis);g.querySelector('#vgStop').hidden=!(srec||lis);g.querySelector('#vgAgain').hidden=!!(srec||lis);
+ if(!g.hidden){/* free area between the top bars and the walk bar / Pages strip / tool bar */const vis=e=>e&&!e.hidden&&getComputedStyle(e).display!=='none'&&e.getBoundingClientRect().height>0;let lo=8,hi=innerHeight-8;
+  for(const id of['proj','top','tb2']){const e=document.getElementById(id);if(vis(e)){const r=e.getBoundingClientRect();if(r.bottom<innerHeight/2)lo=Math.max(lo,r.bottom+8)}}
+  for(const id of['walk','tools','thumbs','ghBar']){const e=document.getElementById(id);if(vis(e)){const r=e.getBoundingClientRect();if(r.top>innerHeight/2&&r.width>innerWidth/2)hi=Math.min(hi,r.top-8)}}
+  g.style.top='auto';g.style.bottom=Math.round(innerHeight-hi)+'px';g.style.maxHeight=Math.round(Math.max(160,hi-lo))+'px'}}
+addEventListener('resize',()=>{const g=$('#vGuide');if(g&&!g.hidden)vGuide('place')});
+
 function voiceHeard(t){if(walk){walk.heard=t;const h=$('#wHeard');if(h){h.hidden=false;h.textContent='🎤 “'+t+'”'}}runVoice(t)}
 const normA=s=>String(s||'').toUpperCase().replace(/\bDASH\b/g,'-').replace(/[\s.]+/g,'');
 const NUMW={zero:0,one:1,two:2,to:2,too:2,three:3,four:4,for:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
