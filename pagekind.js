@@ -1,8 +1,8 @@
-// bpm-v107: page kind for Detect. Riser and wiring sheets get no Detect pins (bpm-v108: also equipment-detail and schedule/calculation sheets). The kind is read from the title block's SHEET TITLE field
+// bpm-v107: page kind for Detect. bpm-v128: demolition plans are skipped too. Riser and wiring sheets get no Detect pins (bpm-v108: also equipment-detail and schedule/calculation sheets). The kind is read from the title block's SHEET TITLE field
 // (falling back to the big drawing titles next to the sheet number). A floor-plan title (… PLAN) always wins, so a small "wiring" detail
 // box on a plan never skips it. Per-page override "Detect this page anyway" is remembered (IndexedDB meta 'detAny').
 (()=>{const KC=new Map();let ANY=null;
- const RISER=/\bRISER\b(?!\s*DETAIL)|\bFAS[- ]?RISER/i,WIRE=/\bWIRING\s+(DIAGRAMS?|DETAILS?)\b|\bTYPICAL\s+WIRING\b|\bPOINT[- ]TO[- ]POINT\b|\bSCHEMATICS?\b|\bONE[- ]LINE\b/i,PLAN=/\bPLANS?\b/i;
+ const RISER=/\bRISER\b(?!\s*DETAIL)|\bFAS[- ]?RISER/i,WIRE=/\bWIRING\s+(DIAGRAMS?|DETAILS?)\b|\bTYPICAL\s+WIRING\b|\bPOINT[- ]TO[- ]POINT\b|\bSCHEMATICS?\b|\bONE[- ]LINE\b/i,PLAN=/\bPLANS?\b/i,DEMO=/\bDEMOLITION\b|\bDEMO\s+PLANS?\b/i,EXIST=/\bEXISTING\b/i,NEWW=/\bNEW\b|RENOVATION|PROPOSED|ADDITION/i,NEWP=/\b(RENOVATION|NEW\s+WORK|NEW\s+CONSTRUCTION|PROPOSED)\s+PLANS?\b/i;
  async function loadAny(){if(ANY)return ANY;let a=null;try{a=await get('meta','detAny')}catch{}ANY=new Set(Array.isArray(a)?a:[]);return ANY}
  window.detAnyway=async(pid,n,on)=>{await loadAny();const k=pid+':'+n;if(on===undefined)return ANY.has(k);if(on)ANY.add(k);else ANY.delete(k);try{await put('meta',[...ANY],'detAny')}catch{}return on};
  function classify(items){const I=[];for(const t of items){const s=(t.str||'').trim();if(!s)continue;const tr=t.transform,sz=Math.max(Math.hypot(tr[2],tr[3]),Math.hypot(tr[0],tr[1])*0)||t.height||0,l=Math.hypot(tr[0],tr[1])||1;I.push({s,sz,x:tr[4],y:tr[5],dx:tr[0]/l,dy:tr[1]/l})}
@@ -16,7 +16,10 @@
   const big=I.filter(t=>t.sz>=thr&&t.s.length>3&&/[A-Z]{3}/i.test(t.s)&&t!==SN).map(t=>t.s);
   const src=title?'sheet title':'drawing titles',txt=title||big.join(' | ');
   let kind=null,why='';
-  if(PLAN.test(txt)&&!RISER.test(title)){kind=null;why='plan title'}
+  // bpm-v128: a demolition plan shows the existing devices that come out, not the new install, so Detect skips it like a riser sheet (the "… PLAN" rule would otherwise keep it). Read from the sheet title (or the big drawing titles when there is no SHEET TITLE field).
+  if(DEMO.test(txt)&&!NEWP.test(txt)){kind='demolition';why=`${src}: ${(txt.match(/[^|]*DEMO[^|]*/i)||[txt])[0].trim()}`}
+  else if(PLAN.test(txt)&&EXIST.test(txt)&&!NEWW.test(txt)){kind='existing';why=`${src}: ${(txt.match(/[^|]*EXISTING[^|]*/i)||[txt])[0].trim()}`} // bpm-v128: an existing-conditions plan ("EXISTING … PLAN", nothing new on it)
+  else if(PLAN.test(txt)&&!RISER.test(title)){kind=null;why='plan title'}
   else if(RISER.test(txt)){kind='riser';why=`${src}: ${(txt.match(/[^|]*RISER[^|]*/i)||[txt])[0].trim()}`}
   else if(WIRE.test(txt)||(title&&/\bWIRING\b/i.test(title))){kind='wiring';why=`${src}: ${(txt.match(/[^|]*(WIRING|POINT|SCHEMATIC|ONE[- ]LINE)[^|]*/i)||[txt])[0].trim()}`}
   // bpm-v108: other non-plan sheets by their sheet title (equipment details / elevations / graphic displays; schedules, matrices, calculations, index)
