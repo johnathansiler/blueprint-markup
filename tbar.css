@@ -306,7 +306,8 @@ body.light #pinDlg .pcTop{background:#fff}
 .wbOp input[type=range]{width:min(200px,52vw);height:36px;accent-color:var(--acc,#3b82f6)}
 body.light .widBar,body.light .wbOp{background:#fff;color:#0f172a;border-color:#cbd5e1}
 /* bpm-v129: pin card Resize handle: sticky at the bottom-right of the card, labelled, 44 px, finger drag (no page scroll while dragging) */
-#pinDlg .pcRszRow{position:sticky;bottom:0;z-index:5;display:flex;justify-content:flex-end;pointer-events:none;margin:6px -8px 0;padding-bottom:6px}
-#pinDlg .pcRsz{pointer-events:auto;touch-action:none;display:flex;align-items:center;gap:6px;min-height:44px;min-width:44px;padding:4px 14px;border-radius:12px;border:1px solid #94a3b866;background:#334155;color:#f1f5f9;font-size:15px;font-weight:600;cursor:nwse-resize;box-shadow:0 4px 14px #0008}
+#pinDlg .pcRszRow{position:sticky;bottom:0;z-index:5;display:flex;justify-content:flex-end;align-items:center;margin:8px -14px 0;padding:6px 10px;background:#1e293b;border-top:1px solid #94a3b833}
+body.light #pinDlg .pcRszRow{background:#fff}
+#pinDlg .pcRsz{pointer-events:auto;touch-action:none;display:flex;align-items:center;gap:6px;min-height:44px;min-width:44px;padding:4px 14px;border-radius:12px;border:1px solid #94a3b866;background:#334155;color:#f1f5f9;font-size:15px;font-weight:600;cursor:nwse-resize;}
 #pinDlg .pcRsz span[aria-hidden]{font-size:20px;line-height:1}#pinDlg .pcRsz.drag{background:var(--acc,#3b82f6);color:#fff}
 body.light #pinDlg .pcRsz{background:#e2e8f0;color:#0f172a;border-color:#94a3b8}
