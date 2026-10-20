@@ -19,7 +19,8 @@
 .cpH[data-h=se]{left:100%;top:100%;cursor:nwse-resize}.cpH[data-h=s]{left:50%;top:100%;cursor:ns-resize}.cpH[data-h=sw]{left:0;top:100%;cursor:nesw-resize}.cpH[data-h=w]{left:0;top:50%;cursor:ew-resize}
 .cpP{background:#fff;border:1px solid #94a3b8;border-radius:6px;margin-left:8px}.symTag{width:7em}
 /* bpm-v98 in-app dialogs */
-#uiDlg{max-width:min(92vw,420px);height:auto;max-height:80vh;margin:auto;border-radius:12px}#uiDlg .uiM{margin:4px 0 10px;line-height:1.35}#uiDlg .uiI{width:100%;box-sizing:border-box;margin-bottom:10px}
+/* bpm-v125: size the confirm to its text. height:auto plus the dialog's top/bottom insets stretched a one-line "Accept all" to nearly the full screen. */
+#uiDlg{max-width:min(92vw,420px);width:min(92vw,420px);height:fit-content;max-height:80vh;margin:auto;border-radius:12px;overflow:auto}#uiDlg .uiM{margin:4px 0 10px;line-height:1.35}#uiDlg .uiI{width:100%;box-sizing:border-box;margin-bottom:10px}#uiDlg .uiF{height:auto}
 #uiNote{position:fixed;left:50%;bottom:calc(120px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:2147483600;max-width:min(92vw,460px);background:#111827;color:#fff;border:1px solid #f59e0b;border-radius:10px;padding:10px 14px;box-shadow:0 6px 20px #0008;font-size:14px}
 #uiNote[hidden]{display:none}
 .detMsg{background:#78350f;color:#fff;border:1px solid #f59e0b;border-radius:8px;padding:8px 10px;margin:4px 0}.detMsg[hidden]{display:none}
