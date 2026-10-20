@@ -9,7 +9,7 @@
  row2.append(dd('pExp','Export','Export: device list, counts, checklist, report',['csvBtn','countCsv','checkCsv','reportPdf']),dd('pEdit','Edit','Split for a second tech / merge a returned file',['splitBtn','mergeBtn']),dd('pDel','Delete','Delete all pins or all markups (asks first)',['clrBtn','clrMBtn']),by('testerBtn'));
  ph.after(row2);by('pDel').querySelector('summary').classList.add('danger');
  // (c) search + filters in one row; summary + counts on one small line
- const q=by('q'),f=by('fType').parentElement;f.classList.add('pFlt');f.prepend(q);q.placeholder='Search…';q.title='Search address, location, type, loop, notes';
+ const q=by('q'),f=by('fType').parentElement;f.classList.add('pFlt');f.prepend(q);q.placeholder='Search…';q.title='Search address, location, type, notes';
  const sumL=document.createElement('div');sumL.className='pSumL pinsOnly';by('sum').before(sumL);sumL.append(by('sum'),by('counts'));by('sum').open=false;
  // old split/merge/export row is now empty → remove it
  const old=by('reportPdf')&&[...P.querySelectorAll('.row.pinsOnly')].find(r=>r!==row2&&!r.children.length);if(old)old.remove();

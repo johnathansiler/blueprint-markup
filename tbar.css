@@ -331,4 +331,9 @@ body.light #vGuide .vgHeard.ok{color:#15803d}body.light #vGuide .vgHeard.bad{col
 #pinDlg .pcEdge[hidden]{display:none}#pinDlg .pcE-t,#pinDlg .pcE-b{width:72px;height:44px;cursor:ns-resize}#pinDlg .pcE-l,#pinDlg .pcE-r{width:44px;height:72px;cursor:ew-resize}
 #pinDlg .pcEdge.drag{background:var(--acc,#3b82f6);color:#fff}body.light #pinDlg .pcEdge{background:#e2e8f0;color:#0f172a;border-color:#94a3b8}
 #vGuide{padding-bottom:0}#vGuide .vgB{position:sticky;bottom:0;background:inherit;margin:10px -14px 0;padding:8px 14px 12px;border-top:1px solid #94a3b833}/* v130: Stop listening / Close always visible, even when the list scrolls */
-#pinDlg .pcEdge{gap:3px}#pinDlg .pcEdge .tl{font-size:11px;font-weight:600;line-height:1;margin:0;position:static;display:block}#pinDlg .pcE-l,#pinDlg .pcE-r{flex-direction:column;width:48px}#pinDlg .pcE-t,#pinDlg .pcE-b{width:84px}
+/* bpm-v131: resize grips are invisible 44 px touch areas; the only visible mark is a thin line on the card edge */
+#pinDlg .pcEdge,#pinDlg .pcEdge.drag,body.light #pinDlg .pcEdge{background:transparent;border:0;box-shadow:none;border-radius:0;color:transparent;font-size:0;overflow:visible}
+#pinDlg .pcEdge::before{content:'';position:absolute;border-radius:2px;background:#94a3b8;opacity:.85}
+#pinDlg .pcE-t::before,#pinDlg .pcE-b::before{left:50%;width:40px;height:3px;margin-left:-20px;top:calc(var(--o,22px) - 1.5px)}
+#pinDlg .pcE-l::before,#pinDlg .pcE-r::before{top:50%;height:40px;width:3px;margin-top:-20px;left:calc(var(--o,22px) - 1.5px)}
+#pinDlg .pcEdge.drag::before,#pinDlg .pcEdge:hover::before{background:var(--acc,#3b82f6);opacity:1}body.light #pinDlg .pcEdge::before{background:#64748b}

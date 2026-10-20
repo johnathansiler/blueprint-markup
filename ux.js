@@ -12,7 +12,7 @@ function walkHint(){const w=$('#walk');w.hidden=false;w.innerHTML=`<div class="w
  w.querySelector('#wHx').onclick=()=>{w.hidden=true};w.querySelector('#wHdet').onclick=()=>{w.hidden=true;$('#detBtn').click()}}
 // bpm-v100: compact walk info: each fact once, date+time without the year, no tester name (still stored on the pin), capped scrollable area
 const wDate=t=>{const d=new Date(t);return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})};
-function wInfo(p){const f=[];if(p.loop)f.push('Loop '+esc(p.loop));if(p.location)f.push(esc(p.location));if(p.page!==page)f.push('pg '+p.page);if(p.model)f.push(esc(p.model));
+function wInfo(p){const f=[];if(p.location)f.push(esc(p.location));if(p.page!==page)f.push('pg '+p.page);if(p.model)f.push(esc(p.model));
  if(p.status&&p.status!=='not tested')f.push(`<b class="wSt ${p.status==='passed'?'ok':p.status==='failed'?'bad':''}">${esc(p.status)}</b>${p.testedAt?' '+wDate(p.testedAt):''}`);if(p.notes)f.push('📝 '+esc(String(p.notes).slice(0,140)));
  return f.length?`<div class="wInfo">${f.join(' · ')}</div>`:''}
 renderWalk=function(){const w=$('#walk');if(!walk){w.hidden=true;return}const S=walkSet(),N=S.length,done=S.filter(p=>!untested(p)).length,p=walk.p&&pins.find(x=>x.id===walk.p.id)||walk.p;
@@ -87,7 +87,7 @@ window.orderDetTypes=orderDetTypes;
 // bpm-v87: every icon-only button gets a compact visible label (from a map, else its title / aria-label)
 (()=>{const MAP={'✋':'Pan','➤':'Select','▢':'Box','◯':'Circle','✔':'Check','☁':'Cloud','↗':'Arrow','╱':'Line','⟋':'Line','🧲':'Magnet','📐':'Snap','T':'Text','📏':'Measure','📍':'Pin','🗑':'Delete','↶':'Undo','↷':'Redo','⤢':'Fit','📷':'QR','📄':'Sheet','🔍':'Detect','👁':'Layers','▤':'Pages','⟳':'Rotate','🎤':'Voice','✕':'Close','＋':'New','+':'New','✎':'Rename','💾':'Save','📥':'Import','🗂':'Project','📤':'Share','📂':'Open','◀':'Prev','▶':'Next','⋯':'More','⏮':'Back','⏭':'Skip','−':'Out','-':'Out'};
  const icon=s=>!/[A-Za-z]{2,}/.test(s);
- const lab=b=>{if(b.querySelector('.tl')||b.closest('#ptx'))return;const t=(b.innerText||b.textContent).trim();if(t&&!icon(t))return;const k=[...t][0],tt=(b.title||b.getAttribute('aria-label')||'').replace(/\(.*?\)/g,'').trim();
+ const lab=b=>{if(b.querySelector('.tl')||b.closest('#ptx')||b.classList.contains('pcEdge'))return;/* v131: card resize grips show only a line */const t=(b.innerText||b.textContent).trim();if(t&&!icon(t))return;const k=[...t][0],tt=(b.title||b.getAttribute('aria-label')||'').replace(/\(.*?\)/g,'').trim();
   let l=MAP[t]||MAP[k]||'';if(b.id==='cSnap')l='Snap';if(!l&&tt)l=tt.split(/[:,.;–—/]/)[0].split(/\s+/).slice(0,2).join(' ');if(!l)return;if(l.length>8)l=l.split(' ')[0].slice(0,9);b.append(Object.assign(document.createElement('span'),{className:'tl',textContent:l}))};
  const run=r=>(r.querySelectorAll?r:document).querySelectorAll('button,label.btn').forEach(lab);
  run(document);new MutationObserver(ms=>{for(const m of ms)for(const n of m.addedNodes)if(n.nodeType===1){if(n.tagName==="BUTTON")lab(n);else run(n)}else{const b=m.target.closest&&m.target.closest("button");if(b)lab(b)}}).observe(document.body,{childList:true,subtree:true});window.labelButtons=()=>run(document)})();
