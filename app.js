@@ -891,7 +891,7 @@ async function runVoice(text){const c=parseVoice(text);window.__lastVoice={text,
  let p=null;if(c.addr){p=pins.find(x=>normA(x.address)===c.addr);if(!p){toast(`Heard “${text}”: no pin with address ${c.addr} in this plan`);return c}}else p=walk?.p?pins.find(x=>x.id===walk.p.id):sel?.kind==='p'?sel.o:null;
  if(!p){toast(`Heard “${text}”: select a pin or start walk mode (🚶) first`);return c}
  /* v131: in a walk test, saying “fail” opens the full checklist card exactly like tapping Fail (v129) instead of recording the fail at once */
- if(c.cmd==='fail'&&walk&&walk.p&&typeof window.walkFailCard==='function'){await window.walkFailCard(p);return c}
+ if(c.cmd==='fail'&&walk&&walk.p&&typeof window.walkFailCard==='function'){const g=$('#vGuide');if(g){clearTimeout(g._t);g.hidden=true}await window.walkFailCard(p);return c}
  if(c.cmd==='pass'||c.cmd==='fail'){await testPin(p,c.cmd,c.reason,c.crit);return c}
  const b=structuredClone(p),a={...b};if(c.cmd==='address')a.address=c.v;else if(c.cmd==='note')a.notes=(b.notes?b.notes+'\n':'')+c.v;
  await change('pins',b,a);if(dlg.open&&cur?.id===a.id){const np=pins.find(x=>x.id===a.id)||a;cur=np;ckl=structuredClone(np.checks||checkItems(np.type));renderChecks();form.elements.status&&(form.elements.status.value=np.status||'');}toast(`${TYPES[a.type]?.n||a.type}: ${c.cmd} → ${c.v}`,true);if(walk)renderWalk();return c}
