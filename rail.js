@@ -116,7 +116,22 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
  const DB=ce('button','btn danger pcDel','<span aria-hidden="true">🗑</span><span class="tl">Delete</span>');DB.type='button';DB.setAttribute('aria-label','Delete this pin');DB.title='Delete this pin (closes the card, then the delete options)';
  const pinNow=()=>{try{return cur&&cur.page===page&&cur.x!=null?cur:null}catch{return null}};
  if(D){D.append(DB);DB.onclick=e=>{e.preventDefault();const p=pinNow();D.close();if(!p)return;try{window.pdTap&&pdTap(p)}catch{}let n=0;const go=()=>{const b=by('pinDelF');if(b&&!b.hidden){window.wheelAnchor&&wheelAnchor(b);b.click()}else if(n++<20)requestAnimationFrame(go)};requestAnimationFrame(go)}}
- const off=()=>{B.classList.remove('pcOn','pcC');if(D)D.style.left=D.style.top=D.style.maxHeight=D.style.width=''};
+ const off=()=>{B.classList.remove('pcOn','pcC');if(D){D.style.left=D.style.top=D.style.maxHeight=D.style.width=D.style.height='';const z=pcSize();if(z){D.style.width=Math.round(Math.min(z.w,innerWidth-16))+'px';D.style.height=D.style.maxHeight=Math.round(Math.min(z.h,innerHeight-16))+'px'}}};
+ // bpm-v129: the pin card opens larger (full free width on phones, ~460 px on Fold/tablet, all the free height) and has a labelled Resize handle (bottom-right, finger drag).
+ // The chosen size is remembered per screen size class (Fold closed / phone / Fold open / tablet / desktop) and always clamped to the screen.
+ const pcCls=()=>{const w=innerWidth,h=innerHeight;return w<380?'foldClosed':w<600?'phone':(w<1000&&Math.abs(w-h)/h<.2)?'foldOpen':w<1300?'tablet':'desktop'};
+ const pcKey=()=>'bpm-pcsz-'+pcCls();
+ function pcSize(){try{const z=JSON.parse(localStorage.getItem(pcKey())||'null');return z&&z.w>0&&z.h>0?z:null}catch{return null}}
+ let LIM=null;
+ const RZ=ce('div','pcRszRow','<button type="button" class="pcRsz" aria-label="Resize the card (drag)" title="Drag to make the card bigger or smaller"><span aria-hidden="true">⇲</span><span class="pcRszL">Resize</span></button>');const RB=RZ.firstChild;
+ if(D){D.append(RZ);RB.addEventListener('click',e=>e.preventDefault());
+  RB.addEventListener('pointerdown',e=>{if(e.button>0)return;e.preventDefault();e.stopPropagation();try{RB.setPointerCapture(e.pointerId)}catch{}const r=D.getBoundingClientRect(),x0=e.clientX,y0=e.clientY,on=B.classList.contains('pcOn');D._rsz=1;RB.classList.add('drag');
+   const L=on&&LIM?LIM:{R:innerWidth-8,B:innerHeight-8},minW=Math.min(260,r.width),minH=Math.min(220,r.height);
+   const mv=ev=>{let w=r.width+(ev.clientX-x0),h=r.height+(ev.clientY-y0);
+     if(on){w=Math.max(minW,Math.min(L.R-r.left,w));h=Math.max(minH,Math.min(L.B-r.top,h))}else{/* fallback sheet: centred ones grow both ways; a bottom sheet grows upward */const bot=Math.abs(r.bottom-innerHeight)<4;w=Math.max(minW,Math.min(innerWidth-(bot?0:16),r.width+2*(ev.clientX-x0)));h=Math.max(minH,Math.min(innerHeight-16,bot?r.height-(ev.clientY-y0):h))}
+     D.style.width=Math.round(w)+'px';D.style.height=D.style.maxHeight=Math.round(h)+'px';D.style.maxWidth='none'};
+   const up=()=>{RB.removeEventListener('pointermove',mv);RB.removeEventListener('pointerup',up);RB.removeEventListener('pointercancel',up);RB.classList.remove('drag');D._rsz=0;const q=D.getBoundingClientRect();try{localStorage.setItem(pcKey(),JSON.stringify({w:Math.round(q.width),h:Math.round(q.height)}))}catch{}};
+   RB.addEventListener('pointermove',mv);RB.addEventListener('pointerup',up);RB.addEventListener('pointercancel',up)})}
  // bpm-v123: the toast, the Detect pop-up and the update banner are not card keep-outs for placement (that would drop a phone card into the fallback sheet). After the card is placed they move to a free spot so they neither cover the card nor sit behind it.
  const overlaps=(a,b)=>a.width>0&&b.width>0&&a.left<b.right-.5&&a.right>b.left+.5&&a.top<b.bottom-.5&&a.bottom>b.top+.5;
  const clearNudge=e=>{if(e&&e.dataset.nudge){e.style.top='';e.style.bottom='';delete e.dataset.nudge}};
@@ -131,21 +146,23 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
   const limit=sr.top+y+4,c=D.getBoundingClientRect();
   if(B.classList.contains('pcOn')){const nt=Math.max(c.top,limit),mh=c.bottom-nt;if(mh>=200){D.style.top=Math.round(nt)+'px';D.style.maxHeight=Math.round(mh)+'px'}}
   else D.style.maxHeight=Math.max(220,Math.round(innerHeight-limit-8))+'px'}
- function placeCard(){if(!D||!D.open){off();nudgeBanners();return}const p=pinNow();if(!p){off();nudgeBanners();return}
+ function placeCard(){if(D&&D._rsz)return;if(!D||!D.open){off();nudgeBanners();return}const p=pinNow();if(!p){off();nudgeBanners();return}
   const sr=ST.getBoundingClientRect(),s=toS(p.x,p.y),X=sr.left+s.x,Y=sr.top+s.y,m=8,ph=PH(),gap=ph?30:104,L0=sr.left+m;let T0=sr.top+m,R0=sr.right-m,B0=sr.bottom-m;
   if(ph){/* phone panels overlay the plan: the card keeps to the free part */if(shown(TH)&&!TH.hidden)B0=Math.min(B0,(TH.offsetParent===ST?sr.top:0)+TH.offsetTop-m);/* v120: strip top in screen coordinates (offsetTop is stage-relative; final top, unaffected by the strip's slide) */for(const e of [by('panel'),by('lyrP')])if(e&&!e.hidden&&shown(e))R0=Math.min(R0,e.getBoundingClientRect().left-m)}
   /* v120: bars below the free plan area (banner strip, walk bar) also bound the card's bottom */
   let TB=0;
   for(const e of [by('legChip'),by('walk')]){if(!e||e.hidden||!shown(e))continue;const q=e.getBoundingClientRect();if(!q.height||q.left>=R0||q.right<=L0)continue;if(q.top>sr.top+sr.height/2)B0=Math.min(B0,q.top-m);else if(e.id==='legChip')TB=q.bottom+m}
   const T0n=T0;if(TB)T0=Math.max(T0,TB);/* top-floating banner: kept clear unless that leaves no room for the card (then the card may cover the transient banner rather than fall back to the dialog) */
-  const cw=Math.min(ph?340:370,R0-L0);/* v115: larger card: ~340 on phone (free width - margins), ~370 on tablet */
+  const Z=pcSize();let cw=Math.min(Z?Z.w:(ph?R0-L0:460),R0-L0);/* v129: larger by default (phone: the whole free width; Fold/tablet: 460) or the size the user dragged it to; v115 was 340/370 */
   if(X<sr.left||X>sr.right||Y<sr.top||Y>sr.bottom||cw<220){off();nudgeBanners();return}
-  let x,y,mh,compact=false;const fullH=Math.min(B0-T0,620);
-  if(!ph&&X+gap+cw<=R0){x=X+gap;mh=fullH;y=Math.max(T0,Math.min(B0-mh,Y-120))}
-  else if(!ph&&X-gap-cw>=L0){x=X-gap-cw;mh=fullH;y=Math.max(T0,Math.min(B0-mh,Y-120))}
-  else{compact=true;x=Math.max(L0,Math.min(R0-cw,X-cw/2));const below=B0-(Y+gap);let above=Y-gap-T0;if(TB&&below<260&&above<260)above=Y-gap-T0n;if(below>=320||below>=above){y=Y+gap;mh=Math.min(below,520)}else{mh=Math.min(above,520);y=Y-gap-mh}if(mh<260){off();nudgeBanners();return}}
+  let x,y,mh,compact=false;const HC=Z?Z.h:1e4,fullH=Math.min(B0-T0,Z?Z.h:620);/* v129: beside the pin: 620 px tall as before, or the user's size; below/above the pin: all the free height (was capped at 520) */
+  /* v129: beside the pin, the larger card narrows (down to the old 370 px) before it gives up the beside spot */
+  const cwMin=Math.min(cw,370),cwR=Math.min(cw,R0-X-gap),cwL=Math.min(cw,X-gap-L0);
+  if(!ph&&cwR>=cwMin){cw=cwR;x=X+gap;mh=fullH;y=Math.max(T0,Math.min(B0-mh,Y-120))}
+  else if(!ph&&cwL>=cwMin){cw=cwL;x=X-gap-cw;mh=fullH;y=Math.max(T0,Math.min(B0-mh,Y-120))}
+  else{compact=true;x=Math.max(L0,Math.min(R0-cw,X-cw/2));const below=B0-(Y+gap);let above=Y-gap-T0;if(TB&&below<260&&above<260)above=Y-gap-T0n;if(below>=320||below>=above){y=Y+gap;mh=Math.min(below,HC)}else{mh=Math.min(above,HC);y=Y-gap-mh}/* v129: was capped at 520 */if(mh<260){off();nudgeBanners();return}}
   B.classList.add('pcOn');B.classList.toggle('pcC',compact);DB.hidden=!pins.some(x=>x.id===p.id);DB.style.left=Math.round(Math.min(R0-80,X+14))+'px';DB.style.top=Math.round(Y-20)+'px';
-  D.style.left=Math.round(x)+'px';D.style.top=Math.round(y)+'px';D.style.width=Math.round(cw)+'px';D.style.maxHeight=Math.round(mh)+'px';nudgeBanners()}
+  D.style.left=Math.round(x)+'px';D.style.top=Math.round(y)+'px';D.style.width=Math.round(cw)+'px';D.style.maxHeight=Math.round(mh)+'px';D.style.height=Z?Math.round(mh)+'px':'';LIM={R:R0,B:B0};nudgeBanners()}
  if(D){new MutationObserver(()=>{if(D.open)requestAnimationFrame(placeCard);else{off();nudgeBanners()}}).observe(D,{attributes:true,attributeFilter:['open']});addEventListener('resize',()=>D.open&&placeCard())}
  let lastV='';setInterval(()=>{if(!D||!D.open)return;const r_=ST.getBoundingClientRect(),k=JSON.stringify(view)+r_.left+','+r_.top+','+r_.width+','+innerHeight+'|'+(by('toast')&&!by('toast').hidden?1:0)+(by('ghBar')&&!by('ghBar').hidden?1:0)+(by('updBar')&&!by('updBar').hidden?1:0);if(k!==lastV){lastV=k;placeCard()}},250);
  for(const id of['toast','ghBar','updBar']){const e=by(id);if(e)new MutationObserver(()=>{if(D&&D.open)requestAnimationFrame(placeCard)}).observe(e,{attributes:true,attributeFilter:['hidden']})}
