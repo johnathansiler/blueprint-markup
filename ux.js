@@ -28,13 +28,16 @@ renderWalk=function(){const w=$('#walk');if(!walk){w.hidden=true;return}const S=
  w.hidden=false;const q=x=>w.querySelector(x);
  if(q('#wExit'))q('#wExit').onclick=()=>exitWalk();if(q('#wGoto'))q('#wGoto').onclick=walkGoto;if(q('#wType'))q('#wType').onchange=e=>{walk.type=e.target.value;walk.skip.clear();walkGo(nearestFrom(walkLeft(),walk.p))};if(q('#wMic'))q('#wMic').onclick=startVoice;
  if(q('#wRe'))q('#wRe').onclick=()=>{walk.skip.clear();walkGo(nearestFrom(walkLeft(),null))};
- if(q('#wPass'))q('#wPass').onclick=()=>testPin(p,'pass');if(q('#wFail'))q('#wFail').onclick=function(){/* bpm-v111: Fail opens the curved wheel of this type's fail reasons (+ Other, Cancel) beside the button; Cancel leaves the status as it was */const RS=failReasonsFor(p.type),it=[...RS.map(r=>({r,html:`<span class="whIc">✖</span>${esc(r)}`})),{r:'Other',html:'<span class="whIc">✎</span>Other'},{r:null,html:'<span class="whIc">✕</span>Cancel'}];
-  if(!window.wheelOpen){walk.fail=true;walk.fr=['Other'];return renderWalk()}wheelAnchor(this);wheelOpen('Fail reason',it,0,o=>{if(!o||!o.r)return;walk.fail=true;walk.fr=[o.r];walk.fnote='';walk.fcrit=false;renderWalk();setTimeout(()=>{const n=document.getElementById('wfNote');n&&n.focus({preventScroll:true})},60)})};if(q('#wSkip'))q('#wSkip').onclick=()=>{walk.skip.add(p.id);walkNext()};
+ if(q('#wPass'))q('#wPass').onclick=()=>testPin(p,'pass');if(q('#wFail'))q('#wFail').onclick=()=>walkFailCard(p);if(q('#wSkip'))q('#wSkip').onclick=()=>{walk.skip.add(p.id);walkNext()};
  if(q('#wOpen'))q('#wOpen').onclick=()=>openPin(pins.find(x=>x.id===p.id)||p);if(q('#wPrev'))q('#wPrev').onclick=walkPrev;if(q('#wFailX'))q('#wFailX').onclick=()=>{walk.fail=false;walk.fr=[];walk.fnote='';walk.fcrit=false;renderWalk()};
  const keep=()=>{if(q('#wfNote'))walk.fnote=q('#wfNote').value;if(q('#wCrit'))walk.fcrit=q('#wCrit').checked};
  w.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{keep();const r=b.dataset.r,i=walk.fr.indexOf(r);if(i>=0)walk.fr.splice(i,1);else walk.fr.push(r);renderWalk()});
  const saveF=withNote=>{keep();const R=[...walk.fr],c=walk.fcrit,n=withNote?walk.fnote:'';walk.fail=false;walk.fr=[];walk.fnote='';walk.fcrit=false;testPin(p,'fail',R[0]||'Other',c,R.slice(1),n)};
  if(q('#wSave'))q('#wSave').onclick=()=>saveF(true);if(q('#wSkipN'))q('#wSkipN').onclick=()=>saveF(false);if(q('#wfNote'))q('#wfNote').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();saveF(true)}}};
+// bpm-v129: walk Fail opens the full pin card (checklist, fail reason, critical, codes, notes, photos) set to Failed, scrolled to the checklist. Save stores it and the walk moves on; Close without changes leaves the device untested.
+window.walkFailCard=async function(p0){const p=pins.find(x=>x.id===p0.id)||p0;await openPin(p);if(!ckl.some(c=>c.v==='fail'))ckl=ckl.map(c=>({...c,v:c.v==='pass'?'':c.v}));/* Fail after Pass clears the auto-pass answers */
+ form.elements.status.value='failed';failUI();renderChecks();try{dlg._wf=JSON.stringify(pinDraft().a)}catch{dlg._wf=null}
+ const go=()=>{const k=dlg.querySelector('.ckbar'),t=dlg.querySelector('.pcTop');if(k)dlg.scrollTop=Math.max(0,k.offsetTop-(t?t.offsetHeight:0)-6)};requestAnimationFrame(()=>{go();setTimeout(go,120)})};
 // bpm-v111: the fail reasons that apply to a device type = the reasons its own checklist items map to (same mapping testPin uses), in the usual order
 window.failReasonsFor=t=>{let ck=[];try{ck=checkItems(t)||[]}catch{}const got=new Set(ck.map(c=>reasonFor(c.t||c)).filter(r=>r&&r!=='Other')),ord=REASONS.filter(r=>r!=='Other');const L=[...ord.filter(r=>got.has(r)),...[...got].filter(r=>!ord.includes(r))];return L.length?L:ord};
 
