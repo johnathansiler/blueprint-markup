@@ -311,3 +311,4 @@ body.light #pinDlg .pcRszRow{background:#fff}
 #pinDlg .pcRsz{pointer-events:auto;touch-action:none;display:flex;align-items:center;gap:6px;min-height:44px;min-width:44px;padding:4px 14px;border-radius:12px;border:1px solid #94a3b866;background:#334155;color:#f1f5f9;font-size:15px;font-weight:600;cursor:nwse-resize;}
 #pinDlg .pcRsz span[aria-hidden]{font-size:20px;line-height:1}#pinDlg .pcRsz.drag{background:var(--acc,#3b82f6);color:#fff}
 body.light #pinDlg .pcRsz{background:#e2e8f0;color:#0f172a;border-color:#94a3b8}
+#pinDlg[open],body.pcOn #pinDlg[open]{padding-bottom:0}#pinDlg .pcRszRow{padding-bottom:calc(6px + env(safe-area-inset-bottom))}/* v129: the footer is the card's bottom edge (no content peeking below it) */
