@@ -333,7 +333,7 @@ body.light #vGuide .vgHeard.ok{color:#15803d}body.light #vGuide .vgHeard.bad{col
 #vGuide{padding-bottom:0}#vGuide .vgB{position:sticky;bottom:0;background:inherit;margin:10px -14px 0;padding:8px 14px 12px;border-top:1px solid #94a3b833}/* v130: Stop listening / Close always visible, even when the list scrolls */
 /* bpm-v131: resize grips are invisible 44 px touch areas; the only visible mark is a thin line on the card edge */
 #pinDlg .pcEdge,#pinDlg .pcEdge.drag,body.light #pinDlg .pcEdge{background:transparent;border:0;box-shadow:none;border-radius:0;color:transparent;font-size:0;overflow:visible}
-#pinDlg .pcEdge::before{content:'';position:absolute;border-radius:2px;background:#94a3b8;opacity:.85}
-#pinDlg .pcE-t::before,#pinDlg .pcE-b::before{left:50%;width:40px;height:3px;margin-left:-20px;top:calc(var(--o,22px) - 1.5px)}
-#pinDlg .pcE-l::before,#pinDlg .pcE-r::before{top:50%;height:40px;width:3px;margin-top:-20px;left:calc(var(--o,22px) - 1.5px)}
+#pinDlg .pcEdge::before{content:'';position:absolute;border-radius:2px;background:#cbd5e1;opacity:.9}
+#pinDlg .pcE-t::before,#pinDlg .pcE-b::before{left:50%;width:44px;height:4px;margin-left:-22px;top:calc(var(--o,22px) - 2px)}
+#pinDlg .pcE-l::before,#pinDlg .pcE-r::before{top:50%;height:44px;width:4px;margin-top:-22px;left:calc(var(--o,22px) - 2px)}
 #pinDlg .pcEdge.drag::before,#pinDlg .pcEdge:hover::before{background:var(--acc,#3b82f6);opacity:1}body.light #pinDlg .pcEdge::before{background:#64748b}
