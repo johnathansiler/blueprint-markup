@@ -312,3 +312,23 @@ body.light #pinDlg .pcRszRow{background:#fff}
 #pinDlg .pcRsz span[aria-hidden]{font-size:20px;line-height:1}#pinDlg .pcRsz.drag{background:var(--acc,#3b82f6);color:#fff}
 body.light #pinDlg .pcRsz{background:#e2e8f0;color:#0f172a;border-color:#94a3b8}
 #pinDlg[open],body.pcOn #pinDlg[open]{padding-bottom:0}#pinDlg .pcRszRow{padding-bottom:calc(6px + env(safe-area-inset-bottom))}/* v129: the footer is the card's bottom edge (no content peeking below it) */
+/* bpm-v130: Voice guide panel (readable, labelled buttons, inside the screen above the bottom bars) */
+#vGuide{position:fixed;z-index:59;left:50%;transform:translateX(-50%);bottom:96px;width:min(460px,calc(100vw - 16px));max-height:60vh;overflow:auto;background:#0f172a;color:#f1f5f9;border:1px solid #60a5fa66;border-radius:16px;box-shadow:0 14px 36px #000c;padding:12px 14px;font-size:15px;line-height:1.35}
+#vGuide[hidden]{display:none}
+#vGuide .vgH{display:flex;align-items:center;gap:8px;font-size:17px}#vGuide .vgMic{font-size:22px}#vGuide.on .vgMic{animation:vgP 1s ease-in-out infinite}
+@keyframes vgP{50%{transform:scale(1.25)}}@media(prefers-reduced-motion:reduce){#vGuide.on .vgMic{animation:none}}
+#vGuide .vgT{margin:8px 0 4px;font-weight:700}
+#vGuide .vgL{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+#vGuide .vgL li{background:#1e293b;border-radius:10px;padding:6px 10px}
+#vGuide q{font-weight:700;color:#93c5fd;quotes:"“" "”"}#vGuide small{display:block;color:#cbd5e1;font-size:14px}
+#vGuide .vgHeard{margin-top:8px;font-weight:700}#vGuide .vgHeard.ok{color:#86efac}#vGuide .vgHeard.bad{color:#fca5a5}
+#vGuide .vgNet{margin-top:6px;color:#cbd5e1;font-size:14px}#vGuide .vgNet.off{color:#fcd34d;font-weight:700}
+#vGuide .vgB{display:flex;gap:8px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap}#vGuide .vgB .btn{min-height:44px;font-size:15px}
+body.light #vGuide{background:#fff;color:#0f172a;border-color:#94a3b8}body.light #vGuide .vgL li{background:#f1f5f9}body.light #vGuide q{color:#1d4ed8}body.light #vGuide small,body.light #vGuide .vgNet{color:#334155}
+body.light #vGuide .vgHeard.ok{color:#15803d}body.light #vGuide .vgHeard.bad{color:#b91c1c}body.light #vGuide .vgNet.off{color:#92400e}
+/* bpm-v130: edge resize grips on the pin card (44 px touch areas, finger drag) */
+#pinDlg .pcEdge{position:fixed;z-index:7;display:flex;align-items:center;justify-content:center;padding:0;margin:0;min-height:44px;min-width:44px;border-radius:14px;border:1px solid #94a3b880;background:#334155;color:#f1f5f9;font-size:18px;line-height:1;touch-action:none;box-shadow:0 3px 10px #0009}
+#pinDlg .pcEdge[hidden]{display:none}#pinDlg .pcE-t,#pinDlg .pcE-b{width:72px;height:44px;cursor:ns-resize}#pinDlg .pcE-l,#pinDlg .pcE-r{width:44px;height:72px;cursor:ew-resize}
+#pinDlg .pcEdge.drag{background:var(--acc,#3b82f6);color:#fff}body.light #pinDlg .pcEdge{background:#e2e8f0;color:#0f172a;border-color:#94a3b8}
+#vGuide{padding-bottom:0}#vGuide .vgB{position:sticky;bottom:0;background:inherit;margin:10px -14px 0;padding:8px 14px 12px;border-top:1px solid #94a3b833}/* v130: Stop listening / Close always visible, even when the list scrolls */
+#pinDlg .pcEdge{gap:3px}#pinDlg .pcEdge .tl{font-size:11px;font-weight:600;line-height:1;margin:0;position:static;display:block}#pinDlg .pcE-l,#pinDlg .pcE-r{flex-direction:column;width:48px}#pinDlg .pcE-t,#pinDlg .pcE-b{width:84px}
