@@ -153,11 +153,13 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
   let TB=0;
   for(const e of [by('legChip'),by('walk')]){if(!e||e.hidden||!shown(e))continue;const q=e.getBoundingClientRect();if(!q.height||q.left>=R0||q.right<=L0)continue;if(q.top>sr.top+sr.height/2)B0=Math.min(B0,q.top-m);else if(e.id==='legChip')TB=q.bottom+m}
   const T0n=T0;if(TB)T0=Math.max(T0,TB);/* top-floating banner: kept clear unless that leaves no room for the card (then the card may cover the transient banner rather than fall back to the dialog) */
-  const Z=pcSize();const cw=Math.min(Z?Z.w:(ph?R0-L0:460),R0-L0);/* v129: larger by default (phone: the whole free width; Fold/tablet: 460) or the size the user dragged it to; v115 was 340/370 */
+  const Z=pcSize();let cw=Math.min(Z?Z.w:(ph?R0-L0:460),R0-L0);/* v129: larger by default (phone: the whole free width; Fold/tablet: 460) or the size the user dragged it to; v115 was 340/370 */
   if(X<sr.left||X>sr.right||Y<sr.top||Y>sr.bottom||cw<220){off();nudgeBanners();return}
   let x,y,mh,compact=false;const HC=Z?Z.h:1e4,fullH=Math.min(B0-T0,HC);/* v129: all the free height (was capped at 620), or the user's size */
-  if(!ph&&X+gap+cw<=R0){x=X+gap;mh=fullH;y=Math.max(T0,Math.min(B0-mh,Y-120))}
-  else if(!ph&&X-gap-cw>=L0){x=X-gap-cw;mh=fullH;y=Math.max(T0,Math.min(B0-mh,Y-120))}
+  /* v129: beside the pin, the larger card narrows (down to the old 370 px) before it gives up the beside spot */
+  const cwMin=Math.min(cw,370),cwR=Math.min(cw,R0-X-gap),cwL=Math.min(cw,X-gap-L0);
+  if(!ph&&cwR>=cwMin){cw=cwR;x=X+gap;mh=fullH;y=Math.max(T0,Math.min(B0-mh,Y-120))}
+  else if(!ph&&cwL>=cwMin){cw=cwL;x=X-gap-cw;mh=fullH;y=Math.max(T0,Math.min(B0-mh,Y-120))}
   else{compact=true;x=Math.max(L0,Math.min(R0-cw,X-cw/2));const below=B0-(Y+gap);let above=Y-gap-T0;if(TB&&below<260&&above<260)above=Y-gap-T0n;if(below>=320||below>=above){y=Y+gap;mh=Math.min(below,HC)}else{mh=Math.min(above,HC);y=Y-gap-mh}/* v129: was capped at 520 */if(mh<260){off();nudgeBanners();return}}
   B.classList.add('pcOn');B.classList.toggle('pcC',compact);DB.hidden=!pins.some(x=>x.id===p.id);DB.style.left=Math.round(Math.min(R0-80,X+14))+'px';DB.style.top=Math.round(Y-20)+'px';
   D.style.left=Math.round(x)+'px';D.style.top=Math.round(y)+'px';D.style.width=Math.round(cw)+'px';D.style.maxHeight=Math.round(mh)+'px';D.style.height=Z?Math.round(mh)+'px':'';LIM={R:R0,B:B0};nudgeBanners()}
