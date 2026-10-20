@@ -128,7 +128,7 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
  // Drags are clamped to the screen with 8 px margins; the top edge never goes above 8 px, so Save and Close stay on screen. The size is saved per screen size class.
  const EDGES={t:['⇕','top'],b:['⇕','bottom'],l:['⇔','left'],r:['⇔','right']},EG={};
  function edgeSync(){if(!D)return;const show=D.open&&!D.hidden;for(const k in EG){const g=EG[k];if(!show){g.hidden=true;continue}g.hidden=false}if(!show)return;const r=D.getBoundingClientRect();if(!r.width)return;
-  const cx=r.left+r.width/2,cy=r.top+Math.min(r.height/2,Math.max(90,r.height*.45)),W=innerWidth,H=innerHeight,cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const cx=r.left+r.width/2,cy=r.top+Math.min(r.height/2,Math.max(90,r.height*.45)),vv=window.visualViewport,de=document.documentElement,W=Math.min(innerWidth,de.clientWidth||innerWidth,vv?vv.width:innerWidth),H=Math.min(innerHeight,de.clientHeight||innerHeight,vv?vv.height:innerHeight),cl=(v,a,b)=>Math.max(a,Math.min(b,v));
   const put=(g,x,y)=>{g.style.left=Math.round(cl(x,0,W-g.offsetWidth))+'px';g.style.top=Math.round(cl(y,0,H-g.offsetHeight))+'px'};
   put(EG.t,cx-EG.t.offsetWidth/2,r.top-34);put(EG.b,cx-EG.b.offsetWidth/2,r.bottom-10);put(EG.l,r.left-34,cy-EG.l.offsetHeight/2);put(EG.r,r.right-10,cy-EG.r.offsetHeight/2)}
  setInterval(()=>{if(D&&D.open&&!D._rsz)edgeSync()},400);/* v130: safety re-sync so grips never stay where an old layout put them */
