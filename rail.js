@@ -123,7 +123,7 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
  const pcKey=()=>'bpm-pcsz2-'+pcCls();/* v130: new key, so sizes saved by v129 (smaller defaults) no longer apply */
  function pcSize(){try{const z=JSON.parse(localStorage.getItem(pcKey())||'null');return z&&z.w>0&&z.h>0?z:null}catch{return null}}
  let LIM=null;
- const RZ=ce('div','pcRszRow','<button type="button" class="pcRsz" aria-label="Resize the card (drag)" title="Drag to make the card bigger or smaller"><span aria-hidden="true">⇲</span><span class="pcRszL">Resize</span></button>');const RB=RZ.firstChild;
+ const RZ=ce('div','pcRszRow','<button type="button" class="pcRsz" aria-label="Resize the card from the bottom-right corner (drag)"></button>');const RB=RZ.firstChild;
  // bpm-v130: resize from any edge. A labelled grip sits on the middle of each edge (top, bottom, left, right; 44 px touch areas, finger drag), and the Resize button keeps the bottom-right corner.
  // Drags are clamped to the screen with 8 px margins; the top edge never goes above 8 px, so Save and Close stay on screen. The size is saved per screen size class.
  const EDGES={t:['⇕','top'],b:['⇕','bottom'],l:['⇔','left'],r:['⇔','right']},EG={};
@@ -141,7 +141,7 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
     if(dirs.includes('l'))L=cl(r.left+dx,m,R-minW);if(dirs.includes('r'))R=cl(r.right+dx,L+minW,innerWidth-m);
     if(dirs.includes('t'))T=cl(r.top+dy,m,Bt-minH);if(dirs.includes('b'))Bt=cl(r.bottom+dy,T+minH,innerHeight-m);
     D.style.left=Math.round(L)+'px';D.style.top=Math.round(T)+'px';D.style.width=Math.round(R-L)+'px';D.style.height=D.style.maxHeight=Math.round(Bt-T)+'px';edgeSync()};
-  const up=()=>{el.removeEventListener('pointermove',mv);el.removeEventListener('pointerup',up);el.removeEventListener('pointercancel',up);el.classList.remove('drag');D._rsz=0;const q=D.getBoundingClientRect();try{localStorage.setItem(pcKey(),JSON.stringify({w:Math.round(q.width),h:Math.round(q.height)}))}catch{}edgeSync()};
+  const up=()=>{el.removeEventListener('pointermove',mv);el.removeEventListener('pointerup',up);el.removeEventListener('pointercancel',up);el.classList.remove('drag');D._rsz=0;const q=D.getBoundingClientRect();try{const pp=pinNow();D._upos={id:pp&&pp.id,x:q.left,y:q.top}}catch{}/* v131: the card stays where the user resized it (no snap back to the auto position) */try{localStorage.setItem(pcKey(),JSON.stringify({w:Math.round(q.width),h:Math.round(q.height)}))}catch{}edgeSync()};
   el.addEventListener('pointermove',mv);el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up)}
  if(D){D.append(RZ);RB.addEventListener('click',e=>e.preventDefault());RB.addEventListener('pointerdown',e=>startRz(e,'rb',RB));
   for(const k in EDGES){const g=ce('button','pcEdge pcE-'+k,'');/* bpm-v131: no words, no tab: the grip only shows a thin line on the card edge (aria-label kept for screen readers) */g.type='button';g.dataset.edge=k;g.setAttribute('aria-label','Resize the card from the '+EDGES[k][1]+' edge (drag)');g.title='Drag the '+EDGES[k][1]+' edge to resize the card';g.hidden=true;
@@ -180,9 +180,10 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
   {const X_=Math.max(L0,Math.min(R0,X)),Y_=Math.max(T0,Math.min(B0,Y));if(pinOut){X=X_;Y=Y_}}
   if(R0-X-gap>=cw)x=X+gap;else if(X-gap-L0>=cw)x=X-gap-cw;else{compact=true;x=X>(L0+R0)/2?L0:R0-cw}
   y=Math.max(T0,Math.min(B0-mh,Y-mh/2));
+  if(D._upos&&D._upos.id===p.id){x=Math.max(L0,Math.min(R0-cw,D._upos.x));y=Math.max(T0,Math.min(B0-mh,D._upos.y))}
   B.classList.add('pcOn');B.classList.toggle('pcC',compact);DB.hidden=pinOut||!pins.some(x=>x.id===p.id);if(X>=x-4&&X<=x+cw+4&&Y>=y-4&&Y<=y+mh+4){/* v130: the big card covers the pin: Delete sits just above the card's top-left corner instead of on top of the card */DB.style.left=Math.round(x)+'px';DB.style.top=Math.round(Math.max(4,y-52))+'px'}else{DB.style.left=Math.round(Math.min(R0-80,X+14))+'px';DB.style.top=Math.round(Y-20)+'px'}
   D.style.left=Math.round(x)+'px';D.style.top=Math.round(y)+'px';D.style.width=Math.round(cw)+'px';D.style.maxHeight=Math.round(mh)+'px';D.style.height=Math.round(mh)+'px';LIM={R:R0,B:B0};nudgeBanners();edgeSync()}
- if(D){new MutationObserver(()=>{if(D.open)requestAnimationFrame(placeCard);else{off();nudgeBanners()}}).observe(D,{attributes:true,attributeFilter:['open']});addEventListener('resize',()=>D.open&&placeCard())}
+ if(D){new MutationObserver(()=>{D._upos=null;if(D.open)requestAnimationFrame(placeCard);else{off();nudgeBanners()}}).observe(D,{attributes:true,attributeFilter:['open']});addEventListener('resize',()=>D.open&&placeCard())}
  let lastV='';setInterval(()=>{if(!D||!D.open)return;const r_=ST.getBoundingClientRect(),k=JSON.stringify(view)+r_.left+','+r_.top+','+r_.width+','+innerHeight+'|'+(by('toast')&&!by('toast').hidden?1:0)+(by('ghBar')&&!by('ghBar').hidden?1:0)+(by('updBar')&&!by('updBar').hidden?1:0)+'|'+(()=>{/* v130: the plan chip appearing, or the walk bar / Pages strip appearing or moving, re-places the card */let o='';const lc=by('legChip');o+=lc&&!lc.hidden&&shown(lc)?'L;':'-;';/* chip: only appearing/disappearing (the card itself nudges its position) */for(const id of['walk','thumbs']){const e=by(id);if(e&&!e.hidden&&shown(e)){const q=e.getBoundingClientRect();o+=id+Math.round(q.top)+','+Math.round(q.right)+';'}}return o})();if(k!==lastV){lastV=k;placeCard()}},250);
  for(const id of['toast','ghBar','updBar']){const e=by(id);if(e)new MutationObserver(()=>{if(D&&D.open)requestAnimationFrame(placeCard)}).observe(e,{attributes:true,attributeFilter:['hidden']})}
  window.pinCardPlace=placeCard;
