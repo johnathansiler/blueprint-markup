@@ -425,12 +425,14 @@ function checksChanged(){const st=autoStatus(ckl);form.elements.status.value=st;
 $('#checks').addEventListener('click',e=>{const b=e.target.closest('button[data-i]');if(!b)return;const c=ckl[+b.dataset.i];c.v=c.v===b.dataset.v?'':b.dataset.v;checksChanged()});
 $('#passAll').onclick=()=>{for(const c of ckl)if(!c.v)c.v='pass';checksChanged()};
 form.elements.type.addEventListener('change',()=>{modelOpts(form.elements.type.value);if(!ckl.some(c=>c.v)){ckl=checkItems(form.elements.type.value);renderChecks()}});
-form.addEventListener('submit',async e=>{if(e.submitter?.value!=='save')return;
- if(form.elements.status.value==='failed'&&!form.elements.reason.value){e.preventDefault();uiAlert('Pick a fail reason for this failed device.');form.elements.reason.focus();return}
- if(form.elements.status.value==='failed'&&form.elements.severity.value==='Critical'&&!(cur.codes&&cur.codes.length)){e.preventDefault();if(await uiConfirm('Critical deficiency needs a code reference. Open the code picker?'))openCodePicker();else uiAlert('Add at least one code reference for a Critical deficiency.');return}
- dlgSave=(async()=>{const b=structuredClone(cur),a={...b};for(const k of PK)a[k]=form.elements[k].value;if(ckl.some(c=>c.v)||b.checks)a.checks=structuredClone(ckl);if(a.status!=='failed'){a.reason='';a.reasonText='';a.severity='';delete a.codes}else if(cur.codes?.length)a.codes=structuredClone(cur.codes);else delete a.codes
- if(a.status!==b.status){a.testedAt=Date.now();a.tester=await getTester()}if(a.type!==b.type)delete a.shp; // bpm-v99: a type change draws the NEW type's shape (shp was the detected glyph's silhouette)
-  if(b.fp&&a.type!==b.type){const ng=groupFor(a.type,b.detG);a.detG=ng;learn(b.fp,ng)}if(a.model)rememberModel(a.type,a.model);if(JSON.stringify(a)!==JSON.stringify(b))await change('pins',b,a);cur=pins.find(x=>x.id===a.id)})()});
+// bpm-v122: the draft the Save button would write. Built synchronously so a close during a tester prompt can't pick up a different pin.
+function pinDraft(){if(!cur)return null;const b=structuredClone(cur),a={...b};for(const k of PK)a[k]=form.elements[k].value;if(ckl.some(c=>c.v)||b.checks)a.checks=structuredClone(ckl);if(a.status!=='failed'){a.reason='';a.reasonText='';a.severity='';delete a.codes}else if(cur.codes?.length)a.codes=structuredClone(cur.codes);else delete a.codes;if(a.type!==b.type)delete a.shp;return{b,a}}
+function pinDirty(){const d=pinDraft();if(!d)return false;const {b,a}=d;for(const k of PK){const bv=b[k]||(k==='severity'?'Non-critical':''),av=a[k]||(k==='severity'?'Non-critical':'');if(String(av)!==String(bv))return true}if(JSON.stringify(a.checks||null)!==JSON.stringify(b.checks||null))return true;if(JSON.stringify(a.codes||null)!==JSON.stringify(b.codes||null))return true;return false}
+function pinBlockStop(){if(form.elements.status.value==='failed'&&!form.elements.reason.value){uiAlert('Pick a fail reason for this failed device.');form.elements.reason.focus();return true}if(form.elements.status.value==='failed'&&form.elements.severity.value==='Critical'&&!(cur.codes&&cur.codes.length)){(async()=>{if(await uiConfirm('Critical deficiency needs a code reference. Open the code picker?'))openCodePicker();else uiAlert('Add at least one code reference for a Critical deficiency.')})();return true}return false}
+function commitPin(){const d=pinDraft();if(!d)return Promise.resolve();const {b,a}=d;return (async()=>{if(a.status!==b.status){a.testedAt=Date.now();a.tester=await getTester()}if(b.fp&&a.type!==b.type){const ng=groupFor(a.type,b.detG);a.detG=ng;learn(b.fp,ng)}if(a.model)rememberModel(a.type,a.model);if(JSON.stringify(a)!==JSON.stringify(b))await change('pins',b,a);if(cur&&cur.id===a.id)cur=pins.find(x=>x.id===a.id)||cur})()}
+// Close, Escape and Android Back (dialog cancel) keep a dirty card as one undo step. Save is unchanged. A failed pin still needs a reason, and a Critical one still needs a code, or the card stays open.
+form.addEventListener('submit',e=>{const save=e.submitter?.value==='save',close=e.submitter?.value==='cancel';if(!save&&!(close&&pinDirty()))return;if(pinBlockStop()){e.preventDefault();return}dlgSave=commitPin()});
+dlg.addEventListener('cancel',e=>{if(!pinDirty())return;if(pinBlockStop()){e.preventDefault();return}dlgSave=commitPin()});
 // bpm-v66: wait for the async Save to land before the walk re-reads the pin (it used to re-render with the pre-save pin)
 let dlgSave=null;dlg.addEventListener('close',()=>{if(rec)rec.stop();const w=dlgSave;dlgSave=null;Promise.resolve(w).catch(()=>{}).then(()=>{if(walk)setTimeout(walkAfterDialog,0)})});
 $('#pinDel').onclick=async()=>{if(!await uiConfirm('Delete this pin and its media?'))return;await deletePin(cur);dlg.close()};
@@ -535,7 +537,11 @@ $('#projDel').onclick=async()=>{if(!project)return;const mine=(await all('plans'
  stopAll();for(const pl of mine)await deletePlanData(pl.id);
  await del('projects',project.id);await del('meta','last:'+project.id);project=null;await loadProject(null)};
 // ---------- boot ----------
-if('serviceWorker'in navigator&&location.protocol.startsWith('http')){const had=!!navigator.serviceWorker.controller;let done=0;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!done){done=1;location.reload()}});navigator.serviceWorker.register('sw.js')}
+// bpm-v122: a new service worker must not reload the open page. That dropped whatever was typed in the pin card or a walk note. Show Update ready and reload only when Reload is tapped (a dirty pin card is saved first).
+function offerUpdate(){const b=$('#updBar');if(!b||!b.hidden)return;b.hidden=false;try{window.pinCardPlace&&pinCardPlace()}catch{}}
+window.offerUpdate=offerUpdate;
+$('#updReload').onclick=async()=>{const btn=$('#updReload');btn.disabled=true;try{if(dlg.open&&pinDirty()){if(pinBlockStop()){btn.disabled=false;return}await commitPin()}location.reload()}catch(e){btn.disabled=false;showErr('Could not save the open device before reload: '+(e&&e.message||e))}};
+if('serviceWorker'in navigator&&location.protocol.startsWith('http')){const had=!!navigator.serviceWorker.controller;let done=0;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!done){done=1;offerUpdate()}});navigator.serviceWorker.register('sw.js')}
 (async()=>{resize();try{await migratePanels()}catch(e){console.info('panel migration skipped',e)}await loadProject(await get('meta','project'))})();
 
 // ---------- photo annotation (original kept; annotated copy saved on the media record) ----------
