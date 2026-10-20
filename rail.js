@@ -160,7 +160,7 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
   if(B.classList.contains('pcOn')){const nt=Math.max(c.top,limit),mh=c.bottom-nt;if(mh>=200){D.style.top=Math.round(nt)+'px';D.style.maxHeight=Math.round(mh)+'px'}}
   else D.style.maxHeight=Math.max(220,Math.round(innerHeight-limit-8))+'px'}
  function placeCard(){if(D&&D._rsz)return;if(!D||!D.open){off();nudgeBanners();return}const p=pinNow();if(!p){off();nudgeBanners();return}
-  const sr=ST.getBoundingClientRect(),s=toS(p.x,p.y),X=sr.left+s.x,Y=sr.top+s.y,m=8,ph=PH(),gap=ph?30:104,L0=sr.left+m;let T0=sr.top+m,R0=sr.right-m,B0=sr.bottom-m;
+  const sr=ST.getBoundingClientRect(),s=toS(p.x,p.y),X0=sr.left+s.x,Y0=sr.top+s.y,m=8,ph=PH(),gap=ph?30:104,L0=sr.left+m;let T0=sr.top+m,R0=sr.right-m,B0=sr.bottom-m;
   if(ph){/* phone panels overlay the plan: the card keeps to the free part */if(shown(TH)&&!TH.hidden)B0=Math.min(B0,(TH.offsetParent===ST?sr.top:0)+TH.offsetTop-m);/* v120: strip top in screen coordinates (offsetTop is stage-relative; final top, unaffected by the strip's slide) */for(const e of [by('panel'),by('lyrP')])if(e&&!e.hidden&&shown(e))R0=Math.min(R0,e.getBoundingClientRect().left-m)}
   /* v120: bars below the free plan area (banner strip, walk bar) also bound the card's bottom */
   let TB=0;
@@ -169,11 +169,16 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
   /* v130: twice the v129 default (v129: phone = the free width, Fold/tablet 460 px wide; up to 620 px tall), clamped to the free plan area with 8 px margins,
      or the size the user dragged it to. It sits beside the pin when there is room, otherwise on the side away from the pin, spanning the free height. */
   const Z=pcSize();let cw=Math.min(Z?Z.w:2*(ph?R0-L0:460),R0-L0);const ch=Math.min(Z?Z.h:2*620,B0-T0);
-  if(X<sr.left||X>sr.right||Y<sr.top||Y>sr.bottom||cw<220||ch<260){off();nudgeBanners();return}
+  /* v130: the card never falls back to the centred dialog (which covers the Pages strip and bars) just because the pin is briefly off the plan
+     (walk mode pans to the next pin); it keeps to the free plan area, placed for the nearest on-screen point, and Delete hides until the pin is back */
+  let X=X0,Y=Y0;const pinOut=X<sr.left||X>sr.right||Y<sr.top||Y>sr.bottom;
+  /* a small free area shrinks the card to fit (it scrolls) rather than dropping it over the bars; only a free area under 150 px falls back */
+  if(cw<150||ch<150){off();nudgeBanners();return}
   let x,y,mh=ch,compact=false;
+  {const X_=Math.max(L0,Math.min(R0,X)),Y_=Math.max(T0,Math.min(B0,Y));if(pinOut){X=X_;Y=Y_}}
   if(R0-X-gap>=cw)x=X+gap;else if(X-gap-L0>=cw)x=X-gap-cw;else{compact=true;x=X>(L0+R0)/2?L0:R0-cw}
   y=Math.max(T0,Math.min(B0-mh,Y-mh/2));
-  B.classList.add('pcOn');B.classList.toggle('pcC',compact);DB.hidden=!pins.some(x=>x.id===p.id);if(X>=x-4&&X<=x+cw+4&&Y>=y-4&&Y<=y+mh+4){/* v130: the big card covers the pin: Delete sits just above the card's top-left corner instead of on top of the card */DB.style.left=Math.round(x)+'px';DB.style.top=Math.round(Math.max(4,y-52))+'px'}else{DB.style.left=Math.round(Math.min(R0-80,X+14))+'px';DB.style.top=Math.round(Y-20)+'px'}
+  B.classList.add('pcOn');B.classList.toggle('pcC',compact);DB.hidden=pinOut||!pins.some(x=>x.id===p.id);if(X>=x-4&&X<=x+cw+4&&Y>=y-4&&Y<=y+mh+4){/* v130: the big card covers the pin: Delete sits just above the card's top-left corner instead of on top of the card */DB.style.left=Math.round(x)+'px';DB.style.top=Math.round(Math.max(4,y-52))+'px'}else{DB.style.left=Math.round(Math.min(R0-80,X+14))+'px';DB.style.top=Math.round(Y-20)+'px'}
   D.style.left=Math.round(x)+'px';D.style.top=Math.round(y)+'px';D.style.width=Math.round(cw)+'px';D.style.maxHeight=Math.round(mh)+'px';D.style.height=Math.round(mh)+'px';LIM={R:R0,B:B0};nudgeBanners();edgeSync()}
  if(D){new MutationObserver(()=>{if(D.open)requestAnimationFrame(placeCard);else{off();nudgeBanners()}}).observe(D,{attributes:true,attributeFilter:['open']});addEventListener('resize',()=>D.open&&placeCard())}
  let lastV='';setInterval(()=>{if(!D||!D.open)return;const r_=ST.getBoundingClientRect(),k=JSON.stringify(view)+r_.left+','+r_.top+','+r_.width+','+innerHeight+'|'+(by('toast')&&!by('toast').hidden?1:0)+(by('ghBar')&&!by('ghBar').hidden?1:0)+(by('updBar')&&!by('updBar').hidden?1:0);if(k!==lastV){lastV=k;placeCard()}},250);
