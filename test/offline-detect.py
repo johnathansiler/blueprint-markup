@@ -184,8 +184,8 @@ def main():
             "controller": round(t_ctrl-t_nav, 3),
             "ocrReady": round(t_ocr-t_nav, 3),
         }))
-        if summary["versionFiles"] != 41 or summary["versionBytes"] != 3794755:
-            fail(f"versioned cache is {summary['versionFiles']} files / {summary['versionBytes']} bytes, expected 41 / 3794755 (precache only)")
+        if summary["versionFiles"] != 41 or summary["versionBytes"] != 3799920:
+            fail(f"versioned cache is {summary['versionFiles']} files / {summary['versionBytes']} bytes, expected 41 / 3799920 (precache only)")
         if summary["versionOcr"] or at_ctrl["versionOcr"]:
             fail("OCR files are inside the versioned cache: " + json.dumps(summary["versionOcr"] or at_ctrl["versionOcr"]))
         cores = [f["path"] for f in summary["ocrFiles"] if "tesseract-core" in f["path"]]
