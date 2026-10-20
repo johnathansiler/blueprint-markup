@@ -326,3 +326,7 @@ body.light #pinDlg .pcRsz{background:#e2e8f0;color:#0f172a;border-color:#94a3b8}
 #vGuide .vgB{display:flex;gap:8px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap}#vGuide .vgB .btn{min-height:44px;font-size:15px}
 body.light #vGuide{background:#fff;color:#0f172a;border-color:#94a3b8}body.light #vGuide .vgL li{background:#f1f5f9}body.light #vGuide q{color:#1d4ed8}body.light #vGuide small,body.light #vGuide .vgNet{color:#334155}
 body.light #vGuide .vgHeard.ok{color:#15803d}body.light #vGuide .vgHeard.bad{color:#b91c1c}body.light #vGuide .vgNet.off{color:#92400e}
+/* bpm-v130: edge resize grips on the pin card (44 px touch areas, finger drag) */
+#pinDlg .pcEdge{position:fixed;z-index:7;display:flex;align-items:center;justify-content:center;padding:0;margin:0;min-height:44px;min-width:44px;border-radius:14px;border:1px solid #94a3b880;background:#334155;color:#f1f5f9;font-size:18px;line-height:1;touch-action:none;box-shadow:0 3px 10px #0009}
+#pinDlg .pcEdge[hidden]{display:none}#pinDlg .pcE-t,#pinDlg .pcE-b{width:72px;height:44px;cursor:ns-resize}#pinDlg .pcE-l,#pinDlg .pcE-r{width:44px;height:72px;cursor:ew-resize}
+#pinDlg .pcEdge.drag{background:var(--acc,#3b82f6);color:#fff}body.light #pinDlg .pcEdge{background:#e2e8f0;color:#0f172a;border-color:#94a3b8}
