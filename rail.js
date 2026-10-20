@@ -117,7 +117,21 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
  const pinNow=()=>{try{return cur&&cur.page===page&&cur.x!=null?cur:null}catch{return null}};
  if(D){D.append(DB);DB.onclick=e=>{e.preventDefault();const p=pinNow();D.close();if(!p)return;try{window.pdTap&&pdTap(p)}catch{}let n=0;const go=()=>{const b=by('pinDelF');if(b&&!b.hidden){window.wheelAnchor&&wheelAnchor(b);b.click()}else if(n++<20)requestAnimationFrame(go)};requestAnimationFrame(go)}}
  const off=()=>{B.classList.remove('pcOn','pcC');if(D)D.style.left=D.style.top=D.style.maxHeight=D.style.width=''};
- function placeCard(){if(!D||!D.open){off();return}const p=pinNow();if(!p){off();return}
+ // bpm-v123: the toast, the Detect pop-up and the update banner are not card keep-outs for placement (that would drop a phone card into the fallback sheet). After the card is placed they move to a free spot so they neither cover the card nor sit behind it.
+ const overlaps=(a,b)=>a.width>0&&b.width>0&&a.left<b.right-.5&&a.right>b.left+.5&&a.top<b.bottom-.5&&a.bottom>b.top+.5;
+ const clearNudge=e=>{if(e&&e.dataset.nudge){e.style.top='';e.style.bottom='';delete e.dataset.nudge}};
+ function bannerList(){return['ghBar','toast','updBar'].map(by).filter(e=>e&&!e.hidden&&e.getBoundingClientRect().height>0)}
+ function nudgeBanners(){for(const id of['toast','ghBar','updBar'])clearNudge(by(id));if(!D||!D.open)return;const sr=ST.getBoundingClientRect();
+  const hit=()=>bannerList().some(e=>overlaps(e.getBoundingClientRect(),D.getBoundingClientRect()));if(!hit())return;
+  if(B.classList.contains('pcOn')){const c0=D.getBoundingClientRect();let top=c0.top,bot=c0.bottom;
+   for(const e of bannerList()){const r=e.getBoundingClientRect(),box={left:c0.left,right:c0.right,top,bottom:bot,width:c0.width,height:bot-top};if(!overlaps(r,box))continue;if(r.top>=(top+bot)/2)bot=Math.min(bot,r.top-8);else top=Math.max(top,r.bottom+8)}
+   if(bot-top>=200&&top>=sr.top-1&&bot<=sr.bottom+1){D.style.top=Math.round(top)+'px';D.style.maxHeight=Math.round(bot-top)+'px';if(!hit())return}}
+  // fallback sheet, or a card with no free band: park the banners in a strip at the top of the plan and keep the card below it
+  let y=4;for(const e of bannerList()){const h=e.getBoundingClientRect().height;e.style.top=Math.round(y)+'px';e.style.bottom='auto';e.dataset.nudge='1';y+=h+6}
+  const limit=sr.top+y+4,c=D.getBoundingClientRect();
+  if(B.classList.contains('pcOn')){const nt=Math.max(c.top,limit),mh=c.bottom-nt;if(mh>=200){D.style.top=Math.round(nt)+'px';D.style.maxHeight=Math.round(mh)+'px'}}
+  else D.style.maxHeight=Math.max(220,Math.round(innerHeight-limit-8))+'px'}
+ function placeCard(){if(!D||!D.open){off();nudgeBanners();return}const p=pinNow();if(!p){off();nudgeBanners();return}
   const sr=ST.getBoundingClientRect(),s=toS(p.x,p.y),X=sr.left+s.x,Y=sr.top+s.y,m=8,ph=PH(),gap=ph?30:104,L0=sr.left+m;let T0=sr.top+m,R0=sr.right-m,B0=sr.bottom-m;
   if(ph){/* phone panels overlay the plan: the card keeps to the free part */if(shown(TH)&&!TH.hidden)B0=Math.min(B0,(TH.offsetParent===ST?sr.top:0)+TH.offsetTop-m);/* v120: strip top in screen coordinates (offsetTop is stage-relative; final top, unaffected by the strip's slide) */for(const e of [by('panel'),by('lyrP')])if(e&&!e.hidden&&shown(e))R0=Math.min(R0,e.getBoundingClientRect().left-m)}
   /* v120: bars below the free plan area (banner strip, walk bar) also bound the card's bottom */
@@ -125,15 +139,16 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
   for(const e of [by('legChip'),by('walk')]){if(!e||e.hidden||!shown(e))continue;const q=e.getBoundingClientRect();if(!q.height||q.left>=R0||q.right<=L0)continue;if(q.top>sr.top+sr.height/2)B0=Math.min(B0,q.top-m);else if(e.id==='legChip')TB=q.bottom+m}
   const T0n=T0;if(TB)T0=Math.max(T0,TB);/* top-floating banner: kept clear unless that leaves no room for the card (then the card may cover the transient banner rather than fall back to the dialog) */
   const cw=Math.min(ph?340:370,R0-L0);/* v115: larger card: ~340 on phone (free width - margins), ~370 on tablet */
-  if(X<sr.left||X>sr.right||Y<sr.top||Y>sr.bottom||cw<220){off();return}
+  if(X<sr.left||X>sr.right||Y<sr.top||Y>sr.bottom||cw<220){off();nudgeBanners();return}
   let x,y,mh,compact=false;const fullH=Math.min(B0-T0,620);
   if(!ph&&X+gap+cw<=R0){x=X+gap;mh=fullH;y=Math.max(T0,Math.min(B0-mh,Y-120))}
   else if(!ph&&X-gap-cw>=L0){x=X-gap-cw;mh=fullH;y=Math.max(T0,Math.min(B0-mh,Y-120))}
-  else{compact=true;x=Math.max(L0,Math.min(R0-cw,X-cw/2));const below=B0-(Y+gap);let above=Y-gap-T0;if(TB&&below<260&&above<260)above=Y-gap-T0n;if(below>=320||below>=above){y=Y+gap;mh=Math.min(below,520)}else{mh=Math.min(above,520);y=Y-gap-mh}if(mh<260){off();return}}
+  else{compact=true;x=Math.max(L0,Math.min(R0-cw,X-cw/2));const below=B0-(Y+gap);let above=Y-gap-T0;if(TB&&below<260&&above<260)above=Y-gap-T0n;if(below>=320||below>=above){y=Y+gap;mh=Math.min(below,520)}else{mh=Math.min(above,520);y=Y-gap-mh}if(mh<260){off();nudgeBanners();return}}
   B.classList.add('pcOn');B.classList.toggle('pcC',compact);DB.hidden=!pins.some(x=>x.id===p.id);DB.style.left=Math.round(Math.min(R0-80,X+14))+'px';DB.style.top=Math.round(Y-20)+'px';
-  D.style.left=Math.round(x)+'px';D.style.top=Math.round(y)+'px';D.style.width=Math.round(cw)+'px';D.style.maxHeight=Math.round(mh)+'px'}
- if(D){new MutationObserver(()=>{if(D.open)requestAnimationFrame(placeCard);else off()}).observe(D,{attributes:true,attributeFilter:['open']});addEventListener('resize',()=>D.open&&placeCard())}
- let lastV='';setInterval(()=>{if(!D||!D.open)return;const r_=ST.getBoundingClientRect(),k=JSON.stringify(view)+r_.left+','+r_.top+','+r_.width+','+innerHeight;if(k!==lastV){lastV=k;placeCard()}},250);
+  D.style.left=Math.round(x)+'px';D.style.top=Math.round(y)+'px';D.style.width=Math.round(cw)+'px';D.style.maxHeight=Math.round(mh)+'px';nudgeBanners()}
+ if(D){new MutationObserver(()=>{if(D.open)requestAnimationFrame(placeCard);else{off();nudgeBanners()}}).observe(D,{attributes:true,attributeFilter:['open']});addEventListener('resize',()=>D.open&&placeCard())}
+ let lastV='';setInterval(()=>{if(!D||!D.open)return;const r_=ST.getBoundingClientRect(),k=JSON.stringify(view)+r_.left+','+r_.top+','+r_.width+','+innerHeight+'|'+(by('toast')&&!by('toast').hidden?1:0)+(by('ghBar')&&!by('ghBar').hidden?1:0)+(by('updBar')&&!by('updBar').hidden?1:0);if(k!==lastV){lastV=k;placeCard()}},250);
+ for(const id of['toast','ghBar','updBar']){const e=by(id);if(e)new MutationObserver(()=>{if(D&&D.open)requestAnimationFrame(placeCard)}).observe(e,{attributes:true,attributeFilter:['hidden']})}
  window.pinCardPlace=placeCard;
  sync();
 })();
