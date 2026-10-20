@@ -128,7 +128,7 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
   RB.addEventListener('pointerdown',e=>{if(e.button>0)return;e.preventDefault();e.stopPropagation();try{RB.setPointerCapture(e.pointerId)}catch{}const r=D.getBoundingClientRect(),x0=e.clientX,y0=e.clientY,on=B.classList.contains('pcOn');D._rsz=1;RB.classList.add('drag');
    const L=on&&LIM?LIM:{R:innerWidth-8,B:innerHeight-8},minW=Math.min(260,r.width),minH=Math.min(220,r.height);
    const mv=ev=>{let w=r.width+(ev.clientX-x0),h=r.height+(ev.clientY-y0);
-     if(on){w=Math.max(minW,Math.min(L.R-r.left,w));h=Math.max(minH,Math.min(L.B-r.top,h))}else{/* centred sheet: grows both ways */w=Math.max(minW,Math.min(innerWidth-16,r.width+2*(ev.clientX-x0)));h=Math.max(minH,Math.min(innerHeight-16,h))}
+     if(on){w=Math.max(minW,Math.min(L.R-r.left,w));h=Math.max(minH,Math.min(L.B-r.top,h))}else{/* fallback sheet: centred ones grow both ways; a bottom sheet grows upward */const bot=Math.abs(r.bottom-innerHeight)<4;w=Math.max(minW,Math.min(innerWidth-(bot?0:16),r.width+2*(ev.clientX-x0)));h=Math.max(minH,Math.min(innerHeight-16,bot?r.height-(ev.clientY-y0):h))}
      D.style.width=Math.round(w)+'px';D.style.height=D.style.maxHeight=Math.round(h)+'px';D.style.maxWidth='none'};
    const up=()=>{RB.removeEventListener('pointermove',mv);RB.removeEventListener('pointerup',up);RB.removeEventListener('pointercancel',up);RB.classList.remove('drag');D._rsz=0;const q=D.getBoundingClientRect();try{localStorage.setItem(pcKey(),JSON.stringify({w:Math.round(q.width),h:Math.round(q.height)}))}catch{}};
    RB.addEventListener('pointermove',mv);RB.addEventListener('pointerup',up);RB.addEventListener('pointercancel',up)})}
