@@ -67,7 +67,7 @@
  <label>Type <select id="ghType"></select></label><small id="ghInfo" style="color:#94a3b8"></small>
  <div class="row" style="margin-top:10px"><button type="button" class="btn danger" id="ghRej">✕ Reject</button><button type="button" class="btn" id="ghAllType">Accept all of this type</button><span class="sp"></span><button class="btn" value="cancel">Close</button><button type="button" class="btn pri" id="ghAcc">✔ Accept</button></div></form></dialog>
 <dialog id="pinDlg"><form method="dialog" id="pinForm">
- <div style="width:40px;height:4px;background:#64748b;border-radius:2px;margin:0 auto 6px"></div><h3 style="margin:4px 0">Device pin</h3>
+ <div class="pcTop"><div style="width:40px;height:4px;background:#64748b;border-radius:2px;margin:0 auto 6px"></div><div class="row pcTopRow"><h3 style="margin:4px 0">Device pin</h3><span class="sp"></span><button class="btn" value="cancel">Close</button><button class="btn pri" id="pinSave" value="save">Save</button></div></div><!-- bpm-v128: Save and Close sit at the top of the pin card and stay visible while the card scrolls -->
  <label>Type <select name="type" id="dType"></select></label><label>Status <small style="color:#94a3b8">(auto from checklist; can override)</small><select name="status"><option>not tested</option><option>in progress</option><option>passed</option><option>failed</option></select></label><small id="testedInfo" style="color:#94a3b8"></small>
  <label>Address <input name="address"></label><label>Model <small style="color:#94a3b8">(Siemens)</small> <span class="mdlRow"><select id="dModelSel"></select><button type="button" class="btn" id="dQrBtn" title="Scan a QR code for this model's install sheet">📷 QR</button><button type="button" class="btn" id="dDsBtn">📄 Sheet</button><span id="dDsScan" class="scB" hidden>scanned</span></span></label><input type="hidden" name="model" id="dModel"><label id="dModelCL" hidden>Custom model <input id="dModelC" autocomplete="off" placeholder="type the model number"></label><label>Location <input name="location" spellcheck="true" lang="en" placeholder="e.g. Room 204, corridor by stair B"></label>
  <div class="row ckbar"><b id="ckHead">Checklist</b><span class="sp"></span><button type="button" class="btn" id="ckReset" title="Replace this pin's checklist with the current template">↺</button><button type="button" class="btn" id="ckEdit" title="Edit the checklist template for this device type">✎</button><button type="button" class="btn" id="passAll">✔ Pass all</button></div><div id="checks"></div>
@@ -80,7 +80,7 @@
  <label class="btn">🎥 Video<input type="file" id="addVideo" accept="video/*" capture="environment" hidden></label>
  <button type="button" class="btn" id="rec">🎙 Record</button></div>
  <div id="media"></div>
- <div class="row"><button type="button" class="btn danger" id="pinDel" hidden>Delete pin</button><span class="sp"></span><button class="btn" value="cancel">Close</button><button class="btn pri" id="pinSave" value="save">Save</button></div>
+ <div class="row"><button type="button" class="btn danger" id="pinDel" hidden>Delete pin</button></div>
 </form></dialog>
 <dialog id="saveDlg"><form method="dialog"><h3 style="margin:4px 0">💾 Project file</h3>
  <b>Save project</b><small style="display:block;color:#94a3b8">One <code>.bpm</code> file with every plan, markup, pin, checklist, photo/video/voice note and layer setting. Open it on any device with 📥.</small>
