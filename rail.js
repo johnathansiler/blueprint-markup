@@ -155,7 +155,7 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
   const T0n=T0;if(TB)T0=Math.max(T0,TB);/* top-floating banner: kept clear unless that leaves no room for the card (then the card may cover the transient banner rather than fall back to the dialog) */
   const Z=pcSize();let cw=Math.min(Z?Z.w:(ph?R0-L0:460),R0-L0);/* v129: larger by default (phone: the whole free width; Fold/tablet: 460) or the size the user dragged it to; v115 was 340/370 */
   if(X<sr.left||X>sr.right||Y<sr.top||Y>sr.bottom||cw<220){off();nudgeBanners();return}
-  let x,y,mh,compact=false;const HC=Z?Z.h:1e4,fullH=Math.min(B0-T0,HC);/* v129: all the free height (was capped at 620), or the user's size */
+  let x,y,mh,compact=false;const HC=Z?Z.h:1e4,fullH=Math.min(B0-T0,Z?Z.h:620);/* v129: beside the pin: 620 px tall as before, or the user's size; below/above the pin: all the free height (was capped at 520) */
   /* v129: beside the pin, the larger card narrows (down to the old 370 px) before it gives up the beside spot */
   const cwMin=Math.min(cw,370),cwR=Math.min(cw,R0-X-gap),cwL=Math.min(cw,X-gap-L0);
   if(!ph&&cwR>=cwMin){cw=cwR;x=X+gap;mh=fullH;y=Math.max(T0,Math.min(B0-mh,Y-120))}
