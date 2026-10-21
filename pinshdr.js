@@ -1,10 +1,10 @@
-// bpm-v106 (option C): compact Pins panel. Top: Pins | Defs segmented bar with counts, full-width search, labeled filter buttons (Type, Status, Page; Loop removed in v118)
+// bpm-v106 (option C): compact Pins panel. Top: Pins | Deficiencies segmented bar with counts, full-width search, labeled filter buttons (Type, Status, Page; Loop removed in v118)
 // that open the floating wheel. Middle: one progress/counts line, then the scrolling list. Bottom bar pinned inside the panel (wheels open upward):
-// Export, Split, Tester, Clear (Defs tab: Deficiencies CSV, Deficiencies PDF, Tester). Reuses the existing controls (same ids and handlers).
+// Export, Split, Tester, Clear (Deficiencies tab: Deficiencies spreadsheet, Deficiencies PDF, Tester). Reuses the existing controls (same ids and handlers).
 (()=>{const P=$('#panel');if(!P||!window.wheelOpen)return;const by=id=>document.getElementById(id),mk=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
  P.classList.add('pC');const ph=P.querySelector('.ph');
- // segmented Pins | Defs
- const seg=mk('div','pSeg');by('modePins').innerHTML='Pins <b id="pinCount"></b>';by('modeDefs').innerHTML='⚠ Defs <b id="defCount" class="r"></b>';seg.append(by('modePins'),by('modeDefs'));ph.prepend(seg);
+ // segmented Pins | Deficiencies (bpm-v133: spelled out)
+ const seg=mk('div','pSeg');by('modePins').innerHTML='Pins <b id="pinCount"></b>';by('modeDefs').innerHTML='⚠ Deficiencies <b id="defCount" class="r"></b>';seg.append(by('modePins'),by('modeDefs'));ph.prepend(seg);
  by('closeList').title='Close the Pins panel';
  // old header tools row (Export / Edit / Delete menus + Tester) is replaced by the bottom bar; the hidden originals keep their handlers
  const old=P.querySelector('.pTools');if(old){old.hidden=true;old.classList.add('pOld')}
@@ -31,7 +31,7 @@
  btn(bb,'pbTester','👤','Tester',clk('testerBtn'));
  btn(bb,'pbClear','🗑','Clear',menu('Clear',[{i:'🗑',l:'Clear pins…',run:clk('clrBtn')},{i:'🗑',l:'Clear markups…',run:clk('clrMBtn')}]));
  const dr=by('defCsv').parentElement;dr.classList.add('pOldD');dr.hidden=true;
- btn(bd,'pbDefCsv','📋','Defs CSV',clk('defCsv')).title='Deficiencies CSV';btn(bd,'pbDefPdf','📄','Defs PDF',clk('defPdf')).title='Deficiencies PDF';btn(bd,'pbDefTester','👤','Tester',clk('testerBtn'));
+ btn(bd,'pbDefCsv','📋','Deficiencies spreadsheet',clk('defCsv')).title='Deficiencies spreadsheet (CSV file)';btn(bd,'pbDefPdf','📄','Deficiencies PDF',clk('defPdf')).title='Deficiencies PDF';btn(bd,'pbDefTester','👤','Tester',clk('testerBtn'));
  for(const b of [...bb.children,...bd.children])b.title=b.title||b.textContent.trim();
  // values + counts
  function paint(){for(const f of F){const v=f.lab();const e=f.b.querySelector('.v');if(e.textContent!==v)e.textContent=v;f.b.classList.toggle('act',!!f.cur());f.b.title=`${f.k}: ${f.vals().find(x=>x.v===f.cur())?.l||v}`}
