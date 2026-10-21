@@ -367,3 +367,9 @@ body.light #tools.navT .tool:not(.navBig){background:#e2e8f0}body.light #tools.n
 #navDraw .tbCol{display:inline-flex}
 /* bpm-v132: the selection bar wraps instead of scrolling sideways, so Pass selected / Delete / Close stay on screen */
 #selBar{flex-wrap:wrap!important;overflow-x:visible!important;justify-content:center;row-gap:4px;width:max-content}
+
+/* bpm-v133: Deficiencies labels spelled out; they wrap between words instead of clipping (narrow Pins panel when Pages is open beside it) */
+#panel.pC .pSeg{flex-wrap:wrap;row-gap:3px}#panel.pC .pSeg .tab{white-space:normal;min-width:min-content;line-height:1.15}
+#panel.pC .pBB.defsOnly{grid-template-columns:repeat(auto-fit,minmax(min(100%,64px),1fr))}
+#panel.pC .pBB.defsOnly .pB{height:auto;min-height:42px;padding:3px 2px}
+#panel.pC .pBB.defsOnly .pB small{white-space:normal;overflow:visible;text-overflow:clip;text-align:center;line-height:12px;max-width:100%}
