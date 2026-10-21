@@ -47,6 +47,7 @@
  if(walk.querySelector('.tl'))walk.querySelector('.tl').textContent='Walk test';
  // things that now live only in Menu / More (kept for their handlers, never shown)
  const pass=X.pass;
+ if(X.textB&&!X.textB.id)X.textB.id='tbText';if(X.colW&&!X.colW.id)X.colW.id='tbColor';
  function layout(){const w=wide(),B=X.B;
   ['shapes','lines','select','share','more','place','width'].forEach(k=>B[k]&&(B[k].hidden=false));T.classList.remove('tbWide');T.querySelectorAll('.tbFlat').forEach(f=>f.hidden=true);
   // bottom row
