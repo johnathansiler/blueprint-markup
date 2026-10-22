@@ -26,8 +26,8 @@
  const clk=id=>()=>{const e=by(id);e&&e.click()};
  const btn=(bar,id,ic,l,run)=>{const b=mk('button','pB',`<i>${ic}</i><small>${l}</small>`);b.type='button';b.id=id;b.onclick=run;bar.append(b);return b};
  const menu=(title,items)=>function(){wheelAnchor(this);wheelOpen(title,items.map(x=>({...x,html:`<span class="whIc">${x.i}</span>${esc(x.l)}`})),0,x=>x.run())};
- btn(bb,'pbExp','⤓','Export',menu('Export',[{i:'📋',l:'Device list CSV',run:clk('csvBtn')},{i:'🔢',l:'Counts CSV',run:clk('countCsv')},{i:'☑',l:'Checklist CSV',run:clk('checkCsv')},{i:'📄',l:'Report PDF',run:clk('reportPdf')}]));
- btn(bb,'pbSplit','⇆','Split',menu('Split',[{i:'⇆',l:'Split for 2nd tech',run:clk('splitBtn')},{i:'⇄',l:'Merge returned file',run:clk('mergeBtn')}]));
+ btn(bb,'pbExp','⤓','Export',menu('Export',[{i:'📋',l:'Device list spreadsheet',run:clk('csvBtn')},{i:'🔢',l:'Counts spreadsheet',run:clk('countCsv')},{i:'☑',l:'Checklist spreadsheet',run:clk('checkCsv')},{i:'📄',l:'Report PDF',run:clk('reportPdf')}]));
+ btn(bb,'pbSplit','⇆','Split',menu('Split',[{i:'⇆',l:'Split for second technician',run:clk('splitBtn')},{i:'⇄',l:'Merge returned file',run:clk('mergeBtn')}]));
  btn(bb,'pbTester','👤','Tester',clk('testerBtn'));
  btn(bb,'pbClear','🗑','Clear',menu('Clear',[{i:'🗑',l:'Clear pins…',run:clk('clrBtn')},{i:'🗑',l:'Clear markups…',run:clk('clrMBtn')}]));
  const dr=by('defCsv').parentElement;dr.classList.add('pOldD');dr.hidden=true;

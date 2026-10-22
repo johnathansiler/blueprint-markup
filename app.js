@@ -1124,7 +1124,7 @@ async function saveJob(j){await put('meta',j,'job:'+project.id)}
 function jobToForm(j){const f=$('#jobForm');for(const k of Object.keys(JOB0))if(f.elements[k])f.elements[k].value=j[k]||JOB0[k]}
 function jobFromForm(){const f=$('#jobForm'),j={...JOB0};for(const k of Object.keys(JOB0))j[k]=f.elements[k]?.value?.trim()||'';return j}
 $('#jobBtn').onclick=async()=>{if($('#saveDlg').open)$('#saveDlg').close();jobToForm(await getJob());$('#jobDlg').showModal()};
-$('#jobSave').onclick=async e=>{e.preventDefault();await saveJob(jobFromForm());$('#jobDlg').close();toast('Job info saved')};
+$('#jobSave').onclick=async e=>{e.preventDefault();await saveJob(jobFromForm());$('#jobDlg').close();toast('Job information saved')};
 async function ensureJob(){let j=await getJob();if(j.building&&j.inspDate)return j;jobToForm(j);$('#jobDlg').showModal();
  await new Promise(res=>{$('#jobSave').addEventListener('click',function h(ev){ev.preventDefault();$('#jobSave').removeEventListener('click',h);res()},{once:true});
   $('#jobDlg').addEventListener('close',function h(){$('#jobDlg').removeEventListener('close',h);res()},{once:true})});
