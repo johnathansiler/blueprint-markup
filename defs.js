@@ -5,7 +5,7 @@
  let CUR=null;
  // ---------- viewer ----------
  const V=document.createElement('div');V.id='mViewer';V.hidden=true;V.setAttribute('role','dialog');V.setAttribute('aria-label','Photo viewer');
- V.innerHTML='<div class="mvTop"><span class="mvT"></span><span class="sp"></span><button type="button" class="btn" id="mvClose" aria-label="Close the viewer">✕<span class="tl">Close</span></button></div><div class="mvStage"></div><div class="mvNav"><button type="button" class="btn" id="mvPrev" aria-label="Previous item">◀<span class="tl">Prev</span></button><span class="mvN"></span><button type="button" class="btn" id="mvNext" aria-label="Next item">▶<span class="tl">Next</span></button></div>';
+ V.innerHTML='<div class="mvTop"><span class="mvT"></span><span class="sp"></span><button type="button" class="btn" id="mvClose" aria-label="Close the viewer">✕<span class="tl">Close</span></button></div><div class="mvStage"></div><div class="mvNav"><button type="button" class="btn" id="mvPrev" aria-label="Previous item">◀<span class="tl">Previous</span></button><span class="mvN"></span><button type="button" class="btn" id="mvNext" aria-label="Next item">▶<span class="tl">Next</span></button></div>';
  document.body.append(V);const VS=V.querySelector('.mvStage');let M=[],MI=0,urls=[],Z={s:1,x:0,y:0};
  const freeU=()=>{urls.forEach(URL.revokeObjectURL);urls=[]};
  function show(){VS.innerHTML='';Z={s:1,x:0,y:0};const m=M[MI];if(!m)return;const u=URL.createObjectURL(m.kind==='photo'?(m.annot||m.blob):m.blob);urls.push(u);

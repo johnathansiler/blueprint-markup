@@ -373,3 +373,5 @@ body.light #tools.navT .tool:not(.navBig){background:#e2e8f0}body.light #tools.n
 #panel.pC .pBB.defsOnly{grid-template-columns:repeat(auto-fit,minmax(min(100%,64px),1fr))}
 #panel.pC .pBB.defsOnly .pB{height:auto;min-height:42px;padding:3px 2px}
 #panel.pC .pBB.defsOnly .pB small{white-space:normal;overflow:visible;text-overflow:clip;text-align:center;line-height:12px;max-width:100%}
+/* bpm-v134: plain-word labels. The collapsed Device counts line in the Pins panel wraps inside the panel instead of pushing the page sideways */
+#panel .pSumL>details{min-width:0;max-width:100%;box-sizing:border-box}#panel .pSumL>details:not([open])>summary{white-space:normal;overflow:visible;text-overflow:clip}

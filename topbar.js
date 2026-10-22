@@ -14,7 +14,7 @@
  // ---- buttons ----
  const projB=mk('tb2Proj','📁','Project ▾',()=>{const ps=[...by('projSel').options];wheel('Project',[{i:'＋',l:'New project',run:click('projNew')},{i:'✎',l:'Rename project',run:click('projRen')},{i:'💾',l:'Save project file',run:click('projSave')},{i:'📥',l:'Open project file…',run:()=>by('bpmFile').click()},{i:'🗑',l:'Delete project',run:click('projDel')},...ps.map(o=>({i:o.selected?'✓':'↪',l:'Switch to: '+o.text,run:()=>{by('projSel').value=o.value;by('projSel').dispatchEvent(new Event('change',{bubbles:true}))}}))],0)},'Project: new, rename, save, open, delete, switch');
  const planB=mk('tb2Plan','📄','Plan ▾',()=>{const ps=[...by('planSel').options].filter(o=>o.value);wheel('Plan',[{i:'📂',l:'Open plan (PDF / image)…',run:()=>by('file').click()},{i:'✎',l:'Rename page',run:()=>plan?pnRename(page):uiAlert('Open a plan first.')},{i:'🗑',l:'Delete plan',run:click('planDel')},...ps.map(o=>({i:o.selected?'✓':'↪',l:'Switch to: '+o.text,run:()=>{by('planSel').value=o.value;by('planSel').dispatchEvent(new Event('change',{bubbles:true}))}}))],0)},'Plan: open, rename page, delete, switch');
- const prev=relabel(by('prev'),'◀','Prev'),next=relabel(by('next'),'▶','Next');
+ const prev=relabel(by('prev'),'◀','Previous'),next=relabel(by('next'),'▶','Next');
  const pageB=mk('tb2Page','<b class="tb2n">–</b>','Page ▾',()=>{const o=[...by('pageSel').options];if(!o.length)return uiAlert('Open a plan first.');wheel('Page',o.map(x=>({i:'',l:x.text,run:()=>{by('pageSel').value=x.value;by('pageSel').dispatchEvent(new Event('change',{bubbles:true}))}})),by('pageSel').selectedIndex)},'Go to page');
  const zoomB=mk('tb2Zoom','<b class="tb2n" id="tb2Z">—</b>','Zoom',()=>by('fit')?.click(),'Current zoom (tap: fit to screen)');
  const rot=relabel(by('rotBtn'),'⟳','Rotate'),pg=relabel(by('thBtn'),'▤','Pages');
@@ -25,7 +25,7 @@
  [...T.children].forEach(n=>{if(![exW,mic].includes(n))H.append(n)});
  const sp=()=>{const s=document.createElement('span');s.className='sp';return s},br=document.createElement('i');br.className='tb2Br';
  const s1=sp(),s2=sp();s1.classList.add('tb2S1');s2.classList.add('tb2S2');// bpm-v105: Undo / Redo live in the top bar (same #undo/#redo buttons, so updUR() greys them out); phone: first on row 2, Rotate moves into More
- const und=relabel(by('undo'),'↶','Undo'),red=relabel(by('redo'),'↷','Redo');und.classList.remove('tool');red.classList.remove('tool');und.title='Undo (Ctrl+Z)';red.title='Redo (Ctrl+Y)';
+ const und=relabel(by('undo'),'↶','Undo'),red=relabel(by('redo'),'↷','Redo');und.classList.remove('tool');red.classList.remove('tool');und.title='Undo (Control+Z)';red.title='Redo (Control+Y)';
  T.append(projB,planB,und,red,prev,pageB,next,pg,zoomB,br,s1,rot,layB,exW,mic,pinsB,s2,moreB);/* bpm-v113: Pages toggle sits with Prev/Page/Next */[s1,rot,pg,layB,exW,mic,pinsB,s2,moreB].forEach(e=>e&&e.classList.add('tb2R2'));T.classList.add('tb2T');
  by('czBtn')&&H.append(by('czBtn'));
  const upd=()=>{crumb();try{pageB.querySelector('.tb2n').textContent=plan?`${page}/${plan.pages||1}`:'–';by('tb2Z').textContent=by('zoomPct').textContent}catch{}};setInterval(upd,400);upd();window.tb2Upd=upd;

@@ -15,15 +15,15 @@
  const menuB=mkTop('navMenu','☰','Menu ▾',function(){const a=this;
   const projSw=()=>[...by('projSel').options].map(o=>({i:o.selected?'✓':'↪',l:o.text,run:()=>{by('projSel').value=o.value;by('projSel').dispatchEvent(new Event('change',{bubbles:true}))}}));
   const planSw=()=>[...by('planSel').options].filter(o=>o.value).map(o=>({i:o.selected?'✓':'↪',l:o.text,run:()=>{by('planSel').value=o.value;by('planSel').dispatchEvent(new Event('change',{bubbles:true}))}}));
-  const exp=()=>[{i:'⤓',l:'Plan as PDF',run:click('exPdf')},{i:'⤓',l:'Plan as picture (PNG)',run:click('exPng')},{i:'📋',l:'Device list CSV',run:click('csvBtn')},{i:'🔢',l:'Counts CSV',run:click('countCsv')},{i:'☑',l:'Checklist CSV',run:click('checkCsv')},{i:'📄',l:'Report PDF',run:click('reportPdf')}];
-  const shr=()=>[{i:'⇆',l:'Split for 2nd tech',run:click('splitBtn')},{i:'⇄',l:'Merge returned file',run:click('mergeBtn')}];
+  const exp=()=>[{i:'⤓',l:'Plan as PDF',run:click('exPdf')},{i:'⤓',l:'Plan as picture (PNG)',run:click('exPng')},{i:'📋',l:'Device list spreadsheet',run:click('csvBtn')},{i:'🔢',l:'Counts spreadsheet',run:click('countCsv')},{i:'☑',l:'Checklist spreadsheet',run:click('checkCsv')},{i:'📄',l:'Report PDF',run:click('reportPdf')}];
+  const shr=()=>[{i:'⇆',l:'Split for second technician',run:click('splitBtn')},{i:'⇄',l:'Merge returned file',run:click('mergeBtn')}];
   wheel(a,'Menu',[{i:'📂',l:'Open plan (PDF / image)…',run:()=>by('file').click()},{i:'💾',l:'Save project file',run:click('projSave')},{i:'⤓',l:'Export…',run:sub(a,'Export',exp)},{i:'⇪',l:'Share…',run:sub(a,'Share',shr)},
    {i:'↪',l:'Switch plan…',run:sub(a,'Switch plan',planSw)},{i:'✎',l:'Rename page',run:()=>plan?pnRename(page):uiAlert('Open a plan first.')},{i:'🗑',l:'Delete plan',run:click('planDel')},
    {i:'＋',l:'New project',run:click('projNew')},{i:'📥',l:'Open project file…',run:()=>by('bpmFile').click()},{i:'↪',l:'Switch project…',run:sub(a,'Switch project',projSw)},{i:'✎',l:'Rename project',run:click('projRen')},{i:'🗑',l:'Delete project',run:click('projDel')},
    {i:'⚙',l:'Customize (theme, accent, size)',run:()=>openCz()}])},'Menu: project, plan, save, export, share, customize');
  // ---------- More ▾ (rarely used tools) ----------
  const moreB=mkTool('navMore','⋯','More ▾',function(){const a=this,w=wide(),L=[];
-  if(!w)L.push({i:'◧',l:'Layers',run:()=>tlayOpen()},{i:'📷',l:'QR scan',run:click('qrTool')},{i:'🎓',l:'Teach a symbol',run:click('teachBtn')});
+  if(!w)L.push({i:'◧',l:'Layers',run:()=>tlayOpen()},{i:'📷',l:'Scan QR code',run:click('qrTool')},{i:'🎓',l:'Teach a symbol',run:click('teachBtn')});
   L.push({i:'➤',l:'Select',run:()=>{const t=document.querySelector('[data-t="select"]');t&&t.click()}},{i:'✋',l:'Pan',run:()=>{const t=document.querySelector('[data-t="pan"]');t&&t.click()}},
    {i:'⤢',l:'Fit to screen',run:click('fit')},{i:'⟳',l:'Rotate view'+(typeof VR!=="undefined"&&VR?` (now ${VR}°)`:""),run:click('rotBtn')});
   const mic=by('micBtn');if(mic&&!mic.hidden)L.push({i:'🎤',l:'Voice',run:()=>mic.click()});
@@ -38,7 +38,7 @@
  DR.addEventListener('click',e=>{const b=e.target.closest('button,label');if(!b)return;/* a tool was picked: close the panel (wheel / width bar open from the button first) */if(b.dataset.w==='width'||b.classList.contains('tbCol'))return;setTimeout(()=>{DR.hidden=true;drawB.classList.remove('on')},250)});
  document.addEventListener('pointerdown',e=>{if(!DR.hidden&&!DR.contains(e.target)&&!drawB.contains(e.target)&&!e.target.closest('.whOv,.wbBar,#colDlg,.wbO')){DR.hidden=true;drawB.classList.remove('on')}},true);
  // ---------- top-row extras on wide screens (proxies of the real buttons) ----------
- const teachT=mkTop('navTeach','🎓','Teach',click('teachBtn'),'Teach a symbol');const qrT=mkTop('navQr','📷','QR',click('qrTool'),'Scan an install-sheet QR code');
+ const teachT=mkTop('navTeach','🎓','Teach',click('teachBtn'),'Teach a symbol');const qrT=mkTop('navQr','📷','QR code',click('qrTool'),'Scan an install-sheet QR code');
  const layT=by('tb2Lay');
  // ---------- big buttons ----------
  const det=by('detBtn'),ds=by('dsBtn'),walk=by('walkBtn');

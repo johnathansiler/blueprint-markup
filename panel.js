@@ -3,10 +3,10 @@
  const dd=(id,label,title,ids)=>{const d=document.createElement('details');d.className='pDd';d.id=id;d.innerHTML=`<summary class="btn" title="${title}">${label} ▾</summary><div class="pDm"></div>`;const m=d.querySelector('.pDm');for(const i of ids){const e=by(i);if(e){e.classList.add('pDi');m.append(e)}}
   m.addEventListener('click',e=>{if(e.target.closest('button'))setTimeout(()=>d.open=false,0)});return d};
  // (b) labels inside menus
- by('csvBtn').textContent='📋 Device list CSV';by('countCsv').textContent='🔢 Counts CSV';by('checkCsv').textContent='☑ Checklist CSV';by('reportPdf').textContent='📄 Report PDF';
+ by('csvBtn').textContent='📋 Device list spreadsheet';by('countCsv').textContent='🔢 Counts spreadsheet';by('checkCsv').textContent='☑ Checklist spreadsheet';by('reportPdf').textContent='📄 Report PDF';
  by('clrBtn').textContent='🗑 Delete Pins';by('clrMBtn').textContent='🗑 Delete Markups';by('testerBtn').innerHTML='Tester';
  const row2=document.createElement('div');row2.className='row pinsOnly pTools';
- row2.append(dd('pExp','Export','Export: device list, counts, checklist, report',['csvBtn','countCsv','checkCsv','reportPdf']),dd('pEdit','Edit','Split for a second tech / merge a returned file',['splitBtn','mergeBtn']),dd('pDel','Delete','Delete all pins or all markups (asks first)',['clrBtn','clrMBtn']),by('testerBtn'));
+ row2.append(dd('pExp','Export','Export: device list, counts, checklist, report',['csvBtn','countCsv','checkCsv','reportPdf']),dd('pEdit','Edit','Split for a second technician / merge a returned file',['splitBtn','mergeBtn']),dd('pDel','Delete','Delete all pins or all markups (asks first)',['clrBtn','clrMBtn']),by('testerBtn'));
  ph.after(row2);by('pDel').querySelector('summary').classList.add('danger');
  // (c) search + filters in one row; summary + counts on one small line
  const q=by('q'),f=by('fType').parentElement;f.classList.add('pFlt');f.prepend(q);q.placeholder='Search…';q.title='Search address, location, type, notes';
