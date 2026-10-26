@@ -80,7 +80,7 @@
  let lastA=null,menuT=0;const _wa=window.wheelAnchor;window.wheelAnchor=a=>{lastA=a;return _wa&&_wa(a)};
  const SH=ce('div','mnuOv');SH.id='mnuSheet';SH.hidden=true;SH.setAttribute('role','dialog');SH.setAttribute('aria-modal','true');document.body.append(SH);
  const close=()=>{SH.hidden=true;SH.innerHTML=''};window.menuListClose=close;
- SH.addEventListener('pointerdown',e=>{if(e.target===SH)close()});addEventListener('keydown',e=>{if(e.key==='Escape'&&!SH.hidden){e.preventDefault();close()}},true);
+ SH.addEventListener('pointerdown',e=>{if(e.target===SH)close()});addEventListener('keydown',e=>{if(SH.hidden)return;if(e.key==='Escape'){e.preventDefault();close()}else if(e.key==='ArrowDown'||e.key==='ArrowUp'){/* keyboard: arrows move between rows, Enter picks */e.preventDefault();const B=[...SH.querySelectorAll('.mnuI')],i=B.indexOf(document.activeElement),n=e.key==='ArrowDown'?Math.min(B.length-1,i+1):Math.max(0,i-1);B[n]&&B[n].focus()}},true);
  function menuList(title,items,cb){const top=title==='Menu';let groups;
   if(top){const used=new Set();groups=GR.map(([g,rx])=>[g,items.filter(x=>{const ok=!used.has(x)&&rx.test(x.l||'');if(ok)used.add(x);return ok})]);const rest=items.filter(x=>!used.has(x));if(rest.length)groups[2][1].push(...rest)}
   else groups=[[null,items]];
