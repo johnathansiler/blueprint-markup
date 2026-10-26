@@ -27,7 +27,8 @@ Object.assign(TYPES,{
  vlf:{c:VESDA_C,l:'LF',n:'VESDA laser focus'},
  vnet:{c:VESDA_C,l:'NI',n:'VESDA network interface'},
  vrem:{c:VESDA_C,l:'RE',n:'VESDA remote enclosure',sq:1},
- vtee:{c:VESDA_C,l:'T',n:'VESDA aspirating sampling tee'}});
+ vtee:{c:VESDA_C,l:'T',n:'VESDA aspirating sampling tee'},
+ ffphone:{c:'#0f766e',l:'FT',n:'Firefighter phone jack',sq:1}}); // bpm-v135
 // color sheet / legend group names for shared colors
 const CGRP={[PANEL_C]:'Panels (all)',[VESDA_C]:'VESDA (all parts)'};const PANEL_GRP=['panel','panelbox','farp','fatc','dact','scs','loc'];
 const ST={passed:'#16a34a',failed:'#dc2626',corrected:'#0891b2','in progress':'#f59e0b','not tested':'#94a3b8'},STATUSES=['passed','failed','corrected','in progress','not tested'];
@@ -68,6 +69,7 @@ Object.assign(CHECKS,{
  oss:['Switch operates (disables release/automatic action)','Supervisory/trouble shown at panel','Restores on reset','Physical condition OK'],
  eol:['Correct value installed at end of circuit','Circuit supervised (trouble on open)','Secured/labeled'],
  bfp:['Valves supervised (tamper) where required','No leaks','Accessible/identified','Physical condition OK'],
+ ffphone:['Handset plugged in: call-in signal received at master station','Two-way voice is clear both ways','Unplugged/open circuit shows trouble at panel','Jack/cover accessible and labeled','Physical condition OK'],
  pullbox:['Cover in place and identified','Wiring secured, no damage','Accessible'],
  vesda:['Airflow within limits','Alarm received at panel','Fault/trouble reported','Filter OK','Physical condition OK'],
  vpsu:['AC power OK','Battery tested and dated','Trouble reported','Physical condition OK'],
@@ -86,7 +88,7 @@ const PSH={smoke:['hex',15,13],duct:['hex',15,13],module:['hex',15,13],heat:['ci
  flow:['dia',24,9],tamper:['dia',24,9],rai:['circ',6,6],jceil:['circ',13,13],other:['circ',12,12]};
 // bpm-v106: new types on the v50 shape set (hex / circ / rect / dia); Detect/Teach measured bw/bh still override these defaults
 Object.assign(PSH,{farp:['rect',26,13],scs:['rect',26,13],loc:['rect',26,13],pad:['rect',26,13],speaker:['rect',13,13],lfs:['rect',13,13],bell:['circ',13,13],multi:['hex',15,13],
- damper:['rect',16,10],oss:['rect',13,13],eol:['rect',9,6],bfp:['dia',24,9],pullbox:['rect',13,13],
+ damper:['rect',16,10],oss:['rect',13,13],eol:['rect',9,6],bfp:['dia',24,9],pullbox:['rect',13,13],ffphone:['rect',13,13],
  vesda:['rect',26,13],vpsu:['rect',16,16],vsp:['circ',8,8],vcap:['circ',5,5],vlf:['hex',15,13],vnet:['dia',16,12],vrem:['rect',22,16],vtee:['dia',10,10]});
 const PSC=1.3;const PANEL_S=new Set(['panel','dact','fatc','panelbox','farp','scs','loc','pad','vesda']);
 // bpm-v37: tight outset — path = print outer size; canvas stroke is centered so gray outer edge = print + LW/2 (thin ring just outside black; no inset, no ~1.3× overhang, no color past the gray)
@@ -615,7 +617,7 @@ DG.farp={n:'FARP (remote panel)',t:'farp',d:['FARP'],note:'FARP'};
 for(const[k,n,t]of[['panel','FACP (manual)','panel'],['oth','Other device','other']])DG[k]={n,t,d:[],x:1};
 DG.heat={n:'Heat detector',t:'heat',d:['HEAT'],note:'heat'}; // bpm-v108: hex + H glyph (legend-checked on FL-00090/139/144/149)
 // bpm-v106: new types without a Detect glyph yet: manual pick / legend text / master templates only (multi-criteria looks like smoke, so never auto)
-for(const[k,n,t]of[['multi','Multi-criteria detector','multi'],['speaker','Speaker (no strobe)','speaker'],['lfs','Low-frequency sounder','lfs'],['bell','Bell – 120 VAC','bell'],['pad','PAD-4/PAD-5','pad'],['damper','Fire/smoke damper','damper'],['scs','Smoke control station','scs'],['loc','Local operator console','loc'],['oss','Operator safety switch','oss'],['eol','EOL resistor','eol'],['bfp','Sprinkler backflow preventer','bfp'],['pullbox','Electrical pull box','pullbox'],
+for(const[k,n,t]of[['multi','Multi-criteria detector','multi'],['speaker','Speaker (no strobe)','speaker'],['lfs','Low-frequency sounder','lfs'],['bell','Bell – 120 VAC','bell'],['pad','PAD-4/PAD-5','pad'],['damper','Fire/smoke damper','damper'],['scs','Smoke control station','scs'],['loc','Local operator console','loc'],['oss','Operator safety switch','oss'],['eol','EOL resistor','eol'],['bfp','Sprinkler backflow preventer','bfp'],['pullbox','Electrical pull box','pullbox'],['ffphone','Firefighter phone jack','ffphone'],
  ['vesda','VESDA aspirating detector','vesda'],['vpsu','VESDA power supply','vpsu'],['vsp','VESDA sampling point','vsp'],['vcap','VESDA capillary sampling point','vcap'],['vlf','VESDA laser focus','vlf'],['vnet','VESDA network interface','vnet'],['vrem','VESDA remote enclosure','vrem'],['vtee','VESDA aspirating sampling tee','vtee']])DG[k]={n,t,d:[],x:1};
 for(const[k,d]of[['damper','DAMPER'],['pullbox','PULLBOX'],['eol','EOL'],['vpsu','VPSU'],['vesda','VESDA'],['vrem','VREM'],['vnet','VNET'],['loc','LOC'],['vsp','VSP'],['vcap','VCAP'],['vtee','VTEE'],['pad','PAD'],['speaker','SPEAKER'],['bell','BELL'],['oss','OSS'],['bfp','BFP']]){DG[k].d=[d];delete DG[k].x} // bpm-v108: vector glyph detectors (FSD diamond, PB square)
 const D2G={};for(const[k,g]of Object.entries(DG))for(const d of g.d)D2G[d]=k;
@@ -1518,7 +1520,7 @@ const MODELS={
  panel:['FireFinder XLS','MXL','FC2025','FC2050','FC922','FC924','FC901','FC2005']};
 // bpm-v106: Siemens parts with a stored install sheet (INSTALL below); others via "Custom…"
 Object.assign(MODELS,{speaker:['SC-SP-WW-F','SC-SP-CW-F','SC-SP-WR-F'],pad:['PAD5-6A','PAD5-6A-R','PAD5-9A','PAD5-9A-R','PAD-5-MB','PAD-5-CDC','PAD-5-CLSA'],
- multi:['OOH941','OOHC941','FDOOT441','FDOOTC441','FDOT421'],vnet:['VESDA-HLI-KIT','VPM'],farp:['FC2025','FC2050','FireFinder XLS'],pullbox:[],damper:[]});
+ multi:['OOH941','OOHC941','FDOOT441','FDOOTC441','FDOT421'],vnet:['VESDA-HLI-KIT','VPM'],farp:['FC2025','FC2050','FireFinder XLS'],pullbox:[],damper:[],ffphone:['FJ-303','FJ-303SS','FJ-304','FJ-304SS','MTE-2','PFT','PFT-P']});
 let MODELS_C=null;async function customModels(){if(!MODELS_C)MODELS_C=(await get('meta','models:custom'))||{};return MODELS_C}
 async function rememberModel(t,m){m=String(m||'').trim();if(!m||(MODELS[t]||[]).some(x=>x===m||x.endsWith(' '+m)))return;const c=await customModels();if((c[t]||[]).includes(m))return;c[t]=[...(c[t]||[]),m];await put('meta',c,'models:custom')}
 async function modelOpts(t){const c=await customModels(),S=MODELS[t]||[],C=(c[t]||[]).filter(m=>!S.includes(m)),v=form.elements.model.value,sel=$('#dModelSel');
@@ -1701,13 +1703,13 @@ Voice / Audio & Telephone||FB-300|Telephone station flush back box|ov
 Voice / Audio & Telephone||FB-301S|Telephone station surface back box|ov
 Voice / Audio & Telephone||FC-300S|Key-lock cover with break glass|ov
 Voice / Audio & Telephone||FT-GLS|Replacement glass for FC-300S|ov
-Voice / Audio & Telephone||MTE-2|Telephone enclosure|ov
-Voice / Audio & Telephone||PFT|Portable firefighter phone|ov
-Voice / Audio & Telephone||PFT-P|Portable firefighter phone, push-to-talk|ov
-Voice / Audio & Telephone||FJ-303|Telephone jack plate|ov
-Voice / Audio & Telephone||FJ-303SS|Telephone jack plate, stainless|ov
-Voice / Audio & Telephone||FJ-304|Telephone jack plate|ov
-Voice / Audio & Telephone||FJ-304SS|Telephone jack plate, stainless|ov
+Voice / Audio & Telephone|ffphone|MTE-2|Telephone enclosure|ov
+Voice / Audio & Telephone|ffphone|PFT|Portable firefighter phone|ov
+Voice / Audio & Telephone|ffphone|PFT-P|Portable firefighter phone, push-to-talk|ov
+Voice / Audio & Telephone|ffphone|FJ-303|Telephone jack plate|ov
+Voice / Audio & Telephone|ffphone|FJ-303SS|Telephone jack plate, stainless|ov
+Voice / Audio & Telephone|ffphone|FJ-304|Telephone jack plate|ov
+Voice / Audio & Telephone|ffphone|FJ-304SS|Telephone jack plate, stainless|ov
 Annunciators|rai|SSD-C|System status display with controls|ov
 Annunciators|rai|SSD-C-REM|SSD-C, remote locked cabinet|ov
 Annunciators|rai|SSD-INT|System status display, internal|ov
