@@ -25,30 +25,13 @@
    const msg=`Daily backup reminder is ${i.off?'off':'on'}. Last backup project file for this project: ${fmtD(i.last)}.\n\nPhone storage protection: ${ST.granted?'on (the browser keeps this app’s data)':ST.granted===false?'not granted (the browser may clear this app’s data when space runs low, so save backups)':'not supported in this browser'}.`;
    if(await uiConfirm(msg,{ok:i.off?'Turn reminder on':'Turn reminder off',cancel:'Close'})){await put('meta',!i.off,'bkOff');toast('Backup reminder '+(i.off?'on':'off'));bkCheck()}if(!ST.granted)askPersist()}}]);
 })();
-// ---------- 3. Inspection and Testing Record: on-screen signatures and visit times ----------
-(()=>{const {by,ce,MX}=window.V135;let dlg=null;const K=()=>project&&project.id;
- const pad=(cv)=>{const g=cv.getContext('2d');let dn=false,last=null,ink=false;const pt=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height]};
-  const clr=()=>{g.fillStyle='#fff';g.fillRect(0,0,cv.width,cv.height);g.strokeStyle='#cbd5e1';g.beginPath();g.moveTo(20,cv.height-30);g.lineTo(cv.width-20,cv.height-30);g.stroke();ink=false};clr();
-  cv.addEventListener('pointerdown',e=>{e.preventDefault();cv.setPointerCapture(e.pointerId);dn=true;last=pt(e)});
-  cv.addEventListener('pointermove',e=>{if(!dn)return;const q=pt(e);g.strokeStyle='#0f172a';g.lineWidth=3;g.lineCap='round';g.beginPath();g.moveTo(...last);g.lineTo(...q);g.stroke();last=q;ink=true});
-  const up=()=>{dn=false};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
-  return{clr,ink:()=>ink,set:src=>new Promise(r=>{clr();if(!src)return r();const im=new Image();im.onload=()=>{g.drawImage(im,0,0,cv.width,cv.height);ink=true;r()};im.onerror=r;im.src=src})}};
- let P={};
- function build(){if(dlg)return dlg;dlg=ce('dialog',{id:'sigDlg'},`<form method="dialog"><h3 style="margin:4px 0">✍ Sign the Inspection and Testing Record</h3><small style="color:#94a3b8">Sign with a finger or stylus. Signatures are kept with this project and printed on the record.</small>
-  <label>Inspector name <input name="inspName" autocomplete="off"></label><canvas id="sigInsp" width="600" height="160" class="sigPad"></canvas><div class="row"><button type="button" class="btn" id="sigInspClr">Clear inspector signature</button></div>
-  <label>Owner / representative name <input name="ownerName" autocomplete="off"></label><canvas id="sigOwner" width="600" height="160" class="sigPad"></canvas><div class="row"><button type="button" class="btn" id="sigOwnerClr">Clear owner signature</button></div>
-  <div class="row"><span class="sp"></span><button class="btn" value="cancel">Cancel</button><button type="button" class="btn pri" id="sigSave">Save signatures</button></div></form>`);document.body.append(dlg);
-  P.insp=pad(by('sigInsp'));P.owner=pad(by('sigOwner'));by('sigInspClr').onclick=()=>P.insp.clr();by('sigOwnerClr').onclick=()=>P.owner.clr();
-  by('sigSave').onclick=async()=>{const f=dlg.querySelector('form'),o=(await get('meta','sig:'+K()))||{},now=Date.now(),mk=(k,nm)=>P[k].ink()?{img:by(k==='insp'?'sigInsp':'sigOwner').toDataURL('image/png'),name:nm,at:(o[k]?.img&&o[k].name===nm&&o[k].img===by(k==='insp'?'sigInsp':'sigOwner').toDataURL('image/png'))?o[k].at:now}:null;
-   const s={insp:mk('insp',f.elements.inspName.value.trim()),owner:mk('owner',f.elements.ownerName.value.trim())};await put('meta',s,'sig:'+K());dlg.close();toast('Signatures saved');info()};return dlg}
- async function info(){const e=by('itmSignInfo');if(!e||!K())return;const s=(await get('meta','sig:'+K()))||{};e.textContent=[s.insp?'inspector signed':'',s.owner?'owner signed':''].filter(Boolean).join(', ')||'not signed yet'}
- async function open(){if(!K())return uiAlert('Open a project first.');build();const s=(await get('meta','sig:'+K()))||{},j=(await get('meta','job:'+K()))||{},f=dlg.querySelector('form');
-  f.elements.inspName.value=s.insp?.name||j.techName||(typeof tester==='string'?tester:'')||'';f.elements.ownerName.value=s.owner?.name||j.ownerName||j.owner||'';await P.insp.set(s.insp?.img);await P.owner.set(s.owner?.img);dlg.showModal()}
- window.sigOpen=open;
+// ---------- 3. Inspection and Testing Record: visit times (bpm-v136: on-screen signatures removed) ----------
+(()=>{const {by}=window.V135;
+ /* bpm-v136: signatures are gone. Old projects may still hold signature data from version 135; drop it quietly on load. */
+ const dropSig=async pid=>{if(!pid)return;try{if(await get('meta','sig:'+pid))await del('meta','sig:'+pid);if(await get('meta','sigPrev:'+pid))await del('meta','sigPrev:'+pid)}catch{}};window.dropSig=dropSig;
+ const _lp=loadProject;loadProject=async function(...a){const r=await _lp.apply(this,a);dropSig(project&&project.id);return r};
  const now=()=>{const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
- const f=by('jobForm');if(f){by('itmStartNow').onclick=()=>{f.elements.startTime.value=now()};by('itmEndNow').onclick=()=>{f.elements.finishTime.value=now()};by('itmSign').onclick=open;
-  by('jobDlg').addEventListener('toggle',info);new MutationObserver(()=>{if(by('jobDlg').open)info()}).observe(by('jobDlg'),{attributes:true,attributeFilter:['open']})}
- MX.push(()=>[{i:'✍',l:'Sign inspection record…',run:open}]);
+ const f=by('jobForm');if(f){by('itmStartNow').onclick=()=>{f.elements.startTime.value=now()};by('itmEndNow').onclick=()=>{f.elements.finishTime.value=now()}}
 })();
 // ---------- 5. Start next inspection (keep last results for comparison) ----------
 (()=>{const {by,ce,MX}=window.V135;const K=()=>project&&project.id;
@@ -58,12 +41,11 @@
  function snap(p,j){const o={status:p.status||'not tested',inspDate:j.inspDate||'',endedAt:Date.now()};for(const k of ['testedAt','tester','reason','reasonText','severity','corrNote','correctedAt','rdSens','rdCd','rdDb'])if(p[k]!=null&&p[k]!=='')o[k]=structuredClone(p[k]);const ck=(p.checks||[]).filter(c=>c.v);if(ck.length)o.checks=ck.map(c=>({t:c.t,v:c.v}));return o}
  async function nextInsp(){if(!K())return uiAlert('Open a project first.');const pid=K(),j=(await get('meta','job:'+pid))||{},D=await projData(),n=D.reduce((a,d)=>a+d.pins.length,0),nt=D.reduce((a,d)=>a+d.pins.filter(tested).length,0);
   if(!n)return uiAlert('This project has no devices yet.');
-  if(!await uiConfirm(`Start the next inspection for this project?\n\nAll ${n} devices go back to "not tested". Checklists, fail reasons, readings and signatures are cleared for the new visit.\n\nThe last result of every device (${nt} tested) is kept: it shows on the pin card as "Last inspection" and in the device spreadsheet, so you can compare.\n\nTip: save a backup project file first (Menu > Save project file).`,{ok:'Start next inspection',cancel:'Cancel'}))return false;
+  if(!await uiConfirm(`Start the next inspection for this project?\n\nAll ${n} devices go back to "not tested". Checklists, fail reasons and readings are cleared for the new visit.\n\nThe last result of every device (${nt} tested) is kept: it shows on the pin card as "Last inspection" and in the device spreadsheet, so you can compare.\n\nTip: save a backup project file first (Menu > Save project file).`,{ok:'Start next inspection',cancel:'Cancel'}))return false;
   busy(1,'Starting next inspection');try{const now=Date.now(),who=(typeof tester==='string'&&tester)||'';let c=0;
    for(const{pl,pins:ps}of D)for(const p0 of ps){const p=pl.id===plan?.id?(pins.find(x=>x.id===p0.id)||p0):p0,a=structuredClone(p);if(tested(p))a.prev=snap(p,j);
     a.status='not tested';if(Array.isArray(a.checks))a.checks=a.checks.map(c=>({...c,v:''}));for(const k of RESET)delete a[k];a.updatedAt=now;a.dev=window.DEVICE_ID;a.by=who;await put('pins',a);if(pl.id===plan?.id){const i=pins.findIndex(x=>x.id===a.id);if(i>=0)pins[i]=a}c++}
    await put('meta',{...j,endedAt:now},'jobPrev:'+pid);const nj={...j};for(const k of VISIT)nj[k]='';await put('meta',nj,'job:'+pid);
-   const sg=await get('meta','sig:'+pid);if(sg){await put('meta',sg,'sigPrev:'+pid);await del('meta','sig:'+pid)}
    if(plan)await openPlan(plan.id,page);afterChange?.();toast(`Next inspection started: ${c} devices reset, last results kept`);return true}
   catch(e){showErr('Could not start the next inspection: '+e.message)}finally{busy(0)}}
  window.nextInsp=nextInsp;
