@@ -6,6 +6,23 @@
 (()=>{const by=id=>document.getElementById(id);const ce=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
  const MO=window.V135&&V135.MO;
 
+ // ---------- 1) one-tap Detect ----------
+ // After Detect has been run once from the dialog, the Detect button runs again straight away with the same device types and pages.
+ // The first time, the dialog opens with every type ticked and "All pages" chosen (Detect still reads only main floor plan pages and never pins gray devices).
+ // "Detect types and pages…" (suggestions bar and More) opens the dialog to change them. After an all-pages run with nothing on this page, it goes to the first page with suggestions.
+ const detB=by('detBtn'),openDet=detB&&detB.onclick;
+ const detDlgOpen=async()=>{if(!openDet)return;await openDet.call(detB);const d=by('detDlg');if(!d||!d.open)return;const s=await get('meta','detectSel');
+  if(!(s&&Array.isArray(s.groups)&&s.groups.length)){by('detAll')&&by('detAll').click();const f=by('detForm');if(f&&f.elements.scope)f.elements.scope.value='all'}};
+ window.detectSettings=detDlgOpen;
+ if(detB&&openDet){detB.onclick=async function(){if(!plan||!pdf||det)return openDet.call(this);const s=await get('meta','detectSel'),one=await get('meta','detectOneTap');
+   if(one&&s&&Array.isArray(s.groups)&&s.groups.length){const ok=new Set(Object.keys(DG));const g=s.groups.filter(k=>ok.has(k));if(g.length)return runDetect(g,!!s.all)}return detDlgOpen()};
+  by('detForm')&&by('detForm').addEventListener('submit',e=>{if(e.submitter?.value==='go')put('meta',1,'detectOneTap')},true)}
+ const _rd=runDetect;runDetect=async function(groups,all,...a){window.foldLegend&&foldLegend();const r=await _rd.call(this,groups,all,...a);
+  try{if(all&&plan&&ghosts.length&&!ghosts.some(g=>g.page===page)&&!walk){const n=Math.min(...ghosts.map(g=>g.page));await gotoPage(n);renderGhostBar();toast(`Went to page ${n}: the first page with suggestions`)}}catch(e){console.warn(e)}return r};
+ const _rgb=renderGhostBar;renderGhostBar=function(...a){const r=_rgb.apply(this,a);const b=by('ghBar');if(b&&!b.hidden&&!by('ghSet')){const bb=b.querySelector('.ghBB')||b;
+  const x=ce('button','btn','<span aria-hidden="true">⚙</span> <span class="tl">Detect types and pages</span>');x.type='button';x.id='ghSet';x.title='Change the device types and pages Detect uses';x.onclick=()=>detDlgOpen();bb.append(x)}return r};
+ if(MO)MO.push(()=>[{i:'🔍',l:'Detect types and pages…',run:()=>plan?detDlgOpen():uiAlert('Open a plan first.')}]);
+
  // ---------- 2) walk test starts with the devices you actually test ----------
  // Until a walk has been started in this version, the picker ticks every type except panels, cabinets, junction boxes, EOL resistors, surge protectors,
  // pull boxes and backflow preventers (they stay in the list to tick). After that, the last choice is remembered as before.
