@@ -1,5 +1,3 @@
-'use strict';
-// bpm-v135: walk mode, voice commands, learned rules, multi-select tools (split out of app.js; classic script sharing app.js globals, loaded right after the file before it)
 // ---------- v9: walk mode ----------
 const REASONS=['No alarm','Trouble','Damaged','Missing','Obstructed','Dirty/needs cleaning','Other'];
 function walkSet(){return pins.filter(p=>tVis(p)&&(!walk.type||p.type===walk.type)&&(!walk.types||walk.types.includes(p.type)))}

@@ -1,5 +1,3 @@
-'use strict';
-// bpm-v135: device models catalog, install sheets, QR scan (split out of app.js; classic script sharing app.js globals, loaded right after the file before it)
 // ---------- bpm-v72: device model numbers per type (seeded + remembered custom entries) ----------
 // bpm-v75: smoke/heat/module/relay/pull lists supplied by the user (authoritative); others from bpm-v74: Siemens Fire Safety models only (each verified on a Siemens datasheet / Siemens doc portal / distributor page); other makes via "Custom…"
 const MODELS={
@@ -406,3 +404,4 @@ let pfW=null,pfWT=0;function pfWheel(e){const d=e.deltaY||e.deltaX;
  const minY=Math.min(8,H-D.h*view.s-8),maxY=Math.max(8,H-D.h*view.s-8);if(ny<minY){pfW.o=(pfW.o||0)+(minY-ny);ny=minY}else if(ny>maxY){pfW.o=(pfW.o||0)-(ny-maxY);ny=maxY}else pfW.o=0;
  view={...view,y:ny};fastView();const o=pfW.o||0,dir=o>0?1:o<0?-1:0,ok=dir&&(dir>0?page<plan.pages:page>1);pfHint(ok&&dir,Math.abs(o)/PF_T);
  if(ok&&Math.abs(o)>=PF_T){pfW=null;pfFlip(dir);return}pfWT=setTimeout(()=>{pfW=null;pfHint(0)},350)}
+

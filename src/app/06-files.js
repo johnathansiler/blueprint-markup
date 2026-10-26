@@ -1,5 +1,3 @@
-'use strict';
-// bpm-v135: project file, plan export, code references, job info, NFPA documents, clear (split out of app.js; classic script sharing app.js globals, loaded right after the file before it)
 // ---------- v10: .bpm project file (ZIP, stored entries, see FORMAT.md) ----------
 const BPM_VER=1,BPM_FMT='blueprint-markup-project';
 const CRCT=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
@@ -340,3 +338,4 @@ async function clrRun(v){const P=clrWhat==='pins',st=clrWhat;if(ted)tedEnd(false
 function migPanelType(p){if(p.type!=='panel'&&p.type!=='other')return null;const d=String(p.detected||'')+' '+String(p.detG||'')+' '+String(p.notes||'');
  if(/\bDACT\b|communicator/i.test(d))return'dact';if(/\bFATC\b|terminal cabinet/i.test(d))return'fatc';if(/PANEL_BOX|panelbox|equipment box/i.test(d))return'panelbox';if(p.type==='other'&&/\bFACP\b/i.test(d))return'panel';return null}
 async function migratePanels(){if(await get('meta','mig:v13'))return 0;let n=0;for(const p of await all('pins')){const t=migPanelType(p);if(t&&t!==p.type){p.type=t;await put('pins',p);n++}}await put('meta',1,'mig:v13');return n}
+

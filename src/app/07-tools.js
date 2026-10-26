@@ -1,5 +1,3 @@
-'use strict';
-// bpm-v135: measure, spellcheck, rotate, walk slide, thumbnails, checklists, inline text, de-overlap, page cache (split out of app.js; classic script sharing app.js globals, loaded right after the file before it)
 // ---------- v14: measure to scale ----------
 // Scale is stored per plan in meta 'scale:<planId>' = {def:ppf|null, pages:{[n]:ppf}}; ppf = plan points per real foot.
 const SCL={},MS={mode:'line',cal:false,pts:[],hover:null,snap:true,unit:'ft',refs:{smoke:false,pull:false,exit:false}};
@@ -220,3 +218,4 @@ function walkGoto(){if(!walk)return;let d=$('#wGotoDlg');if(!d){d=document.creat
   d.querySelectorAll('#wgL [data-id]').forEach(b=>b.onclick=()=>{const p=pins.find(x=>x.id===b.dataset.id);d.close();if(p&&walk){walk.skip.delete(p.id);walkGo(p)}})};
  d.innerHTML=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px"><b style="flex:1">📍 Go to device</b><button type="button" class="btn" id="wgX">✕</button></div><input id="wgF" type="search" placeholder="Search address, location, type" style="width:100%;margin-bottom:6px"><label style="display:flex;gap:6px;align-items:center;margin-bottom:6px"><input type="checkbox" id="wgU" checked style="width:20px;height:20px;min-height:20px"> Untested only</label><div id="wgL" style="overflow:auto;max-height:60vh"></div><small style="color:#94a3b8">Tip: you can also tap any pin on the plan to jump to it.</small>`;
  d.querySelector('#wgX').onclick=()=>d.close();d.querySelector('#wgF').oninput=e=>{f=e.target.value.trim().toLowerCase();draw_()};d.querySelector('#wgU').onchange=e=>{only=e.target.checked;draw_()};draw_();d.showModal()}
+
