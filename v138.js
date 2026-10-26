@@ -58,9 +58,11 @@
 
  // ---------- 9 + 10) during a walk: no Delete on the pin card, Pages strip tucked away, legend banner folded ----------
  let thWas=null;
- const _sw=startWalk;startWalk=function(...a){window.foldLegend&&foldLegend();const th=by('thumbs');if(th&&!th.hidden&&plan&&pins.length){thWas=true;th.hidden=true;by('thBtn')&&by('thBtn').classList.remove('pri')}else thWas=null;
+ /* the walk bar and the strip change at the same moment: the side panel jumps to its new bottom at once (no height slide, so it never overlaps the walk bar) */
+ const noH=()=>{document.body.classList.add('v138NoT');clearTimeout(noH._t);noH._t=setTimeout(()=>document.body.classList.remove('v138NoT'),600);for(const id of ['panel','lyrP']){const e=by(id);if(e){e.classList.add('v138NoH');clearTimeout(e._v138h);e._v138h=setTimeout(()=>e.classList.remove('v138NoH'),600)}}};
+ const _sw=startWalk;startWalk=function(...a){noH();window.foldLegend&&foldLegend();const th=by('thumbs');if(th&&!th.hidden&&plan&&pins.length){thWas=true;th.hidden=true;by('thBtn')&&by('thBtn').classList.remove('pri')}else thWas=null;
   const r=_sw.apply(this,a);if(!walk&&thWas&&th){th.hidden=false;by('thBtn')&&by('thBtn').classList.add('pri');thWas=null}dispatchEvent(new Event('resize'));return r};
- const _ew=exitWalk;exitWalk=function(...a){const r=_ew.apply(this,a);const th=by('thumbs');if(thWas&&th&&plan){th.hidden=false;by('thBtn')&&by('thBtn').classList.add('pri');try{renderThumbs()}catch{}}thWas=null;dispatchEvent(new Event('resize'));return r};
+ const _ew=exitWalk;exitWalk=function(...a){noH();const r=_ew.apply(this,a);const th=by('thumbs');if(thWas&&th&&plan){th.hidden=false;by('thBtn')&&by('thBtn').classList.add('pri');try{renderThumbs()}catch{}}thWas=null;dispatchEvent(new Event('resize'));return r};
 
  // legend banner: shown once when a plan is first opened; it folds into More ("Review legend symbols") when Detect runs, a walk starts or a pin card opens
  let LEG=null;function foldLegend(){const lg=by('legChip');if(!lg||lg.hidden)return;const rb=lg.querySelector('#legRev');if(rb&&rb.onclick)LEG={run:rb.onclick,t:rb.textContent.replace(/·\s*Review/,'').replace(/^\W+/,'').trim(),pl:plan&&plan.id};lg.hidden=true}
