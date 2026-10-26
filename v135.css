@@ -12,3 +12,6 @@ body.light #bkBar{background:#fef3c7;color:#451a03;border-color:#d97706}
 #defList li.defCorr{opacity:.85}
 #corrBox{margin:6px 0;padding:6px;border:1px solid #0891b2;border-radius:8px}
 .wSt.fix{color:#22d3ee}
+
+/* item 6: measured readings */
+#rdBox{margin:6px 0}#rdBox .rdRow{display:flex;flex-wrap:wrap;gap:8px}#rdBox label{display:flex;flex-direction:column;flex:1 1 140px;font-size:14px}#rdBox label[hidden]{display:none}#rdBox input{min-height:40px;font-size:16px}#rdHint{color:#fbbf24}
