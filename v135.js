@@ -25,3 +25,28 @@
    const msg=`Daily backup reminder is ${i.off?'off':'on'}. Last backup project file for this project: ${fmtD(i.last)}.\n\nPhone storage protection: ${ST.granted?'on (the browser keeps this app’s data)':ST.granted===false?'not granted (the browser may clear this app’s data when space runs low, so save backups)':'not supported in this browser'}.`;
    if(await uiConfirm(msg,{ok:i.off?'Turn reminder on':'Turn reminder off',cancel:'Close'})){await put('meta',!i.off,'bkOff');toast('Backup reminder '+(i.off?'on':'off'));bkCheck()}if(!ST.granted)askPersist()}}]);
 })();
+// ---------- 3. Inspection and Testing Record: on-screen signatures and visit times ----------
+(()=>{const {by,ce,MX}=window.V135;let dlg=null;const K=()=>project&&project.id;
+ const pad=(cv)=>{const g=cv.getContext('2d');let dn=false,last=null,ink=false;const pt=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height]};
+  const clr=()=>{g.fillStyle='#fff';g.fillRect(0,0,cv.width,cv.height);g.strokeStyle='#cbd5e1';g.beginPath();g.moveTo(20,cv.height-30);g.lineTo(cv.width-20,cv.height-30);g.stroke();ink=false};clr();
+  cv.addEventListener('pointerdown',e=>{e.preventDefault();cv.setPointerCapture(e.pointerId);dn=true;last=pt(e)});
+  cv.addEventListener('pointermove',e=>{if(!dn)return;const q=pt(e);g.strokeStyle='#0f172a';g.lineWidth=3;g.lineCap='round';g.beginPath();g.moveTo(...last);g.lineTo(...q);g.stroke();last=q;ink=true});
+  const up=()=>{dn=false};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+  return{clr,ink:()=>ink,set:src=>new Promise(r=>{clr();if(!src)return r();const im=new Image();im.onload=()=>{g.drawImage(im,0,0,cv.width,cv.height);ink=true;r()};im.onerror=r;im.src=src})}};
+ let P={};
+ function build(){if(dlg)return dlg;dlg=ce('dialog',{id:'sigDlg'},`<form method="dialog"><h3 style="margin:4px 0">✍ Sign the Inspection and Testing Record</h3><small style="color:#94a3b8">Sign with a finger or stylus. Signatures are kept with this project and printed on the record.</small>
+  <label>Inspector name <input name="inspName" autocomplete="off"></label><canvas id="sigInsp" width="600" height="160" class="sigPad"></canvas><div class="row"><button type="button" class="btn" id="sigInspClr">Clear inspector signature</button></div>
+  <label>Owner / representative name <input name="ownerName" autocomplete="off"></label><canvas id="sigOwner" width="600" height="160" class="sigPad"></canvas><div class="row"><button type="button" class="btn" id="sigOwnerClr">Clear owner signature</button></div>
+  <div class="row"><span class="sp"></span><button class="btn" value="cancel">Cancel</button><button type="button" class="btn pri" id="sigSave">Save signatures</button></div></form>`);document.body.append(dlg);
+  P.insp=pad(by('sigInsp'));P.owner=pad(by('sigOwner'));by('sigInspClr').onclick=()=>P.insp.clr();by('sigOwnerClr').onclick=()=>P.owner.clr();
+  by('sigSave').onclick=async()=>{const f=dlg.querySelector('form'),o=(await get('meta','sig:'+K()))||{},now=Date.now(),mk=(k,nm)=>P[k].ink()?{img:by(k==='insp'?'sigInsp':'sigOwner').toDataURL('image/png'),name:nm,at:(o[k]?.img&&o[k].name===nm&&o[k].img===by(k==='insp'?'sigInsp':'sigOwner').toDataURL('image/png'))?o[k].at:now}:null;
+   const s={insp:mk('insp',f.elements.inspName.value.trim()),owner:mk('owner',f.elements.ownerName.value.trim())};await put('meta',s,'sig:'+K());dlg.close();toast('Signatures saved');info()};return dlg}
+ async function info(){const e=by('itmSignInfo');if(!e||!K())return;const s=(await get('meta','sig:'+K()))||{};e.textContent=[s.insp?'inspector signed':'',s.owner?'owner signed':''].filter(Boolean).join(', ')||'not signed yet'}
+ async function open(){if(!K())return uiAlert('Open a project first.');build();const s=(await get('meta','sig:'+K()))||{},j=(await get('meta','job:'+K()))||{},f=dlg.querySelector('form');
+  f.elements.inspName.value=s.insp?.name||j.techName||(typeof tester==='string'?tester:'')||'';f.elements.ownerName.value=s.owner?.name||j.ownerName||j.owner||'';await P.insp.set(s.insp?.img);await P.owner.set(s.owner?.img);dlg.showModal()}
+ window.sigOpen=open;
+ const now=()=>{const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+ const f=by('jobForm');if(f){by('itmStartNow').onclick=()=>{f.elements.startTime.value=now()};by('itmEndNow').onclick=()=>{f.elements.finishTime.value=now()};by('itmSign').onclick=open;
+  by('jobDlg').addEventListener('toggle',info);new MutationObserver(()=>{if(by('jobDlg').open)info()}).observe(by('jobDlg'),{attributes:true,attributeFilter:['open']})}
+ MX.push(()=>[{i:'✍',l:'Sign inspection record…',run:open}]);
+})();
