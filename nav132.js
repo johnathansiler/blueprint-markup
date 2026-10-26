@@ -20,6 +20,7 @@
   wheel(a,'Menu',[{i:'📂',l:'Open plan (PDF / image)…',run:()=>by('file').click()},{i:'💾',l:'Save project file',run:click('projSave')},{i:'⤓',l:'Export…',run:sub(a,'Export',exp)},{i:'⇪',l:'Share…',run:sub(a,'Share',shr)},
    {i:'↪',l:'Switch plan…',run:sub(a,'Switch plan',planSw)},{i:'✎',l:'Rename page',run:()=>plan?pnRename(page):uiAlert('Open a plan first.')},{i:'🗑',l:'Delete plan',run:click('planDel')},
    {i:'＋',l:'New project',run:click('projNew')},{i:'📥',l:'Open project file…',run:()=>by('bpmFile').click()},{i:'↪',l:'Switch project…',run:sub(a,'Switch project',projSw)},{i:'✎',l:'Rename project',run:click('projRen')},{i:'🗑',l:'Delete project',run:click('projDel')},
+   ...(window.menuExtra?menuExtra(a,sub):[]),/* bpm-v135: Start next inspection, Save install sheets for offline use, Backup reminder, Storage */
    {i:'⚙',l:'Customize (theme, accent, size)',run:()=>openCz()}])},'Menu: project, plan, save, export, share, customize');
  // ---------- More ▾ (rarely used tools) ----------
  const moreB=mkTool('navMore','⋯','More ▾',function(){const a=this,w=wide(),L=[];
@@ -30,6 +31,7 @@
   L.push({i:'📘',l:'Guides',run:click('guidesBtn')},{i:'↷',l:'Redo',run:click('redo')},{i:'🗑',l:'Delete selected',run:click('del')},{i:'🧲',l:'Magnet snap '+(by('mkSnap')?.classList.contains('on')?'(on)':'(off)'),run:click('mkSnap')});
   if(w)L.push({i:'📐',l:'Angle snap (15°)',run:click('cSnap')},{i:'✍',l:'Freehand',run:()=>X.freeB.click()});
   L.push({i:'👁',l:'Filters (markups, labels, status)',run:click('layBtn')});
+  if(window.moreExtra)L.push(...moreExtra(a));
   wheel(a,'More',L)});
  // ---------- Draw ▾ (phone): a small panel with the real drawing buttons ----------
  const DR=document.createElement('div');DR.id='navDraw';DR.hidden=true;DR.setAttribute('role','dialog');DR.setAttribute('aria-label','Drawing tools');document.body.append(DR);
