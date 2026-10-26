@@ -3,7 +3,7 @@
 // Per-pin result record: RES fields + updatedAt (ms) + dev (device id) + by (tech name). Split copies carry
 // srcPin (origin pin id) and base {u,st} = origin's updatedAt/status at split time.
 const RES_F=['status','checks','reason','reasonText','severity','notes','testedAt','tester','codes','correctedAt','correctedBy','corrNote','rdSens','rdCd','rdDb','prev'];
-const resKey=p=>JSON.stringify(RES_F.map(k=>p?.[k]??null));
+const resKey=p=>JSON.stringify(RES_F.map(k=>{const v=p?.[k];return v===''||v==null?null:v}))/* bpm-v136: an empty field and a missing one are the same result (a result merged in once is not a conflict when the same file is merged again) */;
 // bpm-v135: the merge also brings back edits made on the second phone (address, model, location, type, position) and new pins/drawings.
 // Each split pin carries base.ev = its edit fields at split time, so the merge can tell which phone changed which field. Both changed one field: the newest edit wins.
 const EDIT_G={address:['address'],model:['model'],location:['location'],type:['type'],position:['x','y','ang','bw','bh','vert']},EDIT_F=Object.values(EDIT_G).flat();
@@ -121,7 +121,7 @@ window.mergeMarkups=mergeMarkups;window.mkHash=mkHash;
   if(r.pins)L.push(`${c(r.pins,'test result')} brought in`);if(r.added)L.push(`${c(r.added,'new device')} added`);
   for(const[g,n]of Object.entries(r.editGroups||{}))L.push(`${n} ${GN[g]} change${n===1?'':'s'}`);
   if(r.mkAdded)L.push(`${c(r.mkAdded,'new drawing')} added`);if(r.mkChanged)L.push(`${c(r.mkChanged,'changed drawing')} updated`);if(r.media)L.push(`${r.media} photo / media file${r.media===1?'':'s'}`);
-  {const ag=(res.again||0)+(res.mk?.again||0);if(ag)L.push(`${c(ag,'device or drawing')} already merged from this file before: not added again`)}
+  {const ag=(res.again||0)+(res.mk?.again||0);if(ag)L.push(`Already brought in by an earlier merge, not added again: ${ag} (devices and drawings)`)}
   const C=[];const rc=res.conflicts.length;if(rc){const th=res.conflicts.filter(x=>picks[x.id]==='remote').length;C.push(`${c(rc,'test result')} changed on both phones: kept ${th} from their phone and ${rc-th} from this phone`)}
   const ec=(res.edits||[]).flatMap(e=>e.conflicts);if(ec.length){const th=ec.filter(x=>x.won==='remote').length;C.push(`${c(ec.length,'edit')} made on both phones: the newest kept (${th} theirs, ${ec.length-th} this phone)`)}
   if(r.mkConflicts)C.push(`${c(r.mkConflicts,'drawing')} changed on both phones: the newest kept`);
