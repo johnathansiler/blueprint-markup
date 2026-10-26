@@ -13,7 +13,7 @@ function walkHint(){const w=$('#walk');w.hidden=false;w.innerHTML=`<div class="w
 // bpm-v100: compact walk info: each fact once, date+time without the year, no tester name (still stored on the pin), capped scrollable area
 const wDate=t=>{const d=new Date(t);return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})};
 function wInfo(p){const f=[];if(p.location)f.push(esc(p.location));if(p.page!==page)f.push('pg '+p.page);if(p.model)f.push(esc(p.model));
- if(p.status&&p.status!=='not tested')f.push(`<b class="wSt ${p.status==='passed'?'ok':p.status==='failed'?'bad':''}">${esc(p.status)}</b>${p.testedAt?' '+wDate(p.testedAt):''}`);if(p.notes)f.push('📝 '+esc(String(p.notes).slice(0,140)));
+ if(p.status&&p.status!=='not tested')f.push(`<b class="wSt ${p.status==='passed'?'ok':p.status==='failed'?'bad':p.status==='corrected'?'fix':''}">${esc(p.status)}</b>${p.testedAt?' '+wDate(p.testedAt):''}`);if(p.notes)f.push('📝 '+esc(String(p.notes).slice(0,140)));
  return f.length?`<div class="wInfo">${f.join(' · ')}</div>`:''}
 renderWalk=function(){const w=$('#walk');if(!walk){w.hidden=true;return}const S=walkSet(),N=S.length,done=S.filter(p=>!untested(p)).length,p=walk.p&&pins.find(x=>x.id===walk.p.id)||walk.p;
  /* bpm-v129: the ⋯ Types list shows only the device types this walk was started with (remembered on the first render of a new walk) */if(!walk.t0)walk.t0=walk.types?[...walk.types]:[...new Set(pins.map(x=>x.type))];const types=walk.t0.filter(t=>pins.some(x=>x.type===t)),nm=p?`${esc(TYPES[p.type]?.n||p.type)} ${p.address?esc(p.address):'<small>(no address)</small>'}`:'';

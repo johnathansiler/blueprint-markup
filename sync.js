@@ -2,7 +2,7 @@
 // transport (WebRTC peer, cloud relay) can feed it the same pin records + change log.
 // Per-pin result record: RES fields + updatedAt (ms) + dev (device id) + by (tech name). Split copies carry
 // srcPin (origin pin id) and base {u,st} = origin's updatedAt/status at split time.
-const RES_F=['status','checks','reason','reasonText','severity','notes','testedAt','tester','codes'];
+const RES_F=['status','checks','reason','reasonText','severity','notes','testedAt','tester','codes','correctedAt','correctedBy','corrNote'];
 const resKey=p=>JSON.stringify(RES_F.map(k=>p?.[k]??null));
 // bpm-v135: the merge also brings back edits made on the second phone (address, model, location, type, position) and new pins/drawings.
 // Each split pin carries base.ev = its edit fields at split time, so the merge can tell which phone changed which field. Both changed one field: the newest edit wins.
