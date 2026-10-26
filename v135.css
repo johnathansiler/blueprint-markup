@@ -23,3 +23,7 @@ body.light #bkBar{background:#fef3c7;color:#451a03;border-color:#d97706}
 
 /* bpm-v135 item 11: pinch zoom of the app screen allowed; no double-tap zoom on controls (plan stage keeps touch-action:none) */
 html{touch-action:manipulation}
+
+/* bpm-v136: last visit record on the pin card */
+#prevInfo{display:block;margin:4px 0;padding:6px 8px;border:1px dashed #64748b;border-radius:8px;color:#cbd5e1;font-size:13px}#prevInfo[hidden]{display:none}#prevInfo .lvL{color:#fbbf24;text-transform:uppercase;letter-spacing:.04em;font-size:12px}
+#prevInfo .lvB{margin-top:4px;min-height:40px}#lvDlg{max-width:720px;width:96vw}#lvDlg .lvG{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin:8px 0}#lvDlg .lvG img{width:100%;border-radius:6px}

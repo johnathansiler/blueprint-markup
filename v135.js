@@ -41,17 +41,34 @@
  function snap(p,j){const o={status:p.status||'not tested',inspDate:j.inspDate||'',endedAt:Date.now()};for(const k of ['testedAt','tester','reason','reasonText','severity','corrNote','correctedAt','rdSens','rdCd','rdDb'])if(p[k]!=null&&p[k]!=='')o[k]=structuredClone(p[k]);const ck=(p.checks||[]).filter(c=>c.v);if(ck.length)o.checks=ck.map(c=>({t:c.t,v:c.v}));return o}
  async function nextInsp(){if(!K())return uiAlert('Open a project first.');const pid=K(),j=(await get('meta','job:'+pid))||{},D=await projData(),n=D.reduce((a,d)=>a+d.pins.length,0),nt=D.reduce((a,d)=>a+d.pins.filter(tested).length,0);
   if(!n)return uiAlert('This project has no devices yet.');
-  if(!await uiConfirm(`Start the next inspection for this project?\n\nAll ${n} devices go back to "not tested". Checklists, fail reasons and readings are cleared for the new visit.\n\nThe last result of every device (${nt} tested) is kept: it shows on the pin card as "Last inspection" and in the device spreadsheet, so you can compare.\n\nTip: save a backup project file first (Menu > Save project file).`,{ok:'Start next inspection',cancel:'Cancel'}))return false;
-  busy(1,'Starting next inspection');try{const now=Date.now(),who=(typeof tester==='string'&&tester)||'';let c=0;
-   for(const{pl,pins:ps}of D)for(const p0 of ps){const p=pl.id===plan?.id?(pins.find(x=>x.id===p0.id)||p0):p0,a=structuredClone(p);if(tested(p))a.prev=snap(p,j);
-    a.status='not tested';if(Array.isArray(a.checks))a.checks=a.checks.map(c=>({...c,v:''}));for(const k of RESET)delete a[k];a.updatedAt=now;a.dev=window.DEVICE_ID;a.by=who;await put('pins',a);if(pl.id===plan?.id){const i=pins.findIndex(x=>x.id===a.id);if(i>=0)pins[i]=a}c++}
-   await put('meta',{...j,endedAt:now},'jobPrev:'+pid);const nj={...j};for(const k of VISIT)nj[k]='';await put('meta',nj,'job:'+pid);
-   if(plan)await openPlan(plan.id,page);afterChange?.();toast(`Next inspection started: ${c} devices reset, last results kept`);return true}
-  catch(e){showErr('Could not start the next inspection: '+e.message)}finally{busy(0)}}
+  if(!await uiConfirm(`Start the next inspection for this project?\n\nAll ${n} devices go back to "not tested". Checklists, fail reasons and readings are cleared for the new visit.\n\nThe last result of every device (${nt} tested) and its photos move to a "Last visit" record: it shows on the pin card as "Last visit" and in the device spreadsheet, so you can compare.\n\nTip: save a backup project file first (Menu > Save project file).`,{ok:'Start next inspection',cancel:'Cancel'}))return false;
+  busy(1,'Starting next inspection');try{const now=Date.now(),who=(typeof tester==='string'&&tester)||'';
+   /* bpm-v136: everything is prepared first, then written in ONE IndexedDB transaction (pins, photos, job record). If the app is closed or anything fails
+      midway, the browser keeps none of it: the project is either fully on the old visit or fully on the new one. Last visit's photos move off the pin into
+      its last-visit record (media.lastVisit = when that visit ended), so the new visit starts with no photos. */
+   const P=[],M=[];
+   for(const{pl,pins:ps}of D)for(const p0 of ps){const p=pl.id===plan?.id?(pins.find(x=>x.id===p0.id)||p0):p0,a=structuredClone(p);
+    const md=(await byIdx('media','pinId',p.id)).filter(m=>!m.lastVisit);
+    if(tested(p)||md.length){a.prev=snap(p,j);if(md.length)a.prev.photos=md.length}else delete a.prev;
+    for(const m of md)M.push({...m,lastVisit:now});
+    a.status='not tested';if(Array.isArray(a.checks))a.checks=a.checks.map(c=>({...c,v:''}));for(const k of RESET)delete a[k];a.updatedAt=now;a.dev=window.DEVICE_ID;a.by=who;P.push(a)}
+   const nj={...j};for(const k of VISIT)nj[k]='';
+   const d=await db();await new Promise((res,rej)=>{const t=d.transaction(['pins','media','meta'],'readwrite');t.oncomplete=res;t.onerror=()=>rej(t.error||new Error('save failed'));t.onabort=()=>rej(t.error||new Error('save cancelled'));
+    try{const sp=t.objectStore('pins'),sm=t.objectStore('media'),sx=t.objectStore('meta');for(const a of P)sp.put(a);for(const m of M)sm.put(m);sx.put({...j,endedAt:now},'jobPrev:'+pid);sx.put(nj,'job:'+pid)}
+    catch(e){try{t.abort()}catch{}rej(e)}});
+   for(const a of P){const i=pins.findIndex(x=>x.id===a.id);if(i>=0)pins[i]=a}
+   if(plan)await openPlan(plan.id,page);afterChange?.();toast(`Next inspection started: ${P.length} devices reset, last visit kept`+(M.length?` (${M.length} photo${M.length===1?'':'s'} moved to last visit)`:''));return true}
+  catch(e){showErr('Could not start the next inspection. Nothing was changed: '+e.message);try{if(plan)await openPlan(plan.id,page)}catch{}return false}finally{busy(0)}}
  window.nextInsp=nextInsp;
- const prevTxt=p=>{const v=p&&p.prev;if(!v)return'';const R=window.RD||{};return `Last inspection${v.inspDate?' ('+v.inspDate+')':''}: ${v.status}${v.reason?' · '+v.reason:''}${v.testedAt?' · '+fmtT(v.testedAt):''}${v.tester?' by '+v.tester:''}${typeof rdTxt==='function'&&rdTxt({...v,type:p.type})?' · '+rdTxt({...v,type:p.type}):''}`};
+ const prevTxt=p=>{const v=p&&p.prev;if(!v)return'';return `Last visit${v.inspDate?' ('+v.inspDate+')':v.endedAt?' (ended '+new Date(v.endedAt).toLocaleDateString()+')':''}: ${v.status}${v.reason?' · '+v.reason:''}${v.testedAt?' · '+fmtT(v.testedAt):''}${v.tester?' by '+v.tester:''}${typeof rdTxt==='function'&&rdTxt({...v,type:p.type})?' · '+rdTxt({...v,type:p.type}):''}${v.photos?' · '+v.photos+' photo'+(v.photos===1?'':'s'):''}`};
  window.prevTxt=prevTxt;
- const _op=openPin;openPin=async function(p,...r){let e=by('prevInfo');if(!e){const t=by('testedInfo');if(t){e=ce('small',{id:'prevInfo'});t.after(e)}}if(e){const s=prevTxt(p);e.textContent=s;e.hidden=!s}return _op.call(this,p,...r)};
+ /* bpm-v136: last visit's photos are viewed from the pin card with a labelled button; they are not part of the current visit */
+ async function lastPhotos(p){const ms=(await byIdx('media','pinId',p.id,true)).filter(m=>m.lastVisit&&m.blob&&(m.kind||'photo')==='photo').sort((a,b)=>b.lastVisit-a.lastVisit||(a.created||0)-(b.created||0));if(!ms.length)return toast('No photos from the last visit');
+  const d=ce('dialog',{id:'lvDlg'},`<form method="dialog"><h3 style="margin:4px 0">📷 Last visit photos</h3><small style="color:#94a3b8">${esc(TYPES[p.type]?.n||p.type)} ${esc(p.address||'')}: photos from the last visit. They are kept for comparison and are not part of this visit.</small><div class="lvG"></div><div class="row"><span class="sp"></span><button class="btn">✕ Close</button></div></form>`);
+  const us=[];for(const m of ms){const u=URL.createObjectURL(m.blob);us.push(u);const im=ce('img');im.src=u;im.alt='Last visit photo';d.querySelector('.lvG').append(im)}document.body.append(d);d.addEventListener('close',()=>{us.forEach(URL.revokeObjectURL);d.remove()});d.showModal()}
+ window.lastVisitPhotos=lastPhotos;
+ const _op=openPin;openPin=async function(p,...r){let e=by('prevInfo');if(!e){const t=by('testedInfo');if(t){e=ce('div',{id:'prevInfo'},'<b class="lvL">Last visit</b> <span class="lvT"></span> <button type="button" class="btn lvB" id="lvPhotos"></button>');t.after(e)}}
+  if(e){const s=prevTxt(p);e.querySelector('.lvT').textContent=s.replace(/^Last visit/,'');e.hidden=!s;const b=e.querySelector('#lvPhotos'),n=p&&p.prev&&p.prev.photos||0;b.hidden=!n;b.textContent=`📷 View last visit photos (${n})`;b.onclick=()=>lastPhotos(p)}return _op.call(this,p,...r)};
  MX.push(()=>[{i:'🔁',l:'Start next inspection…',run:nextInsp}]);
 })();
 // ---------- 9. Smaller saved photos + save this job's install sheets for offline use ----------

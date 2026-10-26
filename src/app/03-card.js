@@ -46,7 +46,7 @@ dlg.addEventListener('cancel',e=>{if(!pinDirty())return;if(pinBlockStop()){e.pre
 // bpm-v66: wait for the async Save to land before the walk re-reads the pin (it used to re-render with the pre-save pin)
 let dlgSave=null;dlg.addEventListener('close',()=>{dlg._wf=null;if(rec)rec.stop();const w=dlgSave;dlgSave=null;Promise.resolve(w).catch(()=>{}).then(()=>{if(walk)setTimeout(walkAfterDialog,0)})});
 $('#pinDel').onclick=async()=>{if(!await uiConfirm('Delete this pin and its media?'))return;await deletePin(cur);dlg.close()};
-async function deletePin(p){await change('pins',p,null,await byIdx('media','pinId',p.id))}
+async function deletePin(p){await change('pins',p,null,await byIdx('media','pinId',p.id,true))}
 // ---------- list ----------
 /* bpm-v111: one side panel at a time — Pins and Layers share the right-side slot; opening one closes the other, its own button closes it */
 window.pinsPanel=on=>{const P=$('#panel');if(P.hidden===!on)return;P.hidden=!on;if(WIDE_MQ.matches)PANEL_CLOSED=!on;if(on){try{window.layPanel&&document.body.classList.contains('lpOn')&&layPanel(false)}catch{}renderList()}panelBtnSync();try{resize()}catch{}};
@@ -137,7 +137,7 @@ async function loadProject(id){let ps=await refreshProjects();project=ps.find(p=
 $('#projSel').onchange=e=>loadProject(e.target.value);
 $('#projNew').onclick=async()=>{const n=await uiPrompt('New project name:','Project '+(($('#projSel').options.length||0)+1));if(!n||!n.trim())return;const p={id:'p'+uid(),name:n.trim(),created:Date.now()};await put('projects',p);await loadProject(p.id)};
 $('#projRen').onclick=async()=>{if(!project)return;const n=await uiPrompt('Rename project:',project.name);if(!n||!n.trim())return;project.name=n.trim();await put('projects',project);await refreshProjects()};
-async function deletePlanData(id){for(const m of await byIdx('markups','planId',id))await del('markups',m.id);for(const p of await byIdx('pins','planId',id)){for(const m of await byIdx('media','pinId',p.id))await del('media',m.id);await del('pins',p.id)}await del('plans',id)}
+async function deletePlanData(id){for(const m of await byIdx('markups','planId',id))await del('markups',m.id);for(const p of await byIdx('pins','planId',id)){for(const m of await byIdx('media','pinId',p.id,true))await del('media',m.id);await del('pins',p.id)}await del('plans',id)}
 $('#planDel').onclick=async()=>{if(!plan)return;const cur=plan,mine=(await all('plans')).filter(x=>x.projectId===cur.projectId),dups=mine.filter(x=>x.id!==cur.id&&x.name===cur.name&&x.blob?.size===cur.blob?.size);
  if(!await uiConfirm(`Delete plan "${cur.name}" and its markups, pins and media? This cannot be undone.`))return;let ids=[cur.id];
  if(dups.length&&await uiConfirm(`Also delete ${dups.length} duplicate upload(s) of this same file (same name and size), including any markups on them?`))ids=ids.concat(dups.map(x=>x.id));
