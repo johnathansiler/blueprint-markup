@@ -127,7 +127,7 @@ const OC2=new Map();window.wordsNearX=async(pg,n,x,y,size)=>{const r=await words
 // bpm-v106: panel box letters (FAAP/FARP/FATC/DACT/FACP) for boxes whose letters are vector outlines (no text-layer label). Type only; geometry/shape untouched.
 const PNG_={facp:1,dact:1,fatc:1,panelbox:1,farp:1},PMAP=[[/FAAP/,'panelbox','PANEL_BOX'],[/FARP/,'farp','FARP'],[/FATC/,'fatc','FATC'],[/DACT/,'dact','DACT'],[/FACP/,'facp','FACP']];
 // VESDA / smoke-control / TVSS box tags (whole-word, and only when the box shows exactly one of them, e.g. "VPS" but not "VPS VLF")
-const VMAP={VPS:['vpsu','VESDA_PSU'],VLF:['vlf','VESDA_LF'],VRE:['vrem','VESDA_REM'],VNI:['vnet','VESDA_NET'],FSCS:['scs','SCS'],SCS:['scs','SCS'],TVSS:['surge','SURGE']};
+const VMAP={VPS:['vpsu','VESDA_PSU'],VLF:['vlf','VESDA_LF'],VRE:['vrem','VESDA_REM'],VNI:['vnet','VESDA_NET'],FSCS:['scs','SCS'],SCS:['scs','SCS'],TVSS:['surge','SURGE'],FFT:['ffphone','FFPHONE'],FTJ:['ffphone','FFPHONE']};
 window.panelRead=s=>{const U=String(s).toUpperCase(),c=U.replace(/[^A-Z]/g,'');const m=PMAP.find(([r])=>r.test(c));if(m)return{g:m[1],det:m[2]};
  const v=[...new Set((U.match(/[A-Z]+/g)||[]).filter(w=>VMAP[w]).map(w=>VMAP[w][0]))];if(v.length!==1)return null;const e=Object.values(VMAP).find(x=>x[0]===v[0]);return{g:e[0],det:e[1]}};
 window.panelPass=async(pages,groups,pl)=>{const G=panelPass.gen=(panelPass.gen||0)+1;let k=0;window.__panel=[];
