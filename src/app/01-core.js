@@ -81,7 +81,7 @@ Object.assign(CHECKS,{
  vtee:['Tee intact and sealed','Pipe clear','Physical condition OK']});
 let CKT={};const ckTpl=t=>CKT[t]||CHECKS[t]||CHECKS.other;const checkItems=t=>ckTpl(t).map(t=>({t,v:''}));
 const PIN_OP=.5,MK_OP=.8;const pinR=()=>9.6;
-// bpm-v26/27: pin silhouettes match the printed plan symbols (shape + size in plan points, measured from the fa.pdf legend:
+// bpm-v26/27: pin silhouettes match the printed plan symbols (shape + size in plan points, measured from the test plan legend:
 // hex smoke/duct/module ~15pt, flat flow/tamper diamond ~24x9, 13pt square for pull/notification/J/relay, wide boxes for panels/DH)
 const PSH={smoke:['hex',15,13],duct:['hex',15,13],module:['hex',15,13],heat:['circ',13,13],pull:['rect',13,13],horn:['rect',13,13],spkstrobe:['rect',13,13],strobe:['rect',13,13],linearray:['rect',13,13],
  panel:['rect',26,13],dact:['rect',26,13],fatc:['rect',26,13],panelbox:['rect',26,13],doorholder:['rect',7,14],relay:['hex',15,13],jbox:['rect',13,13],surge:['rect',13,13],

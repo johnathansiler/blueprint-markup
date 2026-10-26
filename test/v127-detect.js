@@ -15,9 +15,9 @@ const glyphs=(c,ns)=>ns.map((n,i)=>glyph(c[0]+(i-(ns.length-1)/2)*3,c[1],n));
 const filler=()=>[0,1,2,3,4,5].map(i=>square([100+i*60,1500],13)); // scale k = 1 (13 pt squares)
 const run=P=>detect(P,2000,2000,null).items;
 const cases=[
- ['OSS box "19,19,20" (FL-00149 p16, side 12.36)',()=>[square([500,500],12.36),...glyphs([500,500],[19,19,20])],[500,500],'OSS'],
- ['BFP rhombus "1,2,10,18" (FL-00101 p8, 26.40 x 10.98)',()=>[rhombus([800,500],13.2,5.49),...glyphs([800,500],[1,2,10,18])],[800,500],'BFP'],
- ['Bell: square 13.37 @-49.7deg + tangent circle d 13.38 (FL-00101 p8)',()=>{const a=-49.7*Math.PI/180,c=[1100,500];return[square(c,13.37,a),circle([c[0]+13.4*Math.cos(a-Math.PI/2),c[1]+13.4*Math.sin(a-Math.PI/2)],13.38)]},[1100,500],'BELL'],
+ ['OSS box "19,19,20" (test plan p16, side 12.36)',()=>[square([500,500],12.36),...glyphs([500,500],[19,19,20])],[500,500],'OSS'],
+ ['BFP rhombus "1,2,10,18" (test plan p8, 26.40 x 10.98)',()=>[rhombus([800,500],13.2,5.49),...glyphs([800,500],[1,2,10,18])],[800,500],'BFP'],
+ ['Bell: square 13.37 @-49.7deg + tangent circle d 13.38 (test plan p8)',()=>{const a=-49.7*Math.PI/180,c=[1100,500];return[square(c,13.37,a),circle([c[0]+13.4*Math.cos(a-Math.PI/2),c[1]+13.4*Math.sin(a-Math.PI/2)],13.38)]},[1100,500],'BELL'],
  ['FS diamond "1,2,19" stays FLOW',()=>[rhombus([500,800],13.2,5.49),...glyphs([500,800],[1,2,19])],[500,800],'FLOW'],
  ['TS diamond "1,1,19" stays TAMPER',()=>[rhombus([800,800],13.2,5.49),...glyphs([800,800],[1,1,19])],[800,800],'TAMPER'],
  ['Empty square, no circle: nothing',()=>[square([1100,800],13)],[1100,800],null],
