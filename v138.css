@@ -1,4 +1,6 @@
 /* bpm-v138: flow improvements */
+/* 9) no Delete on the pin card during a walk */
+body.walking #pinDlg .pcDel{display:none!important}
 /* 14) empty first screen */
 #empty .emBox{display:flex;flex-direction:column;align-items:center;gap:14px;padding:16px;text-align:center}
 #empty .emB{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;pointer-events:auto}#empty .emB .btn{min-height:48px;padding:8px 18px;font-size:16px}
