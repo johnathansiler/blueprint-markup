@@ -1162,7 +1162,7 @@ $('#nfpaItm').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1,
  doc.text(`Devices: ${c.t}    Passed: ${c.passed}    Failed: ${c.failed}    In progress: ${c.ip}    Not tested: ${c.nt}    (${c.pct}% tested)`,40,y);y+=18;
  doc.setFont(undefined,'bold');doc.text('Visual inspection / testing results by device type',40,y);y+=6;doc.setFontSize(8);doc.setTextColor(100);doc.text('Mapped to NFPA 72 Chapter 14 inspection and testing tables (section numbers cited in the deficiency list where attached).',40,y+10);doc.setTextColor(0);y+=22;
  doc.setFontSize(9);doc.setFont(undefined,'bold');['Type','Total','Passed','Failed','In prog.','Not tested'].forEach((h,i)=>doc.text(h,40+i*85,y));y+=12;doc.setFont(undefined,'normal');
- for(const r of stats){if(y>750){doc.addPage();y=44}doc.text((TYPES[r.t]?.n||r.t).slice(0,18),40,y);[r.n,r.pass,r.fail,r.ip,r.nt].forEach((v,i)=>doc.text(String(v),125+i*85,y));y+=12}
+ for(const r of stats){/* bpm-v135: the full type name wraps inside its column (it used to be cut at 18 characters) */const nm=doc.splitTextToSize(TYPES[r.t]?.n||r.t,82);if(y+nm.length*11>760){doc.addPage();y=44}doc.text(nm,40,y);[r.n,r.pass,r.fail,r.ip,r.nt].forEach((v,i)=>doc.text(String(v),125+i*85,y));y+=Math.max(12,nm.length*11+1)}
  y+=10;doc.setFont(undefined,'bold');doc.setFontSize(11);if(y>720){doc.addPage();y=44}doc.text('Deficiencies found',40,y);y+=14;doc.setFont(undefined,'normal');doc.setFontSize(10);
  const defs=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='failed').map(p=>({pl,p}))).sort((a,b)=>(a.p.severity==='Critical'?0:1)-(b.p.severity==='Critical'?0:1));
  if(!defs.length){doc.text('None recorded.',40,y);y+=14}
@@ -1466,8 +1466,9 @@ function walkGoto(){if(!walk)return;let d=$('#wGotoDlg');if(!d){d=document.creat
 // ---------- bpm-v72: device model numbers per type (seeded + remembered custom entries) ----------
 // bpm-v75: smoke/heat/module/relay/pull lists supplied by the user (authoritative); others from bpm-v74: Siemens Fire Safety models only (each verified on a Siemens datasheet / Siemens doc portal / distributor page); other makes via "Custom…"
 const MODELS={
- smoke:['FP-11','FPO-11','FPT-11','HFP-11','HFPO-11','HFPT-11','OP921','OOT941','OOH941','FDO421','FDOT421','FDT421','FDOOT441'],
- heat:['FP-11','FPO-11','FPT-11','HFP-11','HFPO-11','HFPT-11','OP921','OOT941','OOH941','FDO421','FDOT421','FDT421','FDOOT441'],
+ // bpm-v135: separate lists. Smoke = optical and multi-criteria smoke detectors; Heat = thermal-only detectors (FPT-11, HFPT-11, FDT421; the catalog adds HI921 and SFPT-11). A model saved on an older pin still shows under "Saved on this pin".
+ smoke:['FP-11','FPO-11','HFP-11','HFPO-11','OP921','OOT941','OOH941','FDO421','FDOT421','FDOOT441'],
+ heat:['FPT-11','HFPT-11','FDT421'],
  duct:['FDBZ492','FDBZ492-HR','FDBZ492-R','FDBZ492-PR','AD2-P','AD2-PR'],
  pull:['MSI-10B','MSI-20B','HMS-S','HMS-D','HMS-M','XMS-51','XMS-52','XMS-M'],
  module:['TRI-S','TRI-D','TRI-R','HTRI-S','HTRI-D','HTRI-R','XTRI-S','XTRI-D','XTRI-M','XTRI-R','HLIM','SBGA-34'],
