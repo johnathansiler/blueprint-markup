@@ -24,7 +24,7 @@
 #uiNote{position:fixed;left:50%;bottom:calc(120px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:2147483600;max-width:min(92vw,460px);background:#0a0a0a;color:#fff;border:1px solid #f59e0b;border-radius:10px;padding:10px 14px;box-shadow:0 6px 20px #0008;font-size:14px}
 #uiNote[hidden]{display:none}
 .detMsg{background:#78350f;color:#fff;border:1px solid #f59e0b;border-radius:8px;padding:8px 10px;margin:4px 0}.detMsg[hidden]{display:none}
-.legChip{position:absolute;left:50%;transform:translateX(-50%);top:8px;z-index:40;white-space:nowrap;display:flex;gap:4px;background:#161616;border:1px solid #6366f1;border-radius:999px;padding:3px;box-shadow:0 4px 14px #0007}
+.legChip{position:absolute;left:50%;transform:translateX(-50%);top:8px;z-index:40;white-space:nowrap;display:flex;gap:4px;background:#161616;border:1px solid #3a3a3a;border-radius:999px;padding:3px;box-shadow:0 4px 14px #0007}
 .legChip[hidden]{display:none}.legChip .btn{border-radius:999px;padding:6px 10px}
 
 /* bpm-v100: Ohm's law power wheel (phone-first, large type, high contrast in dark and light) */
