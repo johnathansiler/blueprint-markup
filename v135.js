@@ -97,4 +97,11 @@
   const msg=`${fs.length-bad} of ${fs.length} install sheets for this job are saved for offline use (${ok} new, ${had} already saved).${bad?` ${bad} could not be downloaded: try again when online.`:''}${none.length?`\n\nNo stored sheet for: ${none.join(', ')}.`:''}`;uiAlert(msg);return{n:fs.length,ok,had,bad,none}}
  window.saveJobSheets=saveJobSheets;window.jobSheets=jobSheets;
  MX.push(()=>[{i:'📄',l:'Save this job’s install sheets offline',run:saveJobSheets},{i:'🗜',l:'Make saved photos smaller…',run:shrinkAll}]);
+
+ // ---- item 11: app-screen pinch zoom (bpm-v135). The page may now be pinch-zoomed (small text, photos, dialogs);
+ // the plan keeps its own pinch zoom: #stage is touch-action:none, and iOS page gestures that start on the plan are cancelled.
+ const stg=document.getElementById('stage');if(stg)for(const ev of['gesturestart','gesturechange'])stg.addEventListener(ev,e=>e.preventDefault(),{passive:false});
+ function resetZoom(){const m=document.querySelector('meta[name=viewport]');if(!m)return;const c=m.content;m.content='width=device-width,initial-scale=1,maximum-scale=1';setTimeout(()=>{m.content=c},350)}
+ window.resetScreenZoom=resetZoom;
+ MX.push(()=>[{i:'🔍',l:'Reset screen zoom',run:resetZoom}]);
 })();
