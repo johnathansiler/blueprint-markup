@@ -41,7 +41,9 @@
  function snap(p,j){const o={status:p.status||'not tested',inspDate:j.inspDate||'',endedAt:Date.now()};for(const k of ['testedAt','tester','reason','reasonText','severity','corrNote','correctedAt','rdSens','rdCd','rdDb'])if(p[k]!=null&&p[k]!=='')o[k]=structuredClone(p[k]);const ck=(p.checks||[]).filter(c=>c.v);if(ck.length)o.checks=ck.map(c=>({t:c.t,v:c.v}));return o}
  async function nextInsp(){if(!K())return uiAlert('Open a project first.');const pid=K(),j=(await get('meta','job:'+pid))||{},D=await projData(),n=D.reduce((a,d)=>a+d.pins.length,0),nt=D.reduce((a,d)=>a+d.pins.filter(tested).length,0);
   if(!n)return uiAlert('This project has no devices yet.');
-  if(!await uiConfirm(`Start the next inspection for this project?\n\nAll ${n} devices go back to "not tested". Checklists, fail reasons and readings are cleared for the new visit.\n\nThe last result of every device (${nt} tested) and its photos move to a "Last visit" record: it shows on the pin card as "Last visit" and in the device spreadsheet, so you can compare.\n\nTip: save a backup project file first (Menu > Save project file).`,{ok:'Start next inspection',cancel:'Cancel'}))return false;
+  /* bpm-v138: the main button saves a backup project file first, then starts; "Start without backup" skips the backup */
+  const ch=await uiConfirm(`Start the next inspection for this project?\n\nAll ${n} devices go back to "not tested". Checklists, fail reasons and readings are cleared for the new visit.\n\nThe last result of every device (${nt} tested) and its photos move to a "Last visit" record: it shows on the pin card as "Last visit" and in the device spreadsheet, so you can compare.\n\nSave backup and start saves a project file of this visit first.`,{ok:'Save backup and start',alt:'Start without backup',cancel:'Cancel',danger:false});
+  if(!ch)return false;if(ch===true&&!await saveBackup(pid))return false;
   busy(1,'Starting next inspection');try{const now=Date.now(),who=(typeof tester==='string'&&tester)||'';
    /* bpm-v136: everything is prepared first, then written in ONE IndexedDB transaction (pins, photos, job record). If the app is closed or anything fails
       midway, the browser keeps none of it: the project is either fully on the old visit or fully on the new one. Last visit's photos move off the pin into
@@ -59,6 +61,11 @@
    for(const a of P){const i=pins.findIndex(x=>x.id===a.id);if(i>=0)pins[i]=a}
    if(plan)await openPlan(plan.id,page);afterChange?.();toast(`Next inspection started: ${P.length} devices reset, last visit kept`+(M.length?` (${M.length} photo${M.length===1?'':'s'} moved to last visit)`:''));return true}
   catch(e){showErr('Could not start the next inspection. Nothing was changed: '+e.message);try{if(plan)await openPlan(plan.id,page)}catch{}return false}finally{busy(0)}}
+ // bpm-v138: backup project file before the next inspection (same file as Menu > Save project file, learned rules included when there are any)
+ async function saveBackup(pid){const pr=project;if(!pr||pr.id!==pid)return false;busy(1,'Saving backup');prog(0);
+  try{let wl=false;try{wl=(await learnedRules()).length>0}catch{}const r=await deliver(fsafe(pr.name)+'.bpm','application/octet-stream','.bpm',async()=>{const b=await buildBpm(pr.id,wl,prog);window.__lastBpm=b;return b});
+   if(!r){uiAlert('Backup not saved, so the next inspection was not started.');return false}window.bkSaved&&bkSaved(pr.id);toast(`Backup saved: "${pr.name}"`);return true}
+  catch(e){showErr('Saving the backup failed, so the next inspection was not started: '+e.message);return false}finally{busy(0)}}
  window.nextInsp=nextInsp;
  const prevTxt=p=>{const v=p&&p.prev;if(!v)return'';return `Last visit${v.inspDate?' ('+v.inspDate+')':v.endedAt?' (ended '+new Date(v.endedAt).toLocaleDateString()+')':''}: ${v.status}${v.reason?' · '+v.reason:''}${v.testedAt?' · '+fmtT(v.testedAt):''}${v.tester?' by '+v.tester:''}${typeof rdTxt==='function'&&rdTxt({...v,type:p.type})?' · '+rdTxt({...v,type:p.type}):''}${v.photos?' · '+v.photos+' photo'+(v.photos===1?'':'s'):''}`};
  window.prevTxt=prevTxt;

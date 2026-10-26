@@ -2,10 +2,10 @@
 (()=>{const mk=()=>{let d=document.getElementById('uiDlg');if(!d){d=document.createElement('dialog');d.id='uiDlg';document.body.append(d)}return d};
  const q=[];let busyQ=false;const run=()=>{if(busyQ||!q.length)return;busyQ=true;const job=q.shift();job(()=>{busyQ=false;setTimeout(run,0)})};
  const e=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
- function open(msg,{input=null,ok='OK',cancel='Cancel',danger=false}={}){return new Promise(res=>{q.push(done=>{const d=mk();
-  d.innerHTML=`<form method="dialog" class="uiF"><p class="uiM">${e(msg).replace(/\n/g,'<br>')}</p>${input!==null?`<input class="uiI" value="${e(input)}" autocomplete="off">`:''}<div class="row"><span class="sp"></span>${cancel?`<button type="button" class="btn" value="no">${e(cancel)}</button>`:''}<button class="btn ${danger?'danger':'pri'}" value="ok">${e(ok)}</button></div></form>`;
+ function open(msg,{input=null,ok='OK',cancel='Cancel',danger=false,alt=null}={}){return new Promise(res=>{q.push(done=>{const d=mk();
+  d.innerHTML=`<form method="dialog" class="uiF"><p class="uiM">${e(msg).replace(/\n/g,'<br>')}</p>${input!==null?`<input class="uiI" value="${e(input)}" autocomplete="off">`:''}<div class="row"><span class="sp"></span>${cancel?`<button type="button" class="btn" value="no">${e(cancel)}</button>`:''}${alt?`<button type="button" class="btn" value="alt">${e(alt)}</button>`:''}<button class="btn ${danger?'danger':'pri'}" value="ok">${e(ok)}</button></div></form>`;
   const I=d.querySelector('.uiI');let out=null;const fin=v=>{if(out!==null)return;out=v;d.close();res(v);done()};
-  d.querySelector('[value=no]')?.addEventListener('click',()=>fin(input!==null?null:false));d.querySelector('form').onsubmit=ev=>{ev.preventDefault();fin(input!==null?I.value:true)};d.oncancel=ev=>{ev.preventDefault();fin(input!==null?null:false)};
+  d.querySelector('[value=no]')?.addEventListener('click',()=>fin(input!==null?null:false));d.querySelector('[value=alt]')?.addEventListener('click',()=>fin('alt'));/* bpm-v138: optional third button (alt) resolves 'alt' */d.querySelector('form').onsubmit=ev=>{ev.preventDefault();fin(input!==null?I.value:true)};d.oncancel=ev=>{ev.preventDefault();fin(input!==null?null:false)};
   d.showModal();(I||d.querySelector('[value=ok]')).focus();if(I)I.select()});run()})}
  window.uiConfirm=(m,o)=>open(m,{...o,danger:o?.danger??/delete|remove|reject|forget|replace/i.test(m)});
  window.uiPrompt=(m,def='',o)=>open(m,{input:def??'',...o});
