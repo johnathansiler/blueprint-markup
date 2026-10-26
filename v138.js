@@ -6,6 +6,19 @@
 (()=>{const by=id=>document.getElementById(id);const ce=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
  const MO=window.V135&&V135.MO;
 
+ // ---------- 2) walk test starts with the devices you actually test ----------
+ // Until a walk has been started in this version, the picker ticks every type except panels, cabinets, junction boxes, EOL resistors, surge protectors,
+ // pull boxes and backflow preventers (they stay in the list to tick). After that, the last choice is remembered as before.
+ const NOWALK=new Set(['panel','dact','fatc','panelbox','jbox','surge','eol','pullbox','bfp','pad','other']);
+ window.walkTestable=t=>!NOWALK.has(t);
+ const ordKey='bpm-walkOrder';window.WALK_ORDER=localStorage.getItem(ordKey)==='addr'?'addr':'near';
+ const _wp=walkPick;walkPick=async function(...a){if(plan&&pins.length)await askTesterOnce();const seen=await get('meta','walkTypesV138');const r=await _wp.apply(this,a);const d=by('walkDlg');
+  if(d&&d.open){if(!seen)d.querySelectorAll('#wkTypes input[value]').forEach(b=>b.checked=walkTestable(b.value));
+   d.querySelectorAll('[name=wkOrder]').forEach(i=>i.checked=i.value===WALK_ORDER);ordSub()}return r};
+ const ordSub=()=>{const s=by('wkSub');if(s)s.textContent=WALK_ORDER==='addr'?'Visits untested pins of the ticked types, page by page in address order.':'Visits untested pins of the ticked types, nearest first.'};
+ document.addEventListener('change',e=>{if(e.target.name==='wkOrder'){WALK_ORDER=e.target.value==='addr'?'addr':'near';localStorage.setItem(ordKey,WALK_ORDER);ordSub()}});
+ document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#wkGo'))put('meta',1,'walkTypesV138')},true);
+
  // ---------- 8) Pins list: each row has Open card ----------
  const _rl=renderList;renderList=function(...a){const r=_rl.apply(this,a);const L=by('pinList');if(L)L.querySelectorAll('li[data-id]').forEach(li=>{if(li.querySelector('.pOpen'))return;
   const b=ce('button','btn pOpen','Open card');b.type='button';b.title='Open this pin’s card';b.onclick=async e=>{e.stopPropagation();const id=li.dataset.id;await jumpTo(plan.id,id);const p=pins.find(x=>x.id===id);if(p)openPin(p)};li.append(b)});return r};
