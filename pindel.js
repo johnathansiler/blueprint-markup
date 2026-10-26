@@ -19,7 +19,7 @@
  // a tap (not a pan) on empty plan or another item clears the tapped pin
  stage.addEventListener('pointerdown',e=>{if(e.target===cv||e.target===ov)dn={x:e.clientX,y:e.clientY,n:(dn&&dn.t>performance.now()-400)?2:1,t:performance.now()}},true);
  stage.addEventListener('pointerup',e=>{if(!dn||!PDT)return;const d=Math.hypot(e.clientX-dn.x,e.clientY-dn.y);dn=null;if(d>8)return;const r=stage.getBoundingClientRect(),w=toW(e.clientX-r.left,e.clientY-r.top),h=hit(w);if(!(h&&h.kind==='p'&&h.o.id===PDT))setTimeout(()=>{if(!document.querySelector('#pinDlg[open]'))PDT=null},0)},true);
- async function run(list,what){list=list.filter(p=>p.planId===plan?.id);if(!list.length)return toast('Nothing to delete');const L=[];for(const p of list)L.push({store:'pins',id:p.id,before:p,after:null,media:await byIdx('media','pinId',p.id)});
+ async function run(list,what){list=list.filter(p=>p.planId===plan?.id);if(!list.length)return toast('Nothing to delete');const L=[];for(const p of list)L.push({store:'pins',id:p.id,before:p,after:null,media:await byIdx('media','pinId',p.id,true)});
   sel=null;msel=[];PDT=null;await changeMulti(L);try{renderSelBar()}catch{}requestDraw(false);toast(`Deleted ${what} · Undo ↶ in the top bar`)}
  B.addEventListener('pointerdown',e=>e.stopPropagation());
  B.onclick=e=>{e.stopPropagation();const L=items();if(!L.length)return;const p=L[0],T=TYPES[p.type]||TYPES.other,tn=T.n.replace(/ – .*/,''),pg=pins.filter(x=>x.page===page),same=pg.filter(x=>x.type===p.type),sameAll=pins.filter(x=>x.type===p.type);
