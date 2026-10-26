@@ -1,5 +1,3 @@
-'use strict';
-// bpm-v135: pin card, list, project data, export, projects, start-up hooks, photo annotation, report (split out of app.js; classic script sharing app.js globals, loaded right after the file before it)
 // ---------- pin dialog ----------
 const dlg=$('#pinDlg'),form=$('#pinForm');let cur=null,urls=[];
 for(const[k,t]of Object.entries(TYPES)){$('#pinType').add(new Option(t.n,k));$('#dType').add(new Option(t.n,k));$('#fType').add(new Option(t.n,k))}
@@ -27,7 +25,7 @@ $('#addVideo').onchange=e=>{for(const f of e.target.files)addMedia('video',f,f.n
 let rec=null;$('#rec').onclick=async()=>{const b=$('#rec');if(rec){rec.stop();return}
  try{const st=await navigator.mediaDevices.getUserMedia({audio:true});const ch=[];rec=new MediaRecorder(st);rec.ondataavailable=e=>ch.push(e.data);
   rec.onstop=()=>{st.getTracks().forEach(t=>t.stop());addMedia('audio',new Blob(ch,{type:rec.mimeType||'audio/webm'}),'voice note');rec=null;b.textContent='🎙 Record'};rec.start();b.textContent='⏹ Stop'}catch(err){uiAlert('Microphone unavailable: '+err.message)}};
-function failUI(){const sv=form.elements.status.value;$('#failBox').hidden=sv!=='failed'&&sv!=='corrected';$('#corrBox').hidden=sv!=='corrected';$('#corrBtn').hidden=sv!=='failed';$('#corrInfo').textContent=sv==='corrected'&&cur?.correctedAt?'Corrected '+fmtT(cur.correctedAt)+(cur.correctedBy?' by '+cur.correctedBy:''):'';if(!$('#failBox').hidden){codeHintUpd();suggestCodes()}}form.elements.status.addEventListener('change',failUI);form.elements.type.addEventListener('change',rdUI);form.elements.rdSens.addEventListener('input',rdUI);$('#corrBtn').onclick=()=>{form.elements.status.value='corrected';failUI();form.elements.corrNote.focus()};form.elements.severity.addEventListener('change',()=>codeHintUpd()); /* bpm-v135: codeHintUpd lives in app-files.js, loaded later */
+function failUI(){const sv=form.elements.status.value;$('#failBox').hidden=sv!=='failed'&&sv!=='corrected';$('#corrBox').hidden=sv!=='corrected';$('#corrBtn').hidden=sv!=='failed';$('#corrInfo').textContent=sv==='corrected'&&cur?.correctedAt?'Corrected '+fmtT(cur.correctedAt)+(cur.correctedBy?' by '+cur.correctedBy:''):'';if(!$('#failBox').hidden){codeHintUpd();suggestCodes()}}form.elements.status.addEventListener('change',failUI);form.elements.type.addEventListener('change',rdUI);form.elements.rdSens.addEventListener('input',rdUI);$('#corrBtn').onclick=()=>{form.elements.status.value='corrected';failUI();form.elements.corrNote.focus()};form.elements.severity.addEventListener('change',codeHintUpd);
 const CV={pass:'Pass',fail:'Fail',na:'N/A'};let autoR=false;const rtUpd=()=>{$('#reasonTextL').hidden=form.elements.reason.value!=='Other'};form.elements.reason.addEventListener('change',()=>{autoR=false;rtUpd();suggestCodes();codeHintUpd()});form.elements.reasonText.addEventListener('input',()=>autoR=false);
 function renderChecks(){const n=ckl.filter(c=>c.v).length;$('#ckHead').textContent=`Checklist ${n}/${ckl.length}`;
  $('#checks').innerHTML=ckl.map((c,i)=>`<div class="ck ck-${c.v||'none'}"><span>${esc(c.v==='fail'?failItemLabel(c.t):c.t)}</span><span class="seg">${Object.entries(CV).map(([v,l])=>`<button type="button" data-i="${i}" data-v="${v}" class="${c.v===v?'on '+v:''}">${l}</button>`).join('')}</span></div>`).join('')}
@@ -154,6 +152,7 @@ function offerUpdate(){const b=$('#updBar');if(!b||!b.hidden)return;b.hidden=fal
 window.offerUpdate=offerUpdate;
 $('#updReload').onclick=async()=>{const btn=$('#updReload');btn.disabled=true;try{if(dlg.open&&pinDirty()){if(pinBlockStop()){btn.disabled=false;return}await commitPin()}location.reload()}catch(e){btn.disabled=false;showErr('Could not save the open device before reload: '+(e&&e.message||e))}};
 if('serviceWorker'in navigator&&location.protocol.startsWith('http')){const had=!!navigator.serviceWorker.controller;let done=0;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!done){done=1;offerUpdate()}});navigator.serviceWorker.register('sw.js')}
+(async()=>{resize();try{await migratePanels()}catch(e){console.info('panel migration skipped',e)}await loadProject(await get('meta','project'))})();
 
 // ---------- photo annotation (original kept; annotated copy saved on the media record) ----------
 const ann={m:null,img:null,shapes:[],tool:'arrow',drag:null};const acv=$('#annCv'),actx=acv.getContext('2d');
@@ -209,3 +208,4 @@ $('#checkCsv').onclick=async()=>{await pnAll();const rows=[['plan','page','page 
  for(const{pl,pins:ps}of await projData())for(const p of ps.slice().sort(sortAddr)){const base=[pl.name,p.page,pnm(pl.id,p.page),TYPES[p.type]?.n||p.type,p.address,p.location||'',p.status];const tt=[p.testedAt?fmtT(p.testedAt):'',p.tester||''];
   if(p.checks?.length)for(const c of p.checks)rows.push([...base,c.v==='fail'?failItemLabel(c.t):c.t,CV[c.v]||'',...tt]);else rows.push([...base,'(no checklist)','',...tt])}
  csvDl(rows,'-checklists.csv')};
+

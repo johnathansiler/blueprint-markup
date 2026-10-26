@@ -1,5 +1,3 @@
-'use strict';
-// bpm-v135: Detect suggestions, layers, multi-select, copy/paste, toast (split out of app.js; classic script sharing app.js globals, loaded right after the file before it)
 // ---------- v8: detect devices (vector symbol matcher in detect.js worker; suggestions are "ghosts" until accepted) ----------
 const DG={spkw:{n:'Speaker/strobe – wall',t:'spkstrobe',d:['SPK_FOH_WALL','SPK_BOH_WALL'],note:'wall mounted'},spkc:{n:'Speaker/strobe – ceiling',t:'spkstrobe',d:['SPK_FOH_CEIL','SPK_BOH_CEIL'],note:'ceiling mounted'},
  strobe:{n:'Strobe only',t:'strobe',d:['STROBE_FOH','STROBE_BOH']},horn:{n:'Horn/strobe',t:'horn',d:['HORN_FOH','HORN_BOH','HORN_WALL','HORN_CEIL'],note:'horn/strobe'},la:{n:'Line array speaker',t:'linearray',d:['LINE_ARRAY']},smoke:{n:'Smoke detector',t:'smoke',d:['SMOKE']},duct:{n:'Duct detector (air duct housing)',t:'duct',d:['DUCT'],note:'duct smoke'},module:{n:'Module (monitor/control)',t:'module',d:['MODULE']},
