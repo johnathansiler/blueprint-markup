@@ -27,10 +27,13 @@ Object.assign(TYPES,{
  vlf:{c:VESDA_C,l:'LF',n:'VESDA laser focus'},
  vnet:{c:VESDA_C,l:'NI',n:'VESDA network interface'},
  vrem:{c:VESDA_C,l:'RE',n:'VESDA remote enclosure',sq:1},
- vtee:{c:VESDA_C,l:'T',n:'VESDA aspirating sampling tee'}});
+ vtee:{c:VESDA_C,l:'T',n:'VESDA aspirating sampling tee'},
+ ffphone:{c:'#0f766e',l:'FT',n:'Firefighter phone jack',sq:1}}); // bpm-v135
 // color sheet / legend group names for shared colors
 const CGRP={[PANEL_C]:'Panels (all)',[VESDA_C]:'VESDA (all parts)'};const PANEL_GRP=['panel','panelbox','farp','fatc','dact','scs','loc'];
-const ST={passed:'#16a34a',failed:'#dc2626','in progress':'#f59e0b','not tested':'#94a3b8'},STATUSES=['passed','failed','in progress','not tested'];
+const ST={passed:'#16a34a',failed:'#dc2626',corrected:'#0891b2','in progress':'#f59e0b','not tested':'#94a3b8'},STATUSES=['passed','failed','corrected','in progress','not tested'];
+// bpm-v135: "corrected" = a failed device that was fixed. It keeps its fail reason, severity and code references and adds when it was corrected, by whom and what was done.
+const isTested=p=>p.status==='passed'||p.status==='failed'||p.status==='corrected',corrTxt=p=>p.status==='corrected'?`Corrected${p.correctedAt?' '+fmtT(p.correctedAt):''}${p.correctedBy?' by '+p.correctedBy:''}${p.corrNote?': '+p.corrNote:''}`:'';
 // NFPA 72-style default inspection/test items per device type (snapshotted onto each pin when first answered)
 const CHECKS={smoke:['Alarm received at panel','Correct address/label at panel','LED/base condition OK','Sensitivity within range','Clean/unobstructed'],
  heat:['Alarm received at panel','Correct address/label at panel','Physical condition OK'],
@@ -66,6 +69,7 @@ Object.assign(CHECKS,{
  oss:['Switch operates (disables release/automatic action)','Supervisory/trouble shown at panel','Restores on reset','Physical condition OK'],
  eol:['Correct value installed at end of circuit','Circuit supervised (trouble on open)','Secured/labeled'],
  bfp:['Valves supervised (tamper) where required','No leaks','Accessible/identified','Physical condition OK'],
+ ffphone:['Handset plugged in: call-in signal received at master station','Two-way voice is clear both ways','Unplugged/open circuit shows trouble at panel','Jack/cover accessible and labeled','Physical condition OK'],
  pullbox:['Cover in place and identified','Wiring secured, no damage','Accessible'],
  vesda:['Airflow within limits','Alarm received at panel','Fault/trouble reported','Filter OK','Physical condition OK'],
  vpsu:['AC power OK','Battery tested and dated','Trouble reported','Physical condition OK'],
@@ -84,7 +88,7 @@ const PSH={smoke:['hex',15,13],duct:['hex',15,13],module:['hex',15,13],heat:['ci
  flow:['dia',24,9],tamper:['dia',24,9],rai:['circ',6,6],jceil:['circ',13,13],other:['circ',12,12]};
 // bpm-v106: new types on the v50 shape set (hex / circ / rect / dia); Detect/Teach measured bw/bh still override these defaults
 Object.assign(PSH,{farp:['rect',26,13],scs:['rect',26,13],loc:['rect',26,13],pad:['rect',26,13],speaker:['rect',13,13],lfs:['rect',13,13],bell:['circ',13,13],multi:['hex',15,13],
- damper:['rect',16,10],oss:['rect',13,13],eol:['rect',9,6],bfp:['dia',24,9],pullbox:['rect',13,13],
+ damper:['rect',16,10],oss:['rect',13,13],eol:['rect',9,6],bfp:['dia',24,9],pullbox:['rect',13,13],ffphone:['rect',13,13],
  vesda:['rect',26,13],vpsu:['rect',16,16],vsp:['circ',8,8],vcap:['circ',5,5],vlf:['hex',15,13],vnet:['dia',16,12],vrem:['rect',22,16],vtee:['dia',10,10]});
 const PSC=1.3;const PANEL_S=new Set(['panel','dact','fatc','panelbox','farp','scs','loc','pad','vesda']);
 // bpm-v37: tight outset — path = print outer size; canvas stroke is centered so gray outer edge = print + LW/2 (thin ring just outside black; no inset, no ~1.3× overhang, no color past the gray)
@@ -395,8 +399,12 @@ $('#undo').onclick=undo;$('#redo').onclick=redo;
 // ---------- pin dialog ----------
 const dlg=$('#pinDlg'),form=$('#pinForm');let cur=null,urls=[];
 for(const[k,t]of Object.entries(TYPES)){$('#pinType').add(new Option(t.n,k));$('#dType').add(new Option(t.n,k));$('#fType').add(new Option(t.n,k))}
-const PK=['type','address','model','location','status','notes','reason','reasonText','severity'];
-let ckl=[];async function openPin(p){cur=p;modelOpts(p.type);if(!Array.isArray(cur.codes))cur.codes=[];for(const k of PK)form.elements[k].value=p[k]||(k==='severity'?'Non-critical':'');if(p.reasonText)form.elements.reasonText.value=failReasonText(p.reasonText);autoR=false;ckl=structuredClone(p.checks||checkItems(p.type));renderChecks();failUI();rtUpd();renderCodes();$('#testedInfo').textContent=testedTxt(p);await showMedia();dlg.showModal()}
+const PK=['type','address','model','location','status','notes','reason','reasonText','severity','corrNote','rdSens','rdCd','rdDb'];
+// bpm-v135: measured readings by device type
+const RD={rdSens:{n:'Sensitivity (% per ft)',s:'Sensitivity',u:'%/ft',t:['smoke','duct'],lo:0.5,hi:4.0},rdCd:{n:'Candela setting',s:'Candela',u:'cd',t:['horn','spkstrobe','strobe']},rdDb:{n:'Sound level',s:'Sound level',u:'dBA',t:['horn','spkstrobe','linearray']}};
+const rdKeys=t=>Object.keys(RD).filter(k=>RD[k].t.includes(t)),rdTxt=p=>rdKeys(p.type).filter(k=>p[k]).map(k=>`${RD[k].s} ${p[k]} ${RD[k].u}`).join(', ');
+function rdUI(){const t=form.elements.type.value,ks=rdKeys(t);$('#rdBox').hidden=!ks.length;for(const l of document.querySelectorAll('#rdBox [data-rd]'))l.hidden=!ks.includes(l.dataset.rd);const v=parseFloat(form.elements.rdSens.value),R=RD.rdSens;$('#rdHint').textContent=ks.includes('rdSens')&&!isNaN(v)&&(v<R.lo||v>R.hi)?`Sensitivity ${v} is outside the usual ${R.lo.toFixed(1)}–${R.hi.toFixed(1)} % per ft range. Check the device listing.`:''}
+let ckl=[];async function openPin(p){cur=p;modelOpts(p.type);if(!Array.isArray(cur.codes))cur.codes=[];for(const k of PK)form.elements[k].value=p[k]||(k==='severity'?'Non-critical':'');if(p.reasonText)form.elements.reasonText.value=failReasonText(p.reasonText);autoR=false;ckl=structuredClone(p.checks||checkItems(p.type));renderChecks();failUI();rdUI();rtUpd();renderCodes();$('#testedInfo').textContent=testedTxt(p);await showMedia();dlg.showModal()}
 const fmtShort=t=>{const d=new Date(t);return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})};
 const fmtT=t=>{const d=new Date(t),z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`};
 const testedTxt=p=>p.testedAt?`${p.status} ${fmtT(p.testedAt)}${p.tester?' by '+p.tester:''}`:'';
@@ -415,21 +423,21 @@ $('#addVideo').onchange=e=>{for(const f of e.target.files)addMedia('video',f,f.n
 let rec=null;$('#rec').onclick=async()=>{const b=$('#rec');if(rec){rec.stop();return}
  try{const st=await navigator.mediaDevices.getUserMedia({audio:true});const ch=[];rec=new MediaRecorder(st);rec.ondataavailable=e=>ch.push(e.data);
   rec.onstop=()=>{st.getTracks().forEach(t=>t.stop());addMedia('audio',new Blob(ch,{type:rec.mimeType||'audio/webm'}),'voice note');rec=null;b.textContent='🎙 Record'};rec.start();b.textContent='⏹ Stop'}catch(err){uiAlert('Microphone unavailable: '+err.message)}};
-function failUI(){$('#failBox').hidden=form.elements.status.value!=='failed';if(!$('#failBox').hidden){codeHintUpd();suggestCodes()}}form.elements.status.addEventListener('change',failUI);form.elements.severity.addEventListener('change',codeHintUpd);
+function failUI(){const sv=form.elements.status.value;$('#failBox').hidden=sv!=='failed'&&sv!=='corrected';$('#corrBox').hidden=sv!=='corrected';$('#corrBtn').hidden=sv!=='failed';$('#corrInfo').textContent=sv==='corrected'&&cur?.correctedAt?'Corrected '+fmtT(cur.correctedAt)+(cur.correctedBy?' by '+cur.correctedBy:''):'';if(!$('#failBox').hidden){codeHintUpd();suggestCodes()}}form.elements.status.addEventListener('change',failUI);form.elements.type.addEventListener('change',rdUI);form.elements.rdSens.addEventListener('input',rdUI);$('#corrBtn').onclick=()=>{form.elements.status.value='corrected';failUI();form.elements.corrNote.focus()};form.elements.severity.addEventListener('change',codeHintUpd);
 const CV={pass:'Pass',fail:'Fail',na:'N/A'};let autoR=false;const rtUpd=()=>{$('#reasonTextL').hidden=form.elements.reason.value!=='Other'};form.elements.reason.addEventListener('change',()=>{autoR=false;rtUpd();suggestCodes();codeHintUpd()});form.elements.reasonText.addEventListener('input',()=>autoR=false);
 function renderChecks(){const n=ckl.filter(c=>c.v).length;$('#ckHead').textContent=`Checklist ${n}/${ckl.length}`;
  $('#checks').innerHTML=ckl.map((c,i)=>`<div class="ck ck-${c.v||'none'}"><span>${esc(c.v==='fail'?failItemLabel(c.t):c.t)}</span><span class="seg">${Object.entries(CV).map(([v,l])=>`<button type="button" data-i="${i}" data-v="${v}" class="${c.v===v?'on '+v:''}">${l}</button>`).join('')}</span></div>`).join('')}
-function checksChanged(){const st=autoStatus(ckl);form.elements.status.value=st;
+function checksChanged(){let st=autoStatus(ckl);if(form.elements.status.value==='corrected'&&st==='passed')st='corrected';/* bpm-v135: a corrected device that passes its retest stays Corrected */form.elements.status.value=st;
  if(st==='failed'&&(!form.elements.reason.value||autoR)){const f=ckl.filter(c=>c.v==='fail').map(c=>c.t);form.elements.reason.value=reasonFor(f[0]);rtUpd();if(!form.elements.reasonText.value||autoR)form.elements.reasonText.value=f.map(failItemLabel).join('; ');autoR=true}
  failUI();renderChecks()}
 $('#checks').addEventListener('click',e=>{const b=e.target.closest('button[data-i]');if(!b)return;const c=ckl[+b.dataset.i];c.v=c.v===b.dataset.v?'':b.dataset.v;checksChanged()});
 $('#passAll').onclick=()=>{for(const c of ckl)if(!c.v)c.v='pass';checksChanged()};
 form.elements.type.addEventListener('change',()=>{modelOpts(form.elements.type.value);if(!ckl.some(c=>c.v)){ckl=checkItems(form.elements.type.value);renderChecks()}});
 // bpm-v122: the draft the Save button would write. Built synchronously so a close during a tester prompt can't pick up a different pin.
-function pinDraft(){if(!cur)return null;const b=structuredClone(cur),a={...b};for(const k of PK)a[k]=form.elements[k].value;if(ckl.some(c=>c.v)||b.checks)a.checks=structuredClone(ckl);if(a.status!=='failed'){a.reason='';a.reasonText='';a.severity='';delete a.codes}else if(cur.codes?.length)a.codes=structuredClone(cur.codes);else delete a.codes;if(a.type!==b.type)delete a.shp;return{b,a}}
+function pinDraft(){if(!cur)return null;const b=structuredClone(cur),a={...b};for(const k of PK)a[k]=form.elements[k].value;if(ckl.some(c=>c.v)||b.checks)a.checks=structuredClone(ckl);if(a.status!=='failed'&&a.status!=='corrected'){a.reason='';a.reasonText='';a.severity='';delete a.codes}else if(cur.codes?.length)a.codes=structuredClone(cur.codes);else delete a.codes;if(a.status!=='corrected'){delete a.corrNote;delete a.correctedAt;delete a.correctedBy}for(const k of PK)if(a[k]===''&&!(k in b)&&/^(corrNote|rd)/.test(k))delete a[k];if(a.type!==b.type)delete a.shp;return{b,a}}
 function pinDirty(){const d=pinDraft();if(!d)return false;if(dlg._wf&&JSON.stringify(d.a)===dlg._wf)return false;/* bpm-v129: a walk Fail card closed untouched changes nothing */const {b,a}=d;for(const k of PK){const bv=b[k]||(k==='severity'?'Non-critical':''),av=a[k]||(k==='severity'?'Non-critical':'');if(String(av)!==String(bv))return true}if(JSON.stringify(a.checks||null)!==JSON.stringify(b.checks||null))return true;if(JSON.stringify(a.codes||null)!==JSON.stringify(b.codes||null))return true;return false}
 function pinBlockStop(){if(form.elements.status.value==='failed'&&!form.elements.reason.value){uiAlert('Pick a fail reason for this failed device.');form.elements.reason.focus();return true}if(form.elements.status.value==='failed'&&form.elements.severity.value==='Critical'&&!(cur.codes&&cur.codes.length)){(async()=>{if(await uiConfirm('Critical deficiency needs a code reference. Open the code picker?'))openCodePicker();else uiAlert('Add at least one code reference for a Critical deficiency.')})();return true}return false}
-function commitPin(){const d=pinDraft();if(!d)return Promise.resolve();const {b,a}=d;return (async()=>{if(a.status!==b.status){a.testedAt=Date.now();a.tester=await getTester()}if(b.fp&&a.type!==b.type){const ng=groupFor(a.type,b.detG);a.detG=ng;learn(b.fp,ng)}if(a.model)rememberModel(a.type,a.model);if(JSON.stringify(a)!==JSON.stringify(b))await change('pins',b,a);if(cur&&cur.id===a.id)cur=pins.find(x=>x.id===a.id)||cur})()}
+function commitPin(){const d=pinDraft();if(!d)return Promise.resolve();const {b,a}=d;return (async()=>{if(a.status!==b.status){a.testedAt=Date.now();a.tester=await getTester();if(a.status==='corrected'){a.correctedAt=a.testedAt;a.correctedBy=a.tester}}if(b.fp&&a.type!==b.type){const ng=groupFor(a.type,b.detG);a.detG=ng;learn(b.fp,ng)}if(a.model)rememberModel(a.type,a.model);if(JSON.stringify(a)!==JSON.stringify(b))await change('pins',b,a);if(cur&&cur.id===a.id)cur=pins.find(x=>x.id===a.id)||cur})()}
 // Close, Escape and Android Back (dialog cancel) keep a dirty card as one undo step. Save is unchanged. A failed pin still needs a reason, and a Critical one still needs a code, or the card stays open.
 form.addEventListener('submit',e=>{const save=e.submitter?.value==='save',close=e.submitter?.value==='cancel';if(!save&&!(close&&pinDirty()))return;if(pinBlockStop()){e.preventDefault();return}dlgSave=commitPin()});
 dlg.addEventListener('cancel',e=>{if(!pinDirty())return;if(pinBlockStop()){e.preventDefault();return}dlgSave=commitPin()});
@@ -455,40 +463,40 @@ async function projData(){const pls=(await all('plans')).filter(p=>p.projectId==
 const plName=pl=>pl.name.replace(/\.[^.]+$/,'');
 async function firstPhoto(pinId){const ms=(await byIdx('media','pinId',pinId)).filter(m=>m.kind==='photo').sort((a,b)=>a.created-b.created);return ms[0]?photoBlob(ms[0]):null}
 let defUrls=[];
-async function renderDefs(){const D=await projData(),items=[];for(const{pl,pins:ps}of D)for(const p of ps)if(p.status==='failed')items.push({pl,p});
- items.sort((a,b)=>(a.p.severity==='Critical'?0:1)-(b.p.severity==='Critical'?0:1)||a.pl.added-b.pl.added||String(a.p.address).localeCompare(b.p.address,undefined,{numeric:true}));
+async function renderDefs(){const D=await projData(),items=[];for(const{pl,pins:ps}of D)for(const p of ps)if(p.status==='failed'||p.status==='corrected')items.push({pl,p});
+ items.sort((a,b)=>(a.p.status==='corrected'?1:0)-(b.p.status==='corrected'?1:0)||(a.p.severity==='Critical'?0:1)-(b.p.severity==='Critical'?0:1)||a.pl.added-b.pl.added||String(a.p.address).localeCompare(b.p.address,undefined,{numeric:true}));
  defUrls.forEach(URL.revokeObjectURL);defUrls=[];const html=[];
  for(const{pl,p}of items){const ph=await firstPhoto(p.id);let img='';if(ph){const u=URL.createObjectURL(ph);defUrls.push(u);img=`<img class="thumb" src="${u}">`}
-  html.push(`<li data-pl="${pl.id}" data-id="${p.id}">${img||'<span class="thumb"></span>'}<div><b class="${p.severity==='Critical'?'st-failed':''}">${esc(p.severity||'—')}</b> · ${esc(TYPES[p.type]?.n||p.type)} ${esc(p.address)}${p.location?' · '+esc(p.location):''}<br>${esc(p.reason||'no reason')}${p.reasonText?': '+esc(failReasonText(p.reasonText)):''}${p.notes?'<br><small>'+esc(p.notes)+'</small>':''}${p.codes?.length?'<br><small style="color:#fbbf24">'+esc(fmtCodes(p.codes))+'</small>':''}<br><small>${esc(plName(pl))} ${esc(pgT(pl.id,p.page))}${p.testedAt?' · '+esc(fmtT(p.testedAt)):''}${p.tester?' · '+esc(p.tester):''}</small></div></li>`)}
- $('#defList').innerHTML=html.join('')||'<li>No deficiencies (no failed devices) in this project</li>';$('#defCount').textContent=items.length;
+  html.push(`<li data-pl="${pl.id}" data-id="${p.id}"${p.status==='corrected'?' class="defCorr"':''}>${img||'<span class="thumb"></span>'}<div>${p.status==='corrected'?`<b class="st-corrected">✔ ${esc(corrTxt(p))}</b><br>`:''}<b class="${p.severity==='Critical'&&p.status!=='corrected'?'st-failed':''}">${esc(p.severity||'—')}</b> · ${esc(TYPES[p.type]?.n||p.type)} ${esc(p.address)}${p.location?' · '+esc(p.location):''}<br>${esc(p.reason||'no reason')}${p.reasonText?': '+esc(failReasonText(p.reasonText)):''}${p.notes?'<br><small>'+esc(p.notes)+'</small>':''}${p.codes?.length?'<br><small style="color:#fbbf24">'+esc(fmtCodes(p.codes))+'</small>':''}<br><small>${esc(plName(pl))} ${esc(pgT(pl.id,p.page))}${p.testedAt?' · '+esc(fmtT(p.testedAt)):''}${p.tester?' · '+esc(p.tester):''}</small></div></li>`)}
+ $('#defList').innerHTML=html.join('')||'<li>No deficiencies (no failed devices) in this project</li>';$('#defCount').textContent=items.filter(i=>i.p.status==='failed').length;
  $('#defList').querySelectorAll('li[data-id]').forEach(li=>li.onclick=()=>jumpTo(li.dataset.pl,li.dataset.id));return items}
 function setMode(def){$('#panel').classList.toggle('defmode',def);$('#modePins').classList.toggle('on',!def);$('#modeDefs').classList.toggle('on',def);if(def)renderDefs();else renderList()}
 $('#modePins').onclick=()=>setMode(false);$('#modeDefs').onclick=()=>setMode(true);
 function csvDl(rows,name){const cell=v=>{v=String(v??'');if(/^[=+\-@\t\r]/.test(v))v="'"+v;return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};dl(new Blob(['\ufeff'+rows.map(r=>r.map(cell).join(',')).join('\r\n')],{type:'text/csv'}),project.name.replace(/[\\/:*?"<>|]/g,'_')+name)}
-$('#defCsv').onclick=async()=>{const items=await renderDefs();csvDl([['plan','page','page name','type','address','location','severity','reason','reason detail','codes','notes','tested','tester']].concat(items.map(({pl,p})=>[pl.name,p.page,pnm(pl.id,p.page),TYPES[p.type]?.n||p.type,p.address,p.location||'',p.severity,p.reason,failReasonText(p.reasonText),fmtCodes(p.codes),p.notes,p.testedAt?fmtT(p.testedAt):'',p.tester||''])),'-deficiencies.csv')};
+$('#defCsv').onclick=async()=>{const items=await renderDefs();csvDl([['plan','page','page name','type','address','location','status','severity','reason','reason detail','codes','notes','tested','tester','corrected on','corrected by','what was fixed']].concat(items.map(({pl,p})=>[pl.name,p.page,pnm(pl.id,p.page),TYPES[p.type]?.n||p.type,p.address,p.location||'',p.status==='corrected'?'corrected':'open',p.severity,p.reason,failReasonText(p.reasonText),fmtCodes(p.codes),p.notes,p.testedAt?fmtT(p.testedAt):'',p.tester||'',p.correctedAt?fmtT(p.correctedAt):'',p.correctedBy||'',p.corrNote||''])),'-deficiencies.csv')};
 function blobJpeg(b,max=900){return new Promise((res,rej)=>{const u=URL.createObjectURL(b),im=new Image();im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);res({d:c.toDataURL('image/jpeg',.85),w:c.width,h:c.height})};im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('bad image'))};im.src=u})}
 $('#defPdf').onclick=async()=>{busy(1,'Exporting');try{const items=await renderDefs();const{jsPDF}=window.jspdf,doc=new jsPDF({unit:'pt',format:'letter'});doc.setFontSize(16);doc.text(`Deficiencies - ${project.name}`,40,44);doc.setFontSize(10);
- doc.text(`${items.length} failed device(s) · ${items.filter(i=>i.p.severity==='Critical').length} critical · generated ${fmtT(Date.now())}`,40,62);let y=84;
+ const nOpen=items.filter(i=>i.p.status==='failed');doc.text(`${nOpen.length} failed device(s) · ${nOpen.filter(i=>i.p.severity==='Critical').length} critical · ${items.length-nOpen.length} corrected · generated ${fmtT(Date.now())}`,40,62);let y=84;
  for(const{pl,p}of items){const ph=await firstPhoto(p.id);let im=null;if(ph)try{im=await blobJpeg(ph)}catch{}const ih=im?Math.min(200,im.h*(220/im.w)):0,need=Math.max(ih,70)+18;if(y+need>760){doc.addPage();y=44}
   doc.setFontSize(12);doc.setTextColor(p.severity==='Critical'?185:0,0,0);doc.text(`${p.severity||'-'}: ${TYPES[p.type]?.n||p.type} ${p.address||''}${p.location?' @ '+p.location:''}`,40,y+12);doc.setTextColor(0,0,0);doc.setFontSize(10);
-  const lines=doc.splitTextToSize([`Reason: ${p.reason||'-'}${p.reasonText?' - '+failReasonText(p.reasonText):''}`,p.codes?.length?`Codes: ${fmtCodes(p.codes)}`:'',`Plan: ${pl.name}, page ${p.page}`,`Tested: ${p.testedAt?fmtT(p.testedAt):'-'}${p.tester?' by '+p.tester:''}`,p.notes?`Notes: ${p.notes}`:''].filter(Boolean).join('\n'),im?280:530);doc.text(lines,40,y+28);
+  const lines=doc.splitTextToSize([corrTxt(p),`Reason: ${p.reason||'-'}${p.reasonText?' - '+failReasonText(p.reasonText):''}`,p.codes?.length?`Codes: ${fmtCodes(p.codes)}`:'',`Plan: ${pl.name}, page ${p.page}`,`Tested: ${p.testedAt?fmtT(p.testedAt):'-'}${p.tester?' by '+p.tester:''}`,p.notes?`Notes: ${p.notes}`:''].filter(Boolean).join('\n'),im?280:530);doc.text(lines,40,y+28);
   if(im)doc.addImage(im.d,'JPEG',330,y,220,ih);y+=need;doc.setDrawColor(200);doc.line(40,y-6,572,y-6)}
  dl(doc.output('blob'),project.name.replace(/[\\/:*?"<>|]/g,'_')+'-deficiencies.pdf')}catch(e){showErr('Deficiency PDF failed: '+e.message)}finally{busy(0)}};
-function countRows(D){const T=Object.keys(TYPES),blk=ps=>T.map(t=>{const a=ps.filter(p=>p.type===t),te=a.filter(p=>p.status==='passed'||p.status==='failed').length,ip=a.filter(p=>p.status==='in progress').length;return{t,n:a.length,te,ip,un:a.length-te-ip}}).filter(r=>r.n);
+function countRows(D){const T=Object.keys(TYPES),blk=ps=>T.map(t=>{const a=ps.filter(p=>p.type===t),te=a.filter(isTested).length,ip=a.filter(p=>p.status==='in progress').length;return{t,n:a.length,te,ip,un:a.length-te-ip}}).filter(r=>r.n);
  return{plans:D.map(({pl,pins:ps})=>({pl,rows:blk(ps)})),total:blk(D.flatMap(d=>d.pins))}}
 async function renderCounts(){const PD=await projData();$('#defCount').textContent=PD.flatMap(d=>d.pins).filter(p=>p.status==='failed').length||'';const C=countRows(PD),open=$('#counts').open;const tr=(r)=>`<tr><td>${esc(TYPES[r.t].n)}</td><td>${r.n}</td><td class="st-passed">${r.te}</td><td class="st-in">${r.ip}</td><td class="st-not">${r.un}</td></tr>`,sum=rs=>rs.reduce((a,r)=>[a[0]+r.n,a[1]+r.te,a[2]+r.ip,a[3]+r.un],[0,0,0,0]);
  const t=sum(C.total);$('#counts').innerHTML=`<summary><b>Device counts</b> · project ${t[0]} (${t[1]} tested, ${t[2]} in progress, ${t[3]} untested)</summary><table><tr><th></th><th>#</th><th>tested</th><th>in prog.</th><th>untested</th></tr>${C.plans.filter(b=>b.rows.length).map(b=>`<tr><th colspan="5">${esc(plName(b.pl))}</th></tr>${b.rows.map(tr).join('')}`).join('')}<tr><th colspan="5">Project total</th></tr>${C.total.map(tr).join('')}<tr><td><b>All devices</b></td>${t.map(v=>`<td><b>${v}</b></td>`).join('')}</tr></table>`;$('#counts').open=open;return C}
 $('#countCsv').onclick=async()=>{const C=await renderCounts(),rows=[['plan','type','total','tested','in progress','untested']];for(const b of C.plans)for(const r of b.rows)rows.push([b.pl.name,TYPES[r.t].n,r.n,r.te,r.ip,r.un]);for(const r of C.total)rows.push(['PROJECT TOTAL',TYPES[r.t].n,r.n,r.te,r.ip,r.un]);csvDl(rows,'-device-counts.csv')};
-const cntSt=a=>{const c={passed:0,failed:0,ip:0,nt:0};for(const p of a)p.status==='passed'?c.passed++:p.status==='failed'?c.failed++:p.status==='in progress'?c.ip++:c.nt++;c.t=a.length;c.pct=c.t?Math.round((c.passed+c.failed)*100/c.t):0;return c};
+const cntSt=a=>{const c={passed:0,failed:0,corr:0,ip:0,nt:0};for(const p of a)p.status==='passed'?c.passed++:p.status==='failed'?c.failed++:p.status==='corrected'?c.corr++:p.status==='in progress'?c.ip++:c.nt++;c.t=a.length;c.pct=c.t?Math.round((c.passed+c.failed+c.corr)*100/c.t):0;return c};
 function renderSummary(){ // bpm-v35: progress = pass, fail, total, left, %
- const c={passed:0,failed:0};for(const p of pins)p.status==='passed'?c.passed++:p.status==='failed'?c.failed++:0;c.t=pins.length;c.left=c.t-c.passed-c.failed;c.pct=c.t?Math.round((c.passed+c.failed)*100/c.t):0;
+ const c={passed:0,failed:0,corr:0};for(const p of pins)p.status==='passed'?c.passed++:p.status==='failed'?c.failed++:p.status==='corrected'?c.corr++:0;c.t=pins.length;c.left=c.t-c.passed-c.failed-c.corr;c.pct=c.t?Math.round((c.passed+c.failed+c.corr)*100/c.t):0;
  const open=$('#sum').open;
- $('#sum').innerHTML=`<summary><b>${c.pct}%</b> · <span class="st-passed">${c.passed} pass</span> · <span class="st-failed">${c.failed} fail</span> · ${c.t} total · ${c.left} left</summary>`;
+ $('#sum').innerHTML=`<summary><b>${c.pct}%</b> · <span class="st-passed">${c.passed} pass</span> · <span class="st-failed">${c.failed} fail</span>${c.corr?` · <span class="st-corrected">${c.corr} corrected</span>`:''} · ${c.t} total · ${c.left} left</summary>`;
  $('#sum').open=open}
 $('#testerBtn').onclick=()=>getTester(true);
-$('#csvBtn').onclick=async()=>{if(!project)return;await pnAll();const rows=[['plan','page','page name','type','address','model','location','status','tested','tester','notes']];
+$('#csvBtn').onclick=async()=>{if(!project)return;await pnAll();const rows=[['plan','page','page name','type','address','model','location','status','tested','tester','notes','corrected on','what was fixed','sensitivity %/ft','candela','sound level dBA','last result','last tested','last readings']];
  for(const pl of(await all('plans')).filter(p=>p.projectId===project.id).sort((a,b)=>a.added-b.added))for(const p of(await byIdx('pins','planId',pl.id)).sort((a,b)=>a.page-b.page||String(a.address).localeCompare(b.address,undefined,{numeric:true})))
-  rows.push([pl.name,p.page,pnm(pl.id,p.page),TYPES[p.type]?.n||p.type,p.address,p.model||'',p.location||'',p.status,p.testedAt?fmtT(p.testedAt):'',p.tester||'',p.notes]);
+  rows.push([pl.name,p.page,pnm(pl.id,p.page),TYPES[p.type]?.n||p.type,p.address,p.model||'',p.location||'',p.status,p.testedAt?fmtT(p.testedAt):'',p.tester||'',p.notes,p.correctedAt?fmtT(p.correctedAt):'',p.corrNote||'',p.rdSens||'',p.rdCd||'',p.rdDb||'',p.prev?.status||'',p.prev?.testedAt?fmtT(p.prev.testedAt):'',p.prev?rdTxt({...p.prev,type:p.type}):'']);
  const cell=v=>{v=String(v??'');if(/^[=+\-@\t\r]/.test(v))v="'"+v;return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
  dl(new Blob(['\ufeff'+rows.map(r=>r.map(cell).join(',')).join('\r\n')],{type:'text/csv'}),project.name.replace(/[\\/:*?"<>|]/g,'_')+'-devices.csv')};
 // ---------- export ----------
@@ -575,8 +583,8 @@ $('#reportPdf').onclick=async()=>{if(!project)return;await pnAll();busy(1,'Build
  let y=0;const need=h=>{if(y+h>760){doc.addPage();y=44}},H=t=>{need(40);y+=8;doc.setFontSize(13);doc.setFont(undefined,'bold');doc.text(t,40,y+12);doc.setFont(undefined,'normal');doc.setDrawColor(150);doc.line(40,y+17,572,y+17);y+=30;doc.setFontSize(10)},L=(t,x=40,col)=>{const ls=doc.splitTextToSize(String(t),572-x);need(ls.length*13);if(col)doc.setTextColor(...col);doc.text(ls,x,y+10);doc.setTextColor(0,0,0);y+=ls.length*13};
  doc.setFillColor(30,41,59);doc.rect(0,0,612,78,'F');doc.setTextColor(255,255,255);doc.setFontSize(18);doc.setFont(undefined,'bold');doc.text('Fire Alarm Inspection Report',40,34);doc.setFont(undefined,'normal');doc.setFontSize(11);
  doc.text(`Project: ${project.name}`,40,54);doc.text(`Date: ${fmtT(Date.now())}    Tester: ${tn||'-'}    Plans: ${D.length}`,40,68);doc.setTextColor(0,0,0);y=92;
- H('Summary');L(`${c.pct}% tested (${c.passed+c.failed} of ${c.t} devices)`);L(`Passed: ${c.passed}    Failed: ${c.failed}    In progress: ${c.ip}    Not tested: ${c.nt}`);
- need(16);const bw=532;let bx=40;for(const[k,v]of[['passed',c.passed],['failed',c.failed],['in progress',c.ip],['not tested',c.nt]]){if(!c.t||!v)continue;const w=bw*v/c.t,h=ST[k];doc.setFillColor(parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16));doc.rect(bx,y+2,w,10,'F');bx+=w}y+=18;
+ H('Summary');L(`${c.pct}% tested (${c.passed+c.failed+c.corr} of ${c.t} devices)`);L(`Passed: ${c.passed}    Failed: ${c.failed}    Corrected: ${c.corr}    In progress: ${c.ip}    Not tested: ${c.nt}`);
+ need(16);const bw=532;let bx=40;for(const[k,v]of[['passed',c.passed],['failed',c.failed],['corrected',c.corr],['in progress',c.ip],['not tested',c.nt]]){if(!c.t||!v)continue;const w=bw*v/c.t,h=ST[k];doc.setFillColor(parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16));doc.rect(bx,y+2,w,10,'F');bx+=w}y+=18;
  H('Device counts');y=pdfCounts(doc,countRows(D),y+10)+4;
  const defs=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='failed').map(p=>({pl,p}))).sort((a,b)=>(a.p.severity==='Critical'?0:1)-(b.p.severity==='Critical'?0:1));
  H(`Deficiencies (${defs.length})`);if(!defs.length)L('None.');
@@ -584,16 +592,17 @@ $('#reportPdf').onclick=async()=>{if(!project)return;await pnAll();busy(1,'Build
   doc.setFont(undefined,'bold');L(`${p.severity||'-'}: ${TYPES[p.type]?.n||p.type} ${p.address||''}${p.location?' @ '+p.location:''}`,40,p.severity==='Critical'?[185,28,28]:null);doc.setFont(undefined,'normal');
   L(`Reason: ${p.reason||'-'}${p.reasonText?' - '+failReasonText(p.reasonText):''}`,48);if(p.codes?.length)L(`Codes: ${fmtCodes(p.codes)}`,48,[180,83,9]);L(`${pl.name} ${pgT(pl.id,p.page)} · ${p.testedAt?fmtT(p.testedAt):'-'}${p.tester?' · '+p.tester:''}${p.notes?' · '+p.notes:''}`,48);
   if(im){doc.addImage(im.d,'JPEG',422,y0+2,150,ih);y=Math.max(y,y0+ih+4)}y+=6}
+ {const cd=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='corrected').map(p=>({pl,p})));if(cd.length){H(`Corrected deficiencies (${cd.length})`);for(const{pl,p}of cd){doc.setFont(undefined,'bold');L(`${TYPES[p.type]?.n||p.type} ${p.address||''}${p.location?' @ '+p.location:''}`,40,[8,145,178]);doc.setFont(undefined,'normal');L(`Was: ${p.severity||'-'} · ${p.reason||'-'}${p.reasonText?' - '+failReasonText(p.reasonText):''}`,48);L(corrTxt(p),48);L(`${pl.name} ${pgT(pl.id,p.page)}`,48);y+=6}}}
  H('Device checklist results');
  for(const{pl,pins:ps}of D){if(!ps.length)continue;need(30);doc.setFontSize(12);doc.setFont(undefined,'bold');L(pl.name);doc.setFontSize(10);doc.setFont(undefined,'normal');let lp=null;
   for(const p of ps.slice().sort(sortAddr)){
    const h=ST[p.status]||ST['not tested'];need(28);doc.setFillColor(parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16));doc.circle(54,y+7,4,'F');
    doc.setFont(undefined,'bold');L(`${TYPES[p.type]?.n||p.type} ${p.address||'(no address)'} - ${p.status}${p.testedAt?'  '+fmtT(p.testedAt):''}${p.tester?' by '+p.tester:''}`,64);doc.setFont(undefined,'normal');
    for(const ck of p.checks||[]){need(13);doc.text(ck.v==='fail'?failItemLabel(ck.t):ck.t,72,y+10);const v=ck.v||'';doc.setTextColor(...(v==='fail'?[185,28,28]:v==='pass'?[21,128,61]:[100,116,139]));doc.text(CV[v]||'—',470,y+10);doc.setTextColor(0,0,0);y+=13}
-   if(!p.checks)L('(no checklist recorded)',72,[100,116,139]);y+=4}}
+   if(rdTxt(p))L('Readings: '+rdTxt(p),72,[14,116,144]);if(!p.checks)L('(no checklist recorded)',72,[100,116,139]);y+=4}}
  const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(120);doc.text(`${project.name} · Inspection report · page ${i} of ${n}`,40,780);doc.setTextColor(0)}
  dl(doc.output('blob'),project.name.replace(/[\\/:*?"<>|]/g,'_')+'-inspection-report.pdf')}catch(e){showErr('Report failed: '+e.message)}finally{busy(0)}};
-$('#checkCsv').onclick=async()=>{await pnAll();const rows=[['plan','page','page name','type','address','location','status','item','result','tested','tester']];
+$('#checkCsv').onclick=async()=>{await pnAll();const rows=[['plan','page','page name','type','address','location','status','item','result','tested','tester']];/* status column shows "corrected" for fixed deficiencies */
  for(const{pl,pins:ps}of await projData())for(const p of ps.slice().sort(sortAddr)){const base=[pl.name,p.page,pnm(pl.id,p.page),TYPES[p.type]?.n||p.type,p.address,p.location||'',p.status];const tt=[p.testedAt?fmtT(p.testedAt):'',p.tester||''];
   if(p.checks?.length)for(const c of p.checks)rows.push([...base,c.v==='fail'?failItemLabel(c.t):c.t,CV[c.v]||'',...tt]);else rows.push([...base,'(no checklist)','',...tt])}
  csvDl(rows,'-checklists.csv')};
@@ -608,7 +617,7 @@ DG.farp={n:'FARP (remote panel)',t:'farp',d:['FARP'],note:'FARP'};
 for(const[k,n,t]of[['panel','FACP (manual)','panel'],['oth','Other device','other']])DG[k]={n,t,d:[],x:1};
 DG.heat={n:'Heat detector',t:'heat',d:['HEAT'],note:'heat'}; // bpm-v108: hex + H glyph (legend-checked on FL-00090/139/144/149)
 // bpm-v106: new types without a Detect glyph yet: manual pick / legend text / master templates only (multi-criteria looks like smoke, so never auto)
-for(const[k,n,t]of[['multi','Multi-criteria detector','multi'],['speaker','Speaker (no strobe)','speaker'],['lfs','Low-frequency sounder','lfs'],['bell','Bell – 120 VAC','bell'],['pad','PAD-4/PAD-5','pad'],['damper','Fire/smoke damper','damper'],['scs','Smoke control station','scs'],['loc','Local operator console','loc'],['oss','Operator safety switch','oss'],['eol','EOL resistor','eol'],['bfp','Sprinkler backflow preventer','bfp'],['pullbox','Electrical pull box','pullbox'],
+for(const[k,n,t]of[['multi','Multi-criteria detector','multi'],['speaker','Speaker (no strobe)','speaker'],['lfs','Low-frequency sounder','lfs'],['bell','Bell – 120 VAC','bell'],['pad','PAD-4/PAD-5','pad'],['damper','Fire/smoke damper','damper'],['scs','Smoke control station','scs'],['loc','Local operator console','loc'],['oss','Operator safety switch','oss'],['eol','EOL resistor','eol'],['bfp','Sprinkler backflow preventer','bfp'],['pullbox','Electrical pull box','pullbox'],['ffphone','Firefighter phone jack','ffphone'],
  ['vesda','VESDA aspirating detector','vesda'],['vpsu','VESDA power supply','vpsu'],['vsp','VESDA sampling point','vsp'],['vcap','VESDA capillary sampling point','vcap'],['vlf','VESDA laser focus','vlf'],['vnet','VESDA network interface','vnet'],['vrem','VESDA remote enclosure','vrem'],['vtee','VESDA aspirating sampling tee','vtee']])DG[k]={n,t,d:[],x:1};
 for(const[k,d]of[['damper','DAMPER'],['pullbox','PULLBOX'],['eol','EOL'],['vpsu','VPSU'],['vesda','VESDA'],['vrem','VREM'],['vnet','VNET'],['loc','LOC'],['vsp','VSP'],['vcap','VCAP'],['vtee','VTEE'],['pad','PAD'],['speaker','SPEAKER'],['bell','BELL'],['oss','OSS'],['bfp','BFP']]){DG[k].d=[d];delete DG[k].x} // bpm-v108: vector glyph detectors (FSD diamond, PB square)
 const D2G={};for(const[k,g]of Object.entries(DG))for(const d of g.d)D2G[d]=k;
@@ -747,7 +756,7 @@ function renderGhostBar(){const b=$('#ghBar');if(!ghosts.length||walk||!lay.ghos
 
 // ---------- v9: layers / visibility (saved per plan) ----------
 const mKind=m=>m.type==='cloud'?'clouds':(m.type==='text'||m.type==='arrow'||m.type==='line')?'text':'shapes';
-const untested=p=>p.status!=='passed'&&p.status!=='failed';
+const untested=p=>!isTested(p);
 function mVis(m){return lay[mKind(m)]!==false}
 // bpm-v102: per-project pin type layers (tlay.js). Display/hit only; exports and totals ignore it.
 function tVis(p){return !(window.HT&&HT.size&&HT.has(p.type))}
@@ -807,14 +816,14 @@ function startWalk(type=''){if(!plan)return uiAlert('Open a plan first.');if(!pi
  walk={type,types:arguments[1]||null,skip:new Set(),p:null,fail:false};msel=[];sel=null;renderSelBar();renderGhostBar();$('#walkBtn').classList.add('pri');
  const c=toW(stage.clientWidth/2,stage.clientHeight/2),L=walkLeft(),here=L.filter(p=>p.page===page);
  const first=sel?.kind==='p'&&untested(sel.o)?sel.o:nearestFrom(here.length?here:L,here.length?{page,...c}:null);walkGo(first)}
-function exitWalk(){walk=null;$('#walk').hidden=true;$('#walkBtn').classList.remove('pri');renderGhostBar();renderSelBar();draw()}
+function exitWalk(){if(vKeep)voiceStop();walk=null;$('#walk').hidden=true;$('#walkBtn').classList.remove('pri');renderGhostBar();renderSelBar();draw()}
 async function walkGo(p,back){if(!walk)return;walk.hist??=[];if(!back&&walk.p&&p&&walk.p.id!==p.id){walk.hist.push(walk.p.id);if(walk.hist.length>200)walk.hist.shift()}walk.p=p;walk.fail=false;walk.fr=[];walk.fnote='';walk.fcrit=false;renderWalk();if(!p){draw();return}const sKeep=view.s,pgChg=p.page!==page;if(pgChg)await gotoPage(p.page); // bpm-v100: keep the zoom across pages (gotoPage re-fits the view)
  const W=stage.clientWidth,Hh=stage.clientHeight-$('#walk').offsetHeight,s=walk.zoomed?sKeep:Math.max(view.s,Math.min(W,stage.clientHeight)/320),v0={...view};walk.zoomed=true;centerOn(p.x,p.y,s,W/2,Math.max(60,Hh/2));const v1={...view};sel={kind:'p',o:p};if(pgChg){draw();scheduleRender();return} // new page: land directly at the kept zoom (no zoom-out-then-in)
  view=v0;await prefetchPath(v0,v1);if(walk?.p!==p)return;await slideTo(v1)}
 function walkNext(){if(!walk)return;const cur=walk.p;walkGo(nearestFrom(walkLeft().filter(p=>p!==cur),cur))}
 function walkAfterDialog(){if(!walk||!walk.p)return;const p=pins.find(x=>x.id===walk.p.id);if(!p){walkNext();return}walk.p=p;if(!untested(p))walkNext();else renderWalk()}
 function renderWalk(){const w=$('#walk');if(!walk){w.hidden=true;return}const S=walkSet(),N=S.length,done=S.filter(p=>!untested(p)).length,p=walk.p&&pins.find(x=>x.id===walk.p.id)||walk.p;
- const types=[...new Set(pins.map(x=>x.type))];const head=`<div class="wh"><b>🚶 ${p?`${Math.min(done+1,N)} of ${N}`:`${done} of ${N} tested`}</b><select id="wType" title="Only this type"><option value="">All types</option>${types.map(t=>`<option value="${t}"${walk.type===t?' selected':''}>${esc(TYPES[t]?.n||t)}</option>`).join('')}</select><span class="sp"></span>${SR?'<button type="button" class="btn" id="wMic" title="Voice command">🎤</button>':''}<button type="button" class="btn" id="wGoto" title="Pick any device to test next">📍 Go to…</button><button type="button" class="btn" id="wExit">✕ Exit</button></div>`;
+ const types=[...new Set(pins.map(x=>x.type))];const head=`<div class="wh"><b>🚶 ${p?`${Math.min(done+1,N)} of ${N}`:`${done} of ${N} tested`}</b><select id="wType" title="Only this type"><option value="">All types</option>${types.map(t=>`<option value="${t}"${walk.type===t?' selected':''}>${esc(TYPES[t]?.n||t)}</option>`).join('')}</select><span class="sp"></span>${SR?`<button type="button" class="btn" id="wMic" aria-pressed="${srec?'true':'false'}">${srec?'🎤 Voice on: tap to stop':'🎤 Voice off: tap to start'}</button>`:''}<button type="button" class="btn" id="wGoto" title="Pick any device to test next">📍 Go to…</button><button type="button" class="btn" id="wExit">✕ Exit</button></div>`;
  if(!p){w.innerHTML=head+`<div class="wt">${walk.skip.size?`No untested devices left (${walk.skip.size} skipped).`:'All devices in this set are tested. 🎉'}</div>${walk.hist?.length?'<div class="row"><button type="button" class="btn" id="wPrev">⏮ Previous device</button></div>':''}${walk.skip.size?'<div class="row"><button type="button" class="btn" id="wRe">Revisit skipped</button></div>':''}`}
  else w.innerHTML=head+`<div class="wt"><span class="dot" style="display:inline-block;background:${(TYPES[p.type]||TYPES.other).c}"></span> ${esc(TYPES[p.type]?.n||p.type)} ${p.address?esc(p.address):'<small style="color:#94a3b8">(no address)</small>'}${p.location?' · '+esc(p.location):''} <small style="color:#94a3b8">${esc(pgT(plan.id,p.page))}${p.status==='in progress'?' · in progress':''}</small></div>
  <div id="wHeard" style="color:#93c5fd;font-size:13px"${walk.heard?'':' hidden'}>🎤 “${esc(walk.heard||'')}”</div>
@@ -835,13 +844,20 @@ async function testPin(p,res,reason,crit,more,note){p=pins.find(x=>x.id===p.id);
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let srec=null;
 if(SR)$('#micBtn').hidden=false;
 $('#micBtn').onclick=startVoice;
-function startVoice(){if(!SR)return;if(srec){try{srec.stop()}catch{}return}
+// bpm-v135: hands-free voice during a walk. Started while walking, voice keeps listening between devices (the phone's recognizer stops after each
+// phrase or a pause, so Marker starts it again). It stays on until Stop listening, the walk ends, or "stop listening" is said. The walk menu button says Voice on / Voice off.
+let vKeep=false;
+function voiceOn(b){for(const x of[$('#micBtn'),$('#wMic')])if(x)x.classList.toggle('danger',b);const w=$('#wMic');if(w){w.textContent=b?'🎤 Voice on: tap to stop':'🎤 Voice off: tap to start';w.setAttribute('aria-pressed',b?'true':'false')}
+ let c=$('#vChip');if(!c){c=document.createElement('button');c.type='button';c.id='vChip';c.className='btn danger';c.hidden=true;c.onclick=voiceStop;document.body.append(c)}c.textContent='⏹ Voice on: tap to stop listening';const g=$('#vGuide');c.hidden=!(b&&vKeep)||!!(g&&!g.hidden)}
+function voiceStop(){vKeep=false;const r=srec;if(r){r._stop=true;try{r.stop()}catch{}}voiceOn(false)}
+function startVoice(auto){if(!SR)return;if(srec&&auto!==true){voiceStop();return}if(srec)return;
+ if(auto!==true)vKeep=!!walk;
  if(!navigator.onLine)toast('You are offline: on many phones voice recognition needs internet. If it fails, use the buttons.');
- let r;try{r=new SR()}catch(e){toast('Voice is not available: '+e.message);return}srec=r;r.lang=navigator.language||'en-US';r.interimResults=false;r.maxAlternatives=1;r.continuous=false;
- const on=b=>{for(const x of[$('#micBtn'),$('#wMic')])if(x)x.classList.toggle('danger',b)};on(true);
- vGuide('listen');r.onresult=e=>{const t=e.results[0][0].transcript;vGuide('heard',t);voiceHeard(t)};
- r.onerror=e=>{const m={network:'Voice recognition needs an internet connection on this device. Use the buttons while offline.','not-allowed':'Microphone access is blocked. Allow the microphone for this site in Chrome settings.','service-not-allowed':'Voice recognition is turned off or unavailable on this device.','no-speech':'Didn\u2019t hear anything. Tap 🎤 and speak again.','audio-capture':'No microphone was found.','language-not-supported':'Voice recognition does not support this language here.'}[e.error]||('Voice error: '+e.error);if(e.error!=='aborted'){toast(m);vGuide('error',m)}};
- r.onend=()=>{srec=null;on(false);vGuide('end')};try{r.start()}catch(e){srec=null;on(false);toast('Could not start voice: '+e.message);vGuide('error','Could not start voice: '+e.message)}}
+ let r;try{r=new SR()}catch(e){toast('Voice is not available: '+e.message);return}srec=r;r.lang=navigator.language||'en-US';r.interimResults=false;r.maxAlternatives=1;r.continuous=vKeep;
+ const on=voiceOn;on(true);
+ if(auto!==true)vGuide('listen');r.onresult=e=>{const R=e.results[e.resultIndex??e.results.length-1]||e.results[0];if(R&&R.isFinal===false)return;const t=R[0].transcript;if(/^\s*(stop listening|voice off|stop voice)\s*[.!]?\s*$/i.test(t)){vGuide('heard',t);voiceStop();toast('Voice off');return}vGuide('heard',t);voiceHeard(t)};
+ r.onerror=e=>{const m={network:'Voice recognition needs an internet connection on this device. Use the buttons while offline.','not-allowed':'Microphone access is blocked. Allow the microphone for this site in Chrome settings.','service-not-allowed':'Voice recognition is turned off or unavailable on this device.','no-speech':'Didn\u2019t hear anything. Tap 🎤 and speak again.','audio-capture':'No microphone was found.','language-not-supported':'Voice recognition does not support this language here.'}[e.error]||('Voice error: '+e.error);if(vKeep&&(e.error==='no-speech'||e.error==='aborted'))return;/* hands-free: silence is normal, keep going */if(['not-allowed','service-not-allowed','audio-capture','network','language-not-supported'].includes(e.error))vKeep=false;if(e.error!=='aborted'){toast(m);vGuide('error',m)}};
+ r.onend=()=>{if(srec===r)srec=null;if(vKeep&&walk&&!r._stop){setTimeout(()=>{if(vKeep&&walk&&!srec)startVoice(true)},250);return}vKeep=false;on(false);vGuide('end')};try{r.start()}catch(e){srec=null;on(false);toast('Could not start voice: '+e.message);vGuide('error','Could not start voice: '+e.message)}}
 // bpm-v130: Voice guide. While Voice listens, a panel shows what to say (the real commands, with examples), what it heard, and that it needs internet.
 // It does not change what the commands do. Stop listening / Listen again / Close are labelled buttons. It hides itself 4 s after a command that was understood.
 function vGuide(st,txt){let g=$('#vGuide');if(!g){g=document.createElement('div');g.id='vGuide';g.setAttribute('role','dialog');g.setAttribute('aria-label','Voice commands');document.body.append(g);
@@ -854,18 +870,20 @@ function vGuide(st,txt){let g=$('#vGuide');if(!g){g=document.createElement('div'
    <li><q>address L1D012</q><small>sets this device's address</small></li>
    <li><q>note</q> + your words<small>adds a note, e.g. <q>note cover cracked</q></small></li>
    <li><q>L1D012 pass</q><small>passes (or <q>L1D012 fail damaged</q> fails) the device with that address</small></li>
+   <li><q>stop listening</q><small>turns voice off</small></li>
   </ul>
+  <div class="vgKeep">During a walk, voice stays on between devices (hands-free) until you tap <b>Stop listening</b>, say <q>stop listening</q>, or end the walk.</div>
   <div class="vgHeard" aria-live="polite"></div>
   <div class="vgNet"></div>
   <div class="vgB"><button type="button" class="btn danger" id="vgStop">⏹ Stop listening</button><button type="button" class="btn pri" id="vgAgain">🎤 Listen again</button><button type="button" class="btn" id="vgX">✕ Close</button></div>`;
-  g.querySelector('#vgStop').onclick=()=>{if(srec)try{srec.stop()}catch{}};g.querySelector('#vgAgain').onclick=()=>{if(!srec)startVoice()};g.querySelector('#vgX').onclick=()=>{clearTimeout(g._t);g.hidden=true;if(srec)try{srec.abort?srec.abort():srec.stop()}catch{}}}
+  g.querySelector('#vgStop').onclick=()=>{voiceStop()};g.querySelector('#vgAgain').onclick=()=>{if(!srec)startVoice()};g.querySelector('#vgX').onclick=()=>{clearTimeout(g._t);g.hidden=true;if(vKeep&&srec){voiceOn(true);return}/* hands-free: closing the guide keeps listening; the Voice on chip stops it */if(srec)try{srec._stop=true;srec.abort?srec.abort():srec.stop()}catch{}}}
  const S=g.querySelector('.vgS'),H=g.querySelector('.vgHeard'),N=g.querySelector('.vgNet'),lis=st==='listen';clearTimeout(g._t);
  N.textContent=navigator.onLine?'Needs an internet connection: the phone sends your voice to Google to turn it into text.':'You are offline. Voice needs an internet connection, so use the buttons until you are back online.';N.classList.toggle('off',!navigator.onLine);
- if(lis){g.hidden=false;g._ok=false;S.textContent='Listening… speak now';H.textContent='';H.className='vgHeard'}
- else if(st==='heard'){S.textContent='Got it';let c={cmd:'?'};try{c=parseVoice(txt)}catch{}g._ok=c.cmd!=='?';H.textContent=`Heard: “${txt}”`+(g._ok?'':' (not a command: try one of the above)');H.className='vgHeard '+(g._ok?'ok':'bad')}
+ if(lis){g.hidden=false;g._ok=false;S.textContent=vKeep?'Voice on (hands-free): listening… speak now':'Listening… speak now';H.textContent='';H.className='vgHeard'}
+ else if(st==='heard'){S.textContent=vKeep?'Got it. Still listening (voice on)':'Got it';let c={cmd:'?'};try{c=parseVoice(txt)}catch{}g._ok=c.cmd!=='?';H.textContent=`Heard: “${txt}”`+(g._ok?'':' (not a command: try one of the above)');H.className='vgHeard '+(g._ok?'ok':'bad')}
  else if(st==='error'){S.textContent='Voice stopped';H.textContent=txt||'';H.className='vgHeard bad';g._ok=false;g.hidden=false}
  else if(st==='end'){if(S.textContent.startsWith('Listening')){S.textContent='Didn’t hear a command';if(!H.textContent){H.textContent='Tap Listen again and speak after the beep.';H.className='vgHeard bad'}}if(g._ok)g._t=setTimeout(()=>{g.hidden=true},4000)}
- g.classList.toggle('on',!!srec||lis);g.querySelector('#vgStop').hidden=!(srec||lis);g.querySelector('#vgAgain').hidden=!!(srec||lis);
+ if(st==='heard'&&vKeep&&g._ok){g._t=setTimeout(()=>{g.hidden=true;voiceOn(!!srec)},4000)}g.classList.toggle('on',!!srec||lis);{const ch=$('#vChip');if(ch&&!g.hidden)ch.hidden=true}g.querySelector('#vgStop').hidden=!(srec||lis);g.querySelector('#vgAgain').hidden=!!(srec||lis);
  if(!g.hidden){/* free area between the top bars and the walk bar / Pages strip / tool bar */const vis=e=>e&&!e.hidden&&getComputedStyle(e).display!=='none'&&e.getBoundingClientRect().height>0;let lo=8,hi=innerHeight-8;
   for(const id of['proj','top','tb2']){const e=document.getElementById(id);if(vis(e)){const r=e.getBoundingClientRect();if(r.bottom<innerHeight/2)lo=Math.max(lo,r.bottom+8)}}
   for(const id of['walk','tools','thumbs','ghBar']){const e=document.getElementById(id);if(vis(e)){const r=e.getBoundingClientRect();if(r.top>innerHeight/2&&r.width>innerWidth/2)hi=Math.min(hi,r.top-8)}}
@@ -916,7 +934,7 @@ $('#bkGo').onclick=async()=>{$('#bulkDlg').close();await bulkApply({color:$('#bk
 async function bulkApply(o){const it=selItems().filter(x=>x.planId===plan?.id),L=[],now=Date.now();let who=null;
  for(const x of it){const b=structuredClone(x);let a=structuredClone(x);
   if(isPinO(x)){if(o.type&&o.type!==a.type){a.type=o.type;delete a.shp}if(o.opacity!=null)a.opacity=o.opacity;
-   if(o.status&&o.status!==b.status){if(o.status==='passed'||o.status==='failed'){who??=await getTester();a.testedAt=now;a.tester=who}
+   if(o.status&&o.status!==b.status){if(o.status==='passed'||o.status==='failed'||o.status==='corrected'){who??=await getTester();a.testedAt=now;a.tester=who}if(o.status==='corrected'){a.correctedAt=now;a.correctedBy=who;a.reason=b.reason||'Other';a.severity=b.severity||'Non-critical'}else{delete a.correctedAt;delete a.correctedBy;delete a.corrNote}
     if(o.status==='passed'){a.checks=(b.checks||checkItems(a.type)).map(c=>({...c,v:'pass'}));a.reason=a.reasonText=a.severity=''}
     else if(o.status==='failed'){a.reason=b.reason||'Other';a.severity=b.severity||'Non-critical'}
     else if(o.status==='not tested'){for(const k of['checks','testedAt','tester','reason','reasonText','severity'])delete a[k]}
@@ -962,7 +980,7 @@ async function importBpm(file,replaceId,onP){const{z,man}=await readBpm(file);
  const pid=replaceId||'p'+uid(),names=(await all('projects')).filter(p=>p.id!==replaceId).map(p=>p.name);let name=man.project?.name||file.name.replace(/\.(bpm|marker)$/i,'');if(!replaceId&&names.includes(name))name+=' (opened)';
  // 1) read + verify every blob before touching the database
  const plans=[],media=[],N=man.plans.length+man.media.length;let k=0;const tick=()=>onP&&onP(++k/Math.max(1,N));
- for(const m of man.plans){const{file:f,type,size,...r}=m;plans.push({...r,id:nid(m.id),projectId:pid,blob:f?await ent(f,type):new Blob([])});tick()}
+ for(const m of man.plans){const{file:f,type,size,...r}=m;plans.push({...r,...(man.split?{srcPlan:r.srcPlan||m.id}:{}),id:nid(m.id),projectId:pid,blob:f?await ent(f,type):new Blob([])});tick()}/* bpm-v135: a split copy remembers each plan's origin id so new pins and drawings merge back onto the right plan */
  const planIds=new Set(man.plans.map(p=>p.id)),pinsIn=man.pins.filter(p=>planIds.has(p.planId)).map(p=>{const t=typeof migPanelType==='function'&&migPanelType(p);return t?{...p,type:t}:p}),pinIds=new Set(pinsIn.map(p=>p.id));
  for(const m of man.media){if(!pinIds.has(m.pinId))continue;const{file:f,type,size,annotFile,annotType,...r}=m,o={...r,id:nid(m.id),pinId:nid(m.pinId)};if(f)o.blob=await ent(f,type);if(annotFile)o.annot=await ent(annotFile,annotType);media.push(o);tick()}
  const mk=man.markups.filter(m=>planIds.has(m.planId)).map(m=>({...m,id:nid(m.id),planId:nid(m.planId)})),pn=pinsIn.map(p=>({...p,id:nid(p.id),planId:nid(p.planId)}));
@@ -990,7 +1008,7 @@ async function deliver(name,mime,ext,make){let h=null;if(window.showSaveFilePick
  dl(blob,name);return'downloaded'}
 $('#projSave').onclick=async()=>{if(!project)return;const n=(await learnedRules()).length;$('#svLN').textContent=n?`(${n})`:'(none yet)';$('#svLearned').disabled=!n;$('#exInfo').textContent='';$('#saveDlg').showModal()};
 $('#svGo').onclick=async()=>{const pr=project,wl=$('#svLearned').checked;$('#saveDlg').close();busy(1,'Saving project');prog(0);
- try{const r=await deliver(fsafe(pr.name)+'.bpm','application/octet-stream','.bpm',async()=>{const b=await buildBpm(pr.id,wl,prog);window.__lastBpm=b;return b});if(r)toast(`Project "${pr.name}" ${r} (${(window.__lastBpm.size/1048576).toFixed(1)} MB)`)}catch(e){showErr('Saving the project failed: '+e.message)}finally{busy(0)}};
+ try{const r=await deliver(fsafe(pr.name)+'.bpm','application/octet-stream','.bpm',async()=>{const b=await buildBpm(pr.id,wl,prog);window.__lastBpm=b;return b});if(r){toast(`Project "${pr.name}" ${r} (${(window.__lastBpm.size/1048576).toFixed(1)} MB)`);window.bkSaved&&bkSaved(pr.id)}}catch(e){showErr('Saving the project failed: '+e.message)}finally{busy(0)}};
 let opFile=null;$('#bpmFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;hideErr();try{const{man}=await readBpm(f);opFile=f;
  $('#opInfo').innerHTML=`<b>${esc(man.project?.name||f.name)}</b><br><small style="color:#94a3b8">${man.plans.length} plan(s), ${man.markups.length} markups, ${man.pins.length} pins, ${man.media.length} media · saved ${esc((man.saved||'').slice(0,16).replace('T',' '))} UTC${man.learned?.length?` · ${man.learned.length} learned rules (merged)`:''}</small>`;
  $('#opCur').textContent=project?`"${project.name}"`:'';document.querySelector('#openDlg [name=opMode][value=new]').checked=true;$('#openDlg').showModal()}catch(err){showErr(`Could not open "${f.name}": ${err.message}`)}};
@@ -1118,7 +1136,7 @@ $('#myCodeTypes').innerHTML=Object.entries(TYPES).map(([k,v])=>`<option value="$
 loadCodes();
 
 // ---------- v11: job / system info ----------
-const JOB0={building:'',address:'',ahj:'',systemType:'Protected premises (local)',monitoring:'',panel:'',inspType:'Annual',inspDate:'',license:'',owner:'',ownerName:'',ownerAddr:'',ownerPhone:'',occupancy:'',panelMake:'',panelModel:'',firmware:'',panelLoc:'',monAcct:'',monPhone:'',monMethod:'',priPower:'',priLoc:'',battery:'',batDate:'',batTest:'',aux:'',company:'',techName:'',techLic:'',installDate:'',testDate:'',nextDate:'',result:'',remarks:''};
+const JOB0={building:'',address:'',ahj:'',systemType:'Protected premises (local)',monitoring:'',panel:'',inspType:'Annual',inspDate:'',license:'',owner:'',ownerName:'',ownerAddr:'',ownerPhone:'',occupancy:'',panelMake:'',panelModel:'',firmware:'',panelLoc:'',monAcct:'',monPhone:'',monMethod:'',priPower:'',priLoc:'',battery:'',batDate:'',batTest:'',aux:'',company:'',techName:'',techLic:'',installDate:'',testDate:'',nextDate:'',result:'',remarks:'',startTime:'',finishTime:'',notifyBefore:'',notifyAfter:'',sigAlarm:'',sigSuper:'',sigTrouble:'',sigRestore:'',simNote:''};
 async function getJob(){return{...JOB0,...((await get('meta','job:'+project.id))||{})}}
 async function saveJob(j){await put('meta',j,'job:'+project.id)}
 function jobToForm(j){const f=$('#jobForm');for(const k of Object.keys(JOB0))if(f.elements[k])f.elements[k].value=j[k]||JOB0[k]}
@@ -1152,25 +1170,45 @@ function nfpaJobBlock(doc,j,y){const L=(t)=>{const ls=doc.splitTextToSize(t,530)
  H('Dates / result');L(`Installed: ${v(j.installDate)}    Inspection: ${v(j.inspDate)}    Test: ${v(j.testDate)}    Next due: ${v(j.nextDate)}`);L(`Overall test result: ${v(j.result)}`);if(j.remarks)L(`Remarks: ${j.remarks}`);
  doc.setDrawColor(180);doc.line(40,y,572,y);return y+14}
 function nfpaFooter(doc,name){const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(120);doc.text(`${name} · Marker report (NFPA 72-mapped) · page ${i} of ${n}`,40,780);doc.setTextColor(0)}}
+// bpm-v135: per-device results table for the Inspection and Testing Record
+const itmTime=t=>{if(!t)return'';const[h,m]=t.split(':').map(Number);if(isNaN(h))return t;return new Date(2000,0,1,h,m||0).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})};
+function itmDeviceTable(doc,D,y){const C=[[40,'Address',52],[94,'Device type',92],[188,'Model',58],[248,'Location',100],[350,'Result',62],[414,'Tested',78],[494,'Readings',78]];
+ const head=()=>{doc.setFont(undefined,'bold');doc.setFontSize(8);C.forEach(([x,h])=>doc.text(h,x,y));y+=4;doc.setDrawColor(200);doc.line(40,y,572,y);y+=9;doc.setFont(undefined,'normal')};
+ if(y>700){doc.addPage();y=44}y+=6;doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('Device test results (every device)',40,y);y+=14;
+ for(const{pl,pins:ps}of D){if(!ps.length)continue;if(y>730){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.setFontSize(9);doc.text(doc.splitTextToSize(pl.name,530)[0],40,y);y+=12;head();
+  for(const p of ps.slice().sort((a,b)=>(a.page-b.page)||sortAddr(a,b))){const cells=[p.address||'-',TYPES[p.type]?.n||p.type,p.model||'',p.location||'',p.status+(p.status==='failed'&&p.reason?' ('+p.reason+')':'')+(p.prev?'\nLast: '+p.prev.status:''),p.testedAt?fmtT(p.testedAt):'',rdTxt(p)].map((t,i)=>doc.splitTextToSize(String(t),C[i][2]));
+   const h=Math.max(...cells.map(c=>c.length))*9+3;if(y+h>760){doc.addPage();y=44;head()}
+   const rc={failed:[185,28,28],corrected:[8,145,178],passed:[21,128,61]}[p.status]||[100,116,139];cells.forEach((c,i)=>{if(i===4)doc.setTextColor(...rc);doc.text(c,C[i][0],y);doc.setTextColor(0)});y+=h}y+=6}
+ doc.setFontSize(10);return y}
 async function nfpaDeviceStats(D){const by={};for(const{pins:ps}of D)for(const p of ps){const t=p.type||'other';(by[t]??= {t,n:0,pass:0,fail:0,ip:0,nt:0,na:0});by[t].n++;
-  if(p.status==='passed')by[t].pass++;else if(p.status==='failed')by[t].fail++;else if(p.status==='in progress')by[t].ip++;else by[t].nt++;
+  if(p.status==='passed')by[t].pass++;else if(p.status==='failed')by[t].fail++;else if(p.status==='corrected')by[t].corr=(by[t].corr||0)+1;else if(p.status==='in progress')by[t].ip++;else by[t].nt++;
   for(const c of p.checks||[])if(c.v==='na')by[t].na++}return Object.values(by).sort((a,b)=>(TYPES[a.t]?.n||'').localeCompare(TYPES[b.t]?.n||''))}
 $('#nfpaItm').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1,'Building ITM record');try{
  const j=await ensureJob(),D=await projData(),all_=D.flatMap(d=>d.pins),c=cntSt(all_),tn=await getTester(),stats=await nfpaDeviceStats(D),{jsPDF}=window.jspdf,doc=new jsPDF({unit:'pt',format:'letter'});
  let y=nfpaHeader(doc,'Inspection & Testing Record',j,tn);y=nfpaJobBlock(doc,j,y);
+ // bpm-v135: this visit: times, who was notified, monitoring signal times, simulated tests
+ {const v=x=>x||'-',L=t=>{const ls=doc.splitTextToSize(t,530);if(y+ls.length*12>760){doc.addPage();y=44}doc.text(ls,40,y);y+=ls.length*12+2};doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('This inspection visit',40,y);y+=15;doc.setFont(undefined,'normal');doc.setFontSize(10);
+  L(`Date: ${v(j.inspDate)}    Start time: ${v(itmTime(j.startTime))}    Finish time: ${v(itmTime(j.finishTime))}`);L(`Notified before testing: ${v(j.notifyBefore)}`);L(`Notified after testing: ${v(j.notifyAfter)}`);
+  L(`Monitoring station signals received: Alarm ${v(itmTime(j.sigAlarm))}    Supervisory ${v(itmTime(j.sigSuper))}    Trouble ${v(itmTime(j.sigTrouble))}    Restored ${v(itmTime(j.sigRestore))}`);
+  L(`Simulated tests: ${j.simNote||'None noted. All devices were tested by their normal method.'}`);doc.setDrawColor(180);doc.line(40,y,572,y);y+=14}
  doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('Summary (live device data)',40,y);y+=14;doc.setFont(undefined,'normal');doc.setFontSize(10);
- doc.text(`Devices: ${c.t}    Passed: ${c.passed}    Failed: ${c.failed}    In progress: ${c.ip}    Not tested: ${c.nt}    (${c.pct}% tested)`,40,y);y+=18;
+ doc.text(`Devices: ${c.t}    Passed: ${c.passed}    Failed: ${c.failed}    Corrected: ${c.corr}    In progress: ${c.ip}    Not tested: ${c.nt}    (${c.pct}% tested)`,40,y,{maxWidth:530});y+=18;
  doc.setFont(undefined,'bold');doc.text('Visual inspection / testing results by device type',40,y);y+=6;doc.setFontSize(8);doc.setTextColor(100);doc.text('Mapped to NFPA 72 Chapter 14 inspection and testing tables (section numbers cited in the deficiency list where attached).',40,y+10);doc.setTextColor(0);y+=22;
- doc.setFontSize(9);doc.setFont(undefined,'bold');['Type','Total','Passed','Failed','In prog.','Not tested'].forEach((h,i)=>doc.text(h,40+i*85,y));y+=12;doc.setFont(undefined,'normal');
- for(const r of stats){if(y>750){doc.addPage();y=44}doc.text((TYPES[r.t]?.n||r.t).slice(0,18),40,y);[r.n,r.pass,r.fail,r.ip,r.nt].forEach((v,i)=>doc.text(String(v),125+i*85,y));y+=12}
+ doc.setFontSize(9);doc.setFont(undefined,'bold');['Type','Total','Passed','Failed','Corrected','In progress','Not tested'].forEach((h,i)=>doc.text(h,i?125+(i-1)*72:40,y));y+=12;doc.setFont(undefined,'normal');
+ for(const r of stats){/* bpm-v135: the full type name wraps inside its column (it used to be cut at 18 characters) */const nm=doc.splitTextToSize(TYPES[r.t]?.n||r.t,82);if(y+nm.length*11>760){doc.addPage();y=44}doc.text(nm,40,y);[r.n,r.pass,r.fail,r.corr||0,r.ip,r.nt].forEach((v,i)=>doc.text(String(v),125+i*72,y));y+=Math.max(12,nm.length*11+1)}
  y+=10;doc.setFont(undefined,'bold');doc.setFontSize(11);if(y>720){doc.addPage();y=44}doc.text('Deficiencies found',40,y);y+=14;doc.setFont(undefined,'normal');doc.setFontSize(10);
  const defs=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='failed').map(p=>({pl,p}))).sort((a,b)=>(a.p.severity==='Critical'?0:1)-(b.p.severity==='Critical'?0:1));
  if(!defs.length){doc.text('None recorded.',40,y);y+=14}
  for(const{pl,p}of defs){const block=[`${p.severity||'-'}: ${TYPES[p.type]?.n||p.type}${p.model?' ['+p.model+']':''} ${p.address||''}${p.location?' @ '+p.location:''} — ${p.reason||''}${p.reasonText?': '+failReasonText(p.reasonText):''}`,`${pl.name} ${pgT(pl.id,p.page)}${p.testedAt?' · '+fmtT(p.testedAt):''}${p.tester?' · '+p.tester:''}`,p.codes?.length?`Code refs: ${fmtCodes(p.codes)} (${(p.codes).map(c=>c.title).join('; ')})`:'Code refs: (none)',p.notes?`Notes: ${p.notes}`:''].filter(Boolean);
   const lines=doc.splitTextToSize(block.join('\n'),530);if(y+lines.length*12>760){doc.addPage();y=44}if(p.severity==='Critical')doc.setTextColor(185,28,28);doc.text(lines,40,y);doc.setTextColor(0);y+=lines.length*12+8}
- y+=8;if(y>680){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text('Signatures',40,y);y+=20;doc.setFont(undefined,'normal');
- doc.text(`Inspector: ${j.techName||'_______________________________'}  Sign: ______________  Date: __________  License: `+(j.techLic||j.license||'__________'),40,y);y+=28;
- doc.text('Owner / representative: _______________________________  Date: __________',40,y);y+=28;
+ {const cd=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='corrected').map(p=>({pl,p})));if(cd.length){if(y>720){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text(`Corrected deficiencies (${cd.length})`,40,y);y+=14;doc.setFont(undefined,'normal');doc.setFontSize(10);
+  for(const{pl,p}of cd){const lines=doc.splitTextToSize(`${TYPES[p.type]?.n||p.type}${p.model?' ['+p.model+']':''} ${p.address||''}${p.location?' @ '+p.location:''} — was ${p.severity||'-'}: ${p.reason||''}\n${corrTxt(p)} · ${pl.name} ${pgT(pl.id,p.page)}`,530);if(y+lines.length*12>760){doc.addPage();y=44}doc.text(lines,40,y);y+=lines.length*12+6}}}
+ y=itmDeviceTable(doc,D,y);
+ y+=8;if(y>620){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('Signatures',40,y);y+=20;doc.setFont(undefined,'normal');doc.setFontSize(10);
+ const sg=(await get('meta','sig:'+project.id))||{};
+ const sigRow=(lab,s,name,extra)=>{if(s?.img){try{doc.addImage(s.img,'PNG',150,y-26,160,40)}catch{}doc.text(`${lab}: ${s.name||name||'-'}`,40,y+20);doc.text(`Signed on screen ${fmtT(s.at)}${extra}`,320,y+20);y+=48}else{doc.text(`${lab}: ${name||'_______________________________'}  Sign: ______________  Date: __________${extra}`,40,y);y+=28}};
+ sigRow('Inspector',sg.insp,j.techName,'  License: '+(j.techLic||j.license||'__________'));
+ sigRow('Owner / representative',sg.owner,j.ownerName||j.owner,'');
  doc.text('AHJ (if required): _______________________________  Date: __________',40,y);
  nfpaFooter(doc,project.name);dl(doc.output('blob'),fsafe(project.name)+'-inspection-testing-record.pdf');toast('Inspection & Testing Record exported')}
  catch(e){showErr('ITM record failed: '+e.message)}finally{busy(0)}};
@@ -1180,13 +1218,14 @@ $('#nfpaComp').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1
  let y=nfpaHeader(doc,'Record of Completion / Acceptance Summary',j,tn);y=nfpaJobBlock(doc,j,y);
  doc.setFontSize(9);doc.setTextColor(100);doc.text('Maps to NFPA 72 Chapter 7 documentation for system completion / acceptance (not an official NFPA Record of Completion form).',40,y,{maxWidth:530});doc.setTextColor(0);y+=28;
  doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('System inventory (from this project)',40,y);y+=14;doc.setFont(undefined,'normal');doc.setFontSize(10);
- doc.text(`Plans in project: ${D.length}    Devices documented: ${c.t}    Passed: ${c.passed}    Failed: ${c.failed}    Not tested: ${c.nt}`,40,y);y+=16;
+ doc.text(`Plans in project: ${D.length}    Devices documented: ${c.t}    Passed: ${c.passed}    Failed: ${c.failed}    Corrected: ${c.corr}    Not tested: ${c.nt}`,40,y,{maxWidth:530});y+=16;
  for(const r of stats){if(y>750){doc.addPage();y=44}doc.text(`${TYPES[r.t]?.n||r.t}: ${r.n} device(s)`,40,y);y+=12}
  y+=10;doc.setFont(undefined,'bold');doc.text('Acceptance checklist (inspector confirms)',40,y);y+=16;doc.setFont(undefined,'normal');
  for(const t of['As-built drawings / device list available (NFPA 72 7.2–7.4 related)','Control unit functions verified','Initiating devices tested or accounted for','Notification appliances tested or accounted for','Off-premises signaling verified (if applicable)','Owner instructed on system operation','Open deficiencies listed below have a correction plan']){if(y>750){doc.addPage();y=44}doc.rect(40,y-8,10,10);doc.text(t,56,y);y+=18}
  y+=6;doc.setFont(undefined,'bold');doc.text('Outstanding deficiencies at acceptance',40,y);y+=14;doc.setFont(undefined,'normal');
  const defs=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='failed').map(p=>({pl,p})));
  if(!defs.length)doc.text('None.',40,y),y+=14;
+ {const cd=all_.filter(p=>p.status==='corrected').length;if(cd){doc.text(`Corrected deficiencies: ${cd} (see the Deficiency report for details)`,40,y);y+=14}}
  for(const{pl,p}of defs){const t=`• ${p.severity}: ${TYPES[p.type]?.n||p.type}${p.model?' ['+p.model+']':''} ${p.address||''} — ${p.reason||''}${p.codes?.length?' ['+fmtCodes(p.codes)+']':''} (${pl.name} ${pgT(pl.id,p.page)})`;const ls=doc.splitTextToSize(t,530);if(y+ls.length*12>760){doc.addPage();y=44}doc.text(ls,40,y);y+=ls.length*12+4}
  y+=16;if(y>700){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text('Acceptance signatures',40,y);y+=22;doc.setFont(undefined,'normal');
  doc.text('Installing contractor: _________________________  Date: ________',40,y);y+=24;
@@ -1200,7 +1239,7 @@ $('#nfpaDef').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1,
  let y=nfpaHeader(doc,'Deficiency / Impairments List',j,tn);y=nfpaJobBlock(doc,j,y);
  doc.setFontSize(9);doc.setTextColor(100);doc.text('For impairment handling see NFPA 72 10.4; correct deficiencies per the owner\'s procedures and AHJ requirements (NFPA 72 14.2.10 related).',40,y,{maxWidth:530});doc.setTextColor(0);y+=24;
  const defs=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='failed').map(p=>({pl,p}))).sort((a,b)=>(a.p.severity==='Critical'?0:1)-(b.p.severity==='Critical'?0:1)||String(a.p.address).localeCompare(b.p.address,undefined,{numeric:true}));
- doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text(`${defs.length} deficiency(ies) · ${defs.filter(d=>d.p.severity==='Critical').length} critical`,40,y);y+=16;doc.setFont(undefined,'normal');doc.setFontSize(10);
+ doc.setFont(undefined,'bold');doc.setFontSize(11);const ncd=D.flatMap(d=>d.pins).filter(p=>p.status==='corrected').length;doc.text(`${defs.length} deficiency(ies) · ${defs.filter(d=>d.p.severity==='Critical').length} critical${ncd?` · ${ncd} corrected (listed after the log)`:''}`,40,y);y+=16;doc.setFont(undefined,'normal');doc.setFontSize(10);
  if(!defs.length)doc.text('No failed devices in this project.',40,y);
  for(const{pl,p}of defs){const ph=await firstPhoto(p.id);let im=null;if(ph)try{im=await blobJpeg(ph,500)}catch{}
   const head=`${p.severity||'Non-critical'}: ${TYPES[p.type]?.n||p.type}${p.model?' ['+p.model+']':''} ${p.address||'(no address)'}${p.location?' · '+p.location:''}`;
@@ -1210,7 +1249,9 @@ $('#nfpaDef').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1,
  y+=12;if(y>700){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text('Impairment / correction log',40,y);y+=18;doc.setFont(undefined,'normal');
  doc.text('Date impaired: ________  Notified monitoring: ☐  Notified AHJ: ☐  Tag posted: ☐',40,y);y+=20;
  doc.text('Corrected by: _____________________  Date restored: ________  Retest result: ________',40,y);y+=28;
- doc.text('Owner sign: _____________________    Inspector sign: _____________________',40,y);
+ doc.text('Owner sign: _____________________    Inspector sign: _____________________',40,y);y+=24;
+ {const cd=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='corrected').map(p=>({pl,p})));if(cd.length){if(y>700){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text(`Corrected deficiencies (${cd.length})`,40,y);y+=16;doc.setFont(undefined,'normal');
+  for(const{pl,p}of cd){const lines=doc.splitTextToSize(`${TYPES[p.type]?.n||p.type}${p.model?' ['+p.model+']':''} ${p.address||''}${p.location?' · '+p.location:''} — was ${p.severity||'-'}: ${p.reason||''}${p.reasonText?' — '+failReasonText(p.reasonText):''}\n${corrTxt(p)} · Plan: ${pl.name}, page ${p.page}`,530);if(y+lines.length*12>760){doc.addPage();y=44}doc.text(lines,40,y);y+=lines.length*12+6}}}
  nfpaFooter(doc,project.name);dl(doc.output('blob'),fsafe(project.name)+'-deficiencies-impairments.pdf');toast('Deficiency / Impairments list exported')}
  catch(e){showErr('Deficiency list failed: '+e.message)}finally{busy(0)}};
 
@@ -1466,8 +1507,9 @@ function walkGoto(){if(!walk)return;let d=$('#wGotoDlg');if(!d){d=document.creat
 // ---------- bpm-v72: device model numbers per type (seeded + remembered custom entries) ----------
 // bpm-v75: smoke/heat/module/relay/pull lists supplied by the user (authoritative); others from bpm-v74: Siemens Fire Safety models only (each verified on a Siemens datasheet / Siemens doc portal / distributor page); other makes via "Custom…"
 const MODELS={
- smoke:['FP-11','FPO-11','FPT-11','HFP-11','HFPO-11','HFPT-11','OP921','OOT941','OOH941','FDO421','FDOT421','FDT421','FDOOT441'],
- heat:['FP-11','FPO-11','FPT-11','HFP-11','HFPO-11','HFPT-11','OP921','OOT941','OOH941','FDO421','FDOT421','FDT421','FDOOT441'],
+ // bpm-v135: separate lists. Smoke = optical and multi-criteria smoke detectors; Heat = thermal-only detectors (FPT-11, HFPT-11, FDT421; the catalog adds HI921 and SFPT-11). A model saved on an older pin still shows under "Saved on this pin".
+ smoke:['FP-11','FPO-11','HFP-11','HFPO-11','OP921','OOT941','OOH941','FDO421','FDOT421','FDOOT441'],
+ heat:['FPT-11','HFPT-11','FDT421'],
  duct:['FDBZ492','FDBZ492-HR','FDBZ492-R','FDBZ492-PR','AD2-P','AD2-PR'],
  pull:['MSI-10B','MSI-20B','HMS-S','HMS-D','HMS-M','XMS-51','XMS-52','XMS-M'],
  module:['TRI-S','TRI-D','TRI-R','HTRI-S','HTRI-D','HTRI-R','XTRI-S','XTRI-D','XTRI-M','XTRI-R','HLIM','SBGA-34'],
@@ -1478,7 +1520,7 @@ const MODELS={
  panel:['FireFinder XLS','MXL','FC2025','FC2050','FC922','FC924','FC901','FC2005']};
 // bpm-v106: Siemens parts with a stored install sheet (INSTALL below); others via "Custom…"
 Object.assign(MODELS,{speaker:['SC-SP-WW-F','SC-SP-CW-F','SC-SP-WR-F'],pad:['PAD5-6A','PAD5-6A-R','PAD5-9A','PAD5-9A-R','PAD-5-MB','PAD-5-CDC','PAD-5-CLSA'],
- multi:['OOH941','OOHC941','FDOOT441','FDOOTC441','FDOT421'],vnet:['VESDA-HLI-KIT','VPM'],farp:['FC2025','FC2050','FireFinder XLS'],pullbox:[],damper:[]});
+ multi:['OOH941','OOHC941','FDOOT441','FDOOTC441','FDOT421'],vnet:['VESDA-HLI-KIT','VPM'],farp:['FC2025','FC2050','FireFinder XLS'],pullbox:[],damper:[],ffphone:['FJ-303','FJ-303SS','FJ-304','FJ-304SS','MTE-2','PFT','PFT-P']});
 let MODELS_C=null;async function customModels(){if(!MODELS_C)MODELS_C=(await get('meta','models:custom'))||{};return MODELS_C}
 async function rememberModel(t,m){m=String(m||'').trim();if(!m||(MODELS[t]||[]).some(x=>x===m||x.endsWith(' '+m)))return;const c=await customModels();if((c[t]||[]).includes(m))return;c[t]=[...(c[t]||[]),m];await put('meta',c,'models:custom')}
 async function modelOpts(t){const c=await customModels(),S=MODELS[t]||[],C=(c[t]||[]).filter(m=>!S.includes(m)),v=form.elements.model.value,sel=$('#dModelSel');
@@ -1661,13 +1703,13 @@ Voice / Audio & Telephone||FB-300|Telephone station flush back box|ov
 Voice / Audio & Telephone||FB-301S|Telephone station surface back box|ov
 Voice / Audio & Telephone||FC-300S|Key-lock cover with break glass|ov
 Voice / Audio & Telephone||FT-GLS|Replacement glass for FC-300S|ov
-Voice / Audio & Telephone||MTE-2|Telephone enclosure|ov
-Voice / Audio & Telephone||PFT|Portable firefighter phone|ov
-Voice / Audio & Telephone||PFT-P|Portable firefighter phone, push-to-talk|ov
-Voice / Audio & Telephone||FJ-303|Telephone jack plate|ov
-Voice / Audio & Telephone||FJ-303SS|Telephone jack plate, stainless|ov
-Voice / Audio & Telephone||FJ-304|Telephone jack plate|ov
-Voice / Audio & Telephone||FJ-304SS|Telephone jack plate, stainless|ov
+Voice / Audio & Telephone|ffphone|MTE-2|Telephone enclosure|ov
+Voice / Audio & Telephone|ffphone|PFT|Portable firefighter phone|ov
+Voice / Audio & Telephone|ffphone|PFT-P|Portable firefighter phone, push-to-talk|ov
+Voice / Audio & Telephone|ffphone|FJ-303|Telephone jack plate|ov
+Voice / Audio & Telephone|ffphone|FJ-303SS|Telephone jack plate, stainless|ov
+Voice / Audio & Telephone|ffphone|FJ-304|Telephone jack plate|ov
+Voice / Audio & Telephone|ffphone|FJ-304SS|Telephone jack plate, stainless|ov
 Annunciators|rai|SSD-C|System status display with controls|ov
 Annunciators|rai|SSD-C-REM|SSD-C, remote locked cabinet|ov
 Annunciators|rai|SSD-INT|System status display, internal|ov
