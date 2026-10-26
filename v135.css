@@ -22,3 +22,6 @@ body.light #bkBar{background:#fef3c7;color:#451a03;border-color:#d97706}
 /* item 8: hands-free voice */
 #vChip{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 112px);z-index:60;min-height:44px;padding:6px 14px;font-size:15px;box-shadow:0 6px 18px #0008}
 #vGuide .vgKeep{font-size:14px;margin:6px 0;color:#a5f3fc}body.light #vGuide .vgKeep{color:#0e7490}
+
+/* bpm-v135 item 11: pinch zoom of the app screen allowed; no double-tap zoom on controls (plan stage keeps touch-action:none) */
+html{touch-action:manipulation}
