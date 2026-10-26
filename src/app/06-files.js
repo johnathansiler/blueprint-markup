@@ -66,7 +66,7 @@ $('#projSave').onclick=async()=>{if(!project)return;const n=(await learnedRules(
 $('#svGo').onclick=async()=>{const pr=project,wl=$('#svLearned').checked;$('#saveDlg').close();busy(1,'Saving project');prog(0);
  try{const r=await deliver(fsafe(pr.name)+'.bpm','application/octet-stream','.bpm',async()=>{const b=await buildBpm(pr.id,wl,prog);window.__lastBpm=b;return b});if(r){toast(`Project "${pr.name}" ${r} (${(window.__lastBpm.size/1048576).toFixed(1)} MB)`);window.bkSaved&&bkSaved(pr.id)}}catch(e){showErr('Saving the project failed: '+e.message)}finally{busy(0)}};
 let opFile=null;$('#bpmFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;hideErr();try{const{man}=await readBpm(f);opFile=f;
- $('#opInfo').innerHTML=`<b>${esc(man.project?.name||f.name)}</b><br><small style="color:#94a3b8">${man.plans.length} plan(s), ${man.markups.length} markups, ${man.pins.length} pins, ${man.media.length} media · saved ${esc((man.saved||'').slice(0,16).replace('T',' '))} UTC${man.learned?.length?` · ${man.learned.length} learned rules (merged)`:''}</small>`;
+ $('#opInfo').innerHTML=`<b>${esc(man.project?.name||f.name)}</b><br><small style="color:#a2a2a2">${man.plans.length} plan(s), ${man.markups.length} markups, ${man.pins.length} pins, ${man.media.length} media · saved ${esc((man.saved||'').slice(0,16).replace('T',' '))} UTC${man.learned?.length?` · ${man.learned.length} learned rules (merged)`:''}</small>`;
  $('#opCur').textContent=project?`"${project.name}"`:'';document.querySelector('#openDlg [name=opMode][value=new]').checked=true;$('#openDlg').showModal()}catch(err){showErr(`Could not open "${f.name}": ${err.message}`)}};
 $('#opGo').onclick=async()=>{const f=opFile,rep=document.querySelector('#openDlg [name=opMode]:checked').value==='replace'&&project;if(!f)return;
  if(rep&&!await uiConfirm(`Replace project "${project.name}" with the contents of this file? Its current plans, markups, pins and media will be deleted.`))return;$('#openDlg').close();opFile=null;stopAll();busy(1,'Opening project');prog(0);
@@ -145,26 +145,26 @@ async function suggestCodes(){const all=await allCodeEntries();if(!cur)return;co
  SUG=scored.map(x=>x.c);
  const have=new Set((cur.codes||[]).map(c=>c.code+'|'+c.section));
  const left=SUG.filter(c=>!have.has(c.code+'|'+c.section));
- const html=left.length?'<small style="color:#94a3b8">Suggested (personal first)</small>'+left.map(c=>`<button type="button" class="btn" data-id="${esc(c.id)}">${c.personal?'📌 ':''}<b>${esc(fmtCodeLine(c))}</b></button>`).join(''):'';
+ const html=left.length?'<small style="color:#a2a2a2">Suggested (personal first)</small>'+left.map(c=>`<button type="button" class="btn" data-id="${esc(c.id)}">${c.personal?'📌 ':''}<b>${esc(fmtCodeLine(c))}</b></button>`).join(''):'';
  for(const sel of['#codeSug','#codeSugDlg']){const box=$(sel);if(!box)continue;box.innerHTML=html;box.querySelectorAll('[data-id]').forEach(b=>b.onclick=e=>{e.preventDefault();addCodeById(b.dataset.id)})}
  renderCodes()}
 function codeHintUpd(){const el=$('#codeHint');if(!el)return;const crit=form.elements.severity.value==='Critical',n=cur?.codes?.length||0;
  el.textContent=crit?(n?'Critical — code reference attached.':'Critical — attach at least one code reference.'):(n?`${n} code reference(s).`:'Optional: attach NFPA 72 / IFC / IBC section references.')}
 function renderCodes(){const box=$('#codeList');if(!box||!cur)return;
- box.innerHTML=(cur.codes||[]).map((c,i)=>`<button type="button" class="chip" data-i="${i}" title="${esc(c.sum||c.text||'')}"><span><b>${esc(fmtCodeLine(c))}</b></span><span class="sp"></span>✕</button>`).join('')||'<small style="color:#64748b">No codes yet</small>';
+ box.innerHTML=(cur.codes||[]).map((c,i)=>`<button type="button" class="chip" data-i="${i}" title="${esc(c.sum||c.text||'')}"><span><b>${esc(fmtCodeLine(c))}</b></span><span class="sp"></span>✕</button>`).join('')||'<small style="color:#636363">No codes yet</small>';
  const have=new Set((cur.codes||[]).map(c=>c.code+'|'+c.section));
  const left=(SUG||[]).filter(c=>!have.has(c.code+'|'+c.section));
- if(left.length)box.insertAdjacentHTML('beforeend',`<div class="row" style="gap:6px;margin-top:4px"><button type="button" class="btn pri" id="codeConfirm">✓ Confirm</button><small style="color:#94a3b8">Keeps attached codes; clears remaining suggestions</small></div>`);
+ if(left.length)box.insertAdjacentHTML('beforeend',`<div class="row" style="gap:6px;margin-top:4px"><button type="button" class="btn pri" id="codeConfirm">✓ Confirm</button><small style="color:#a2a2a2">Keeps attached codes; clears remaining suggestions</small></div>`);
  box.querySelectorAll('[data-i]').forEach(b=>b.onclick=e=>{e.preventDefault();cur.codes.splice(+b.dataset.i,1);renderCodes();codeHintUpd()});
  const cf=$('#codeConfirm');if(cf)cf.onclick=e=>{e.preventDefault();const n=(cur.codes||[]).length;SUG=[];const sug=$('#codeSug');if(sug)sug.innerHTML='';renderCodes();toast(n?`${n} code(s) confirmed`:'Suggestions cleared')};
  codeHintUpd()}
 async function openCodePicker(){await loadCodes();$('#codeQ').value='';$('#codeDlg').showModal();renderCodeFav();suggestCodes();filterCodes('');renderMyCodesList();$('#codeQ').focus()}
 function renderCodeFav(){const box=$('#codeFav');const all=[...MY_CODES,...CODE_CAT];const favs=CODE_FAV.map(id=>all.find(c=>c.id===id)).filter(Boolean).slice(0,10);
- box.innerHTML=favs.length?'<small style="width:100%;color:#94a3b8">Recent</small>'+favs.map(c=>`<button type="button" class="chip" data-id="${esc(c.id)}">${c.personal?'📌 ':''}${esc(c.code)} ${esc(c.section)}</button>`).join(''):'';
+ box.innerHTML=favs.length?'<small style="width:100%;color:#a2a2a2">Recent</small>'+favs.map(c=>`<button type="button" class="chip" data-id="${esc(c.id)}">${c.personal?'📌 ':''}${esc(c.code)} ${esc(c.section)}</button>`).join(''):'';
  box.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>addCodeById(b.dataset.id))}
 async function filterCodes(q){const all=await allCodeEntries();q=(q||'').trim().toLowerCase();
  const hits=(!q?all.slice(0,50):all.filter(c=>{const tg=Array.isArray(c.tags)?c.tags:[];const rs=Array.isArray(c.reasons)?c.reasons:[];return `${c.code} ${c.section} ${c.title} ${c.sum||''} ${c.text||''} ${tg.join(' ')} ${rs.join(' ')}`.toLowerCase().includes(q)})).slice(0,60);
- $('#codeHits').innerHTML=hits.map(c=>`<button type="button" class="btn" data-id="${esc(c.id)}">${c.personal?'📌 ':''}<b>${esc(fmtCodeLine(c))}</b><br><small style="color:#94a3b8">${esc(c.sum||c.text||'')}</small></button>`).join('')||'<small>No matches</small>';
+ $('#codeHits').innerHTML=hits.map(c=>`<button type="button" class="btn" data-id="${esc(c.id)}">${c.personal?'📌 ':''}<b>${esc(fmtCodeLine(c))}</b><br><small style="color:#a2a2a2">${esc(c.sum||c.text||'')}</small></button>`).join('')||'<small>No matches</small>';
  $('#codeHits').querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>addCodeById(b.dataset.id))}
 async function addCodeById(id){const all=await allCodeEntries();const c=all.find(x=>x.id===id);if(c)await addCode(c)}
 async function addCode(c){if(!c||!cur)return;cur.codes=cur.codes||[];if(cur.codes.some(x=>x.id===c.id||(x.code===c.code&&x.section===c.section))){toast('Already attached');return}
@@ -173,10 +173,10 @@ async function addCode(c){if(!c||!cur)return;cur.codes=cur.codes||[];if(cur.code
  // refresh suggestion buttons so attached codes drop out; keep Confirm for leftovers
  const have=new Set(cur.codes.map(x=>x.code+'|'+x.section));
  const left=(SUG||[]).filter(x=>!have.has(x.code+'|'+x.section));
- const html=left.length?'<small style="color:#94a3b8">Suggested (personal first)</small>'+left.map(x=>`<button type="button" class="btn" data-id="${esc(x.id)}">${x.personal?'📌 ':''}<b>${esc(fmtCodeLine(x))}</b></button>`).join(''):'';
+ const html=left.length?'<small style="color:#a2a2a2">Suggested (personal first)</small>'+left.map(x=>`<button type="button" class="btn" data-id="${esc(x.id)}">${x.personal?'📌 ':''}<b>${esc(fmtCodeLine(x))}</b></button>`).join(''):'';
  const sug=$('#codeSug');if(sug){sug.innerHTML=html;sug.querySelectorAll('[data-id]').forEach(b=>b.onclick=e=>{e.preventDefault();addCodeById(b.dataset.id)})}
  renderCodes();renderCodeFav();toast(fmtCodeLine(c)+' added')}
-function renderMyCodesList(){const box=$('#myCodeList');if(!box)return;box.innerHTML=MY_CODES.length?MY_CODES.map(c=>`<div class="row" style="align-items:flex-start;gap:6px;margin:4px 0"><button type="button" class="btn" data-use="${esc(c.id)}" style="flex:1;text-align:left;white-space:normal"><b>${esc(fmtCodeLine(c))}</b><br><small style="color:#94a3b8">${esc((c.text||c.sum||'').slice(0,120))}</small></button><button type="button" class="btn danger" data-del="${esc(c.id)}" title="Delete">🗑</button></div>`).join(''):'<small style="color:#64748b">No personal codes yet. Add entries from your NFPA 72 book below.</small>';
+function renderMyCodesList(){const box=$('#myCodeList');if(!box)return;box.innerHTML=MY_CODES.length?MY_CODES.map(c=>`<div class="row" style="align-items:flex-start;gap:6px;margin:4px 0"><button type="button" class="btn" data-use="${esc(c.id)}" style="flex:1;text-align:left;white-space:normal"><b>${esc(fmtCodeLine(c))}</b><br><small style="color:#a2a2a2">${esc((c.text||c.sum||'').slice(0,120))}</small></button><button type="button" class="btn danger" data-del="${esc(c.id)}" title="Delete">🗑</button></div>`).join(''):'<small style="color:#636363">No personal codes yet. Add entries from your NFPA 72 book below.</small>';
  box.querySelectorAll('[data-use]').forEach(b=>b.onclick=()=>addCodeById(b.dataset.use));
  box.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(!await uiConfirm('Delete this personal code?'))return;await del('mycodes',b.dataset.del);MY_CODES=null;await loadCodes();renderMyCodesList();filterCodes($('#codeQ').value);suggestCodes()})}
 $('#codeAdd').onclick=e=>{e.preventDefault();openCodePicker()};

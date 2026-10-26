@@ -1,7 +1,9 @@
 // bpm-v89: grouped, labeled toolbar (2 rows on phone) + 3D wheel pickers + Customize (order, accent, theme, density).
 // Original controls are MOVED (not cloned) so every existing handler keeps working.
 (()=>{const T=$('#tools'),q=s=>T.querySelector(s)||document.querySelector(s),ce=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
- const UI=Object.assign({order:['draw','style','edit','pins','review','ref'],acc:'#3b82f6',theme:'dark',dens:'normal',last:{}},JSON.parse(localStorage.getItem('bpm-ui')||'{}'));
+ const UI=Object.assign({order:['draw','style','edit','pins','review','ref'],acc:'#7e7e7e',theme:'dark',dens:'normal',last:{}},JSON.parse(localStorage.getItem('bpm-ui')||'{}'));
+ // bpm-v137: grey theme; the old default blue accent becomes the new grey default (a chosen non-default accent is kept)
+ if(UI.acc==='#3b82f6'&&!UI.accSet)UI.acc='#7e7e7e';
  const save=()=>localStorage.setItem('bpm-ui',JSON.stringify(UI));
  const hid=ce('div');hid.id='tbHidden';hid.hidden=true;document.body.append(hid);
  const O=s=>{const e=document.querySelector(s);if(e)hid.append(e);return e};
@@ -215,7 +217,7 @@
  function applyUI(){const r=document.documentElement;r.style.setProperty('--acc',UI.acc);const dark=UI.theme==='dark'||(UI.theme==='auto'&&!matchMedia('(prefers-color-scheme: light)').matches);document.body.classList.toggle('light',!dark);document.body.classList.toggle('dense',UI.dens==='compact');dispatchEvent(new Event('resize'))}
  applyUI();matchMedia('(prefers-color-scheme: light)').addEventListener?.('change',applyUI);
  const cz=ce('dialog');cz.id='czDlg';document.body.append(cz);
- function openCz(){const N={draw:'✏ Draw',style:'🎨 Style',edit:'↶ Edit',pins:'📍 Pins',review:'✔ Review',ref:'📄 Reference'},AC=['#3b82f6','#22c55e','#f97316','#e11d48','#a855f7','#14b8a6'];
+ function openCz(){const N={draw:'✏ Draw',style:'🎨 Style',edit:'↶ Edit',pins:'📍 Pins',review:'✔ Review',ref:'📄 Reference'},AC=['#7e7e7e','#3b82f6','#22c55e','#f97316','#e11d48','#a855f7','#14b8a6'];
   cz.innerHTML=`<h3 style="margin:4px 0">⚙ Customize</h3><div id="czL"${window.navLayout?' hidden':''}><small style="color:var(--mu2)">Order of groups (first 3 = row 1). Saved on this device.</small>${UI.order.map((k,i)=>`<div class="czI"><span>${N[k]}</span><span class="sp"></span><button type="button" class="btn" data-up="${i}"${i?'':' disabled'}>▲ Up</button><button type="button" class="btn" data-dn="${i}"${i<UI.order.length-1?'':' disabled'}>▼ Down</button></div>`).join('')}</div>
   <b>Accent</b><div class="czA">${AC.map(c=>`<button type="button" class="czS${c===UI.acc?' on':''}" data-acc="${c}" style="background:${c}" aria-label="Accent ${c}"><span class="tl">${c===UI.acc?'✓':'&nbsp;'}</span></button>`).join('')}<label class="btn">Custom<input type="color" id="czAc" value="${UI.acc}"></label></div>
   <b>Theme</b><div class="row">${['dark','light','auto'].map(t=>`<button type="button" class="btn${UI.theme===t?' pri':''}" data-th="${t}">${t[0].toUpperCase()+t.slice(1)}</button>`).join('')}</div>
@@ -224,9 +226,9 @@
   const upd=()=>{save();layout();applyUI();openCz()};
   cz.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{const i=+b.dataset.up;[UI.order[i-1],UI.order[i]]=[UI.order[i],UI.order[i-1]];upd()});
   cz.querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{const i=+b.dataset.dn;[UI.order[i+1],UI.order[i]]=[UI.order[i],UI.order[i+1]];upd()});
-  cz.querySelectorAll('[data-acc]').forEach(b=>b.onclick=()=>{UI.acc=b.dataset.acc;upd()});cz.querySelector('#czAc').onchange=e=>{UI.acc=e.target.value;upd()};
+  cz.querySelectorAll('[data-acc]').forEach(b=>b.onclick=()=>{UI.acc=b.dataset.acc;UI.accSet=1;upd()});cz.querySelector('#czAc').onchange=e=>{UI.acc=e.target.value;UI.accSet=1;upd()};
   cz.querySelectorAll('[data-th]').forEach(b=>b.onclick=()=>{UI.theme=b.dataset.th;upd()});cz.querySelectorAll('[data-dn2]').forEach(b=>b.onclick=()=>{UI.dens=b.dataset.dn2;upd()});
-  cz.querySelector('#czR').onclick=()=>{UI.order=['draw','style','edit','pins','review','ref'];UI.acc='#3b82f6';UI.theme='dark';UI.dens='normal';upd()};cz.querySelector('#czX').onclick=()=>cz.close();if(!cz.open)cz.showModal()}
+  cz.querySelector('#czR').onclick=()=>{UI.order=['draw','style','edit','pins','review','ref'];UI.acc='#7e7e7e';delete UI.accSet;UI.theme='dark';UI.dens='normal';upd()};cz.querySelector('#czX').onclick=()=>cz.close();if(!cz.open)cz.showModal()}
  window.openCz=openCz;
  const czB=ce('button','btn','⚙<span class="tl">Customize</span>');czB.type='button';czB.id='czBtn';czB.title='Customize toolbar';czB.onclick=openCz;$('#top').append(czB);
 })();

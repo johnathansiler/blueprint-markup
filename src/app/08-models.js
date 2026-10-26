@@ -382,7 +382,7 @@ async function dsList(){const c=await customModels(),q=$('#dsQ').value.trim().to
  for(const k of [...new Set(CATALOG.map(p=>p.c))])grp(k,'data-cat',k,CATALOG.filter(p=>p.c===k).map(p=>p.m));
  for(const k of [...new Set(Object.values(UPARTS).map(v=>v.c||'My devices'))])grp(k,'data-my',k==='My devices'?k:k+' · My devices',Object.keys(UPARTS).filter(m=>(UPARTS[m].c||'My devices')===k));
  G.sort((x,y)=>x.s-y.s||x.o-y.o);
- $('#dsBody').innerHTML=G.map(g=>g.h).join('')||'<small style="color:#94a3b8">No models match.</small>'}
+ $('#dsBody').innerHTML=G.map(g=>g.h).join('')||'<small style="color:#a2a2a2">No models match.</small>'}
 $('#dsBody').onclick=async e=>{const r=e.target.closest('[data-rep]'),x=e.target.closest('[data-rm]'),b=e.target.closest('.dsM');if(r)return openQr(r.dataset.rep);if(x){if(await uiConfirm('Remove the scanned link for '+x.dataset.rm+'? The built-in link will be used again.')){await setUserLink(x.dataset.rm,null);dsList();dsBtnSync()}return}if(b)openDs(b.dataset.m)};
 $('#dsQ').oninput=dsList;
 $('#dsBtn').onclick=async()=>{$('#dsQ').value='';await userLinks();await userParts();await dsList();$('#dsDlg').showModal()};
