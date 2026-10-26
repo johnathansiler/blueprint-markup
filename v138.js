@@ -19,6 +19,13 @@
  document.addEventListener('change',e=>{if(e.target.name==='wkOrder'){WALK_ORDER=e.target.value==='addr'?'addr':'near';localStorage.setItem(ordKey,WALK_ORDER);ordSub()}});
  document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#wkGo'))put('meta',1,'walkTypesV138')},true);
 
+ // ---------- 13) walk order: nearest first, or page by page in address order ----------
+ const nat=(a,b)=>String(a||'\uffff').localeCompare(String(b||'\uffff'),undefined,{numeric:true});
+ const addrCmp=(a,b)=>a.page-b.page||nat(a.address,b.address)||a.y-b.y||a.x-b.x;
+ const _nf=nearestFrom;nearestFrom=function(L,from){if(!walk||WALK_ORDER!=='addr'||!L.length)return _nf.call(this,L,from);const S=L.slice().sort(addrCmp);
+  if(!from)return S[0];if(from.id==null){const same=S.filter(p=>p.page===from.page);return same[0]||S[0]}
+  return S.find(p=>addrCmp(p,from)>0)||S[0]};
+
  // ---------- 8) Pins list: each row has Open card ----------
  const _rl=renderList;renderList=function(...a){const r=_rl.apply(this,a);const L=by('pinList');if(L)L.querySelectorAll('li[data-id]').forEach(li=>{if(li.querySelector('.pOpen'))return;
   const b=ce('button','btn pOpen','Open card');b.type='button';b.title='Open this pin’s card';b.onclick=async e=>{e.stopPropagation();const id=li.dataset.id;await jumpTo(plan.id,id);const p=pins.find(x=>x.id===id);if(p)openPin(p)};li.append(b)});return r};
