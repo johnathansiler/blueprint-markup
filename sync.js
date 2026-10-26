@@ -15,8 +15,10 @@ function mergeEdits(l,r){const ev=r.base&&r.base.ev;if(!ev)return null;const out
   if(lv===b){out.groups.push(g);for(const k of EDIT_G[g])out.fields[k]=r[k]}
   else{const rn=(r.editAt||0)>(l.editAt||0);out.conflicts.push({g,won:rn?'remote':'local',local:lv,remote:rv});if(rn){out.groups.push(g);for(const k of EDIT_G[g])out.fields[k]=r[k]}}}
  if(out.groups.length){out.fields.editAt=Math.max(r.editAt||0,l.editAt||0)}return out}
-function mergePins(local,remote,opt={}){const L=new Map(local.map(p=>[p.id,p])),out={apply:[],conflicts:[],same:0,unchanged:0,missing:[],added:[],edits:[]},pm=opt.planMap||null;
- for(const r of remote){const id=r.srcPin||r.id,l=L.get(id);
+function mergePins(local,remote,opt={}){const L=new Map(local.map(p=>[p.id,p])),out={apply:[],conflicts:[],same:0,unchanged:0,missing:[],added:[],edits:[],again:0},pm=opt.planMap||null;
+ /* bpm-v136: pins this phone already took in from a returned file remember the other phone's pin id (mergedFrom), so merging the same file again finds them instead of adding copies */
+ const MF=new Map(local.filter(p=>p.mergedFrom).map(p=>[p.mergedFrom,p]));
+ for(const r of remote){let id=r.srcPin||r.id,l=L.get(id);if(!l&&!r.srcPin&&MF.has(r.id)){l=MF.get(r.id);id=l.id;out.again++}
   if(!l){/* bpm-v135: a pin placed on the second phone (no origin pin) comes back as a new pin on the matching plan */if(!r.srcPin&&!r.base&&pm&&pm[r.planId])out.added.push({...r,planId:pm[r.planId]});else out.missing.push(id);continue}
   const ed=mergeEdits(l,r);if(ed&&(ed.groups.length||ed.conflicts.length))out.edits.push({id,...ed});
   const bu=r.base?r.base.u||0:null,ru=r.updatedAt||0,lu=l.updatedAt||0;
@@ -29,12 +31,15 @@ function mergePins(local,remote,opt={}){const L=new Map(local.map(p=>[p.id,p])),
 function pickRes(p){const o={};for(const k of [...RES_F,'updatedAt','dev','by'])o[k]=p[k]??(k==='checks'||k==='codes'?undefined:'');return o}
 function mergeLog(a=[],b=[]){const k=e=>e.pin+'|'+e.at+'|'+e.dev,m=new Map();for(const e of [...a,...b])m.set(k(e),e);return[...m.values()].sort((x,y)=>x.at-y.at).slice(-5000)}
 window.mergePins=mergePins;window.mergeLog=mergeLog;
-const mkHash=m=>{const{id,planId,srcMk,mbase,updatedAt,...r}=m||{};return JSON.stringify(r,Object.keys(r).sort())};
+const mkHash=m=>{const{id,planId,srcMk,mbase,updatedAt,mergedFrom,...r}=m||{};return JSON.stringify(r,Object.keys(r).sort())};
 // bpm-v135: drawings (markups). Changed only on their phone: theirs is used. Changed on both: the newest wins. New drawings are added. A drawing they deleted is kept here (listed in the summary).
-function mergeMarkups(local,remote,pm,splitIds){const L=new Map(local.map(m=>[m.id,m])),out={apply:[],added:[],conflicts:[],gone:0};const seen=new Set();
+function mergeMarkups(local,remote,pm,splitIds){const L=new Map(local.map(m=>[m.id,m])),out={apply:[],added:[],conflicts:[],gone:0,again:0};const seen=new Set();
+ /* bpm-v136: drawings already taken in remember the other phone's drawing id (mergedFrom); identical drawings (taken in by version 135) are also recognised */
+ const MF=new Map(local.filter(m=>m.mergedFrom).map(m=>[m.mergedFrom,m])),HS=new Set(local.filter(m=>!m.srcMk).map(m=>m.planId+'|'+mkHash(m)));
  for(const r of remote){if(r.srcMk){seen.add(r.srcMk);const l=L.get(r.srcMk);if(!l||!r.mbase)continue;const rh=mkHash(r),lh=mkHash(l);if(rh===r.mbase||rh===lh)continue;
    if(lh===r.mbase)out.apply.push({id:l.id,m:r});else{const rn=(r.updatedAt||0)>(l.updatedAt||0);out.conflicts.push({id:l.id,won:rn?'remote':'local'});if(rn)out.apply.push({id:l.id,m:r})}}
-  else if(pm&&pm[r.planId])out.added.push({...r,planId:pm[r.planId]})}
+  else if(pm&&pm[r.planId]){const ex=MF.get(r.id);if(ex){out.again++;if(mkHash(ex)!==mkHash(r)&&(r.updatedAt||0)>(ex.updatedAt||0))out.apply.push({id:ex.id,m:r});continue}
+   if(HS.has(pm[r.planId]+'|'+mkHash(r))){out.again++;continue}out.added.push({...r,planId:pm[r.planId]})}}
  if(splitIds)for(const id of splitIds)if(!seen.has(id)&&L.has(id))out.gone++;return out}
 window.mergeMarkups=mergeMarkups;window.mkHash=mkHash;
 (()=>{const ce=(t,a={},h='')=>{const e=document.createElement(t);Object.assign(e,a);if(h)e.innerHTML=h;return e};
@@ -89,23 +94,24 @@ window.mergeMarkups=mergeMarkups;window.mkHash=mkHash;
 
  window.mergeFile=async function(file){if(!project)throw new Error('open the project first');const{z,man}=await readBpm(file),pid=man.split?.projectId||man.project?.split?.projectId||man.project?.id;
   if(pid!==project.id){busy(0);const ok=await uiConfirm('This file was split from a different project. Merge anyway (pins match by ID only)?',{ok:'Merge anyway',cancel:'Cancel'});if(!ok)return null;busy(1,'Merging…')}
-  const remote=man.pins,keys=new Set(remote.map(p=>p.srcPin||p.id)),local=[];for(const pl of (await all('plans')).filter(p=>p.projectId===project.id))for(const p of await byIdx('pins','planId',pl.id))if(keys.has(p.id))local.push(p);
+  const remote=man.pins,keys=new Set(remote.map(p=>p.srcPin||p.id)),local=[];for(const pl of (await all('plans')).filter(p=>p.projectId===project.id))for(const p of await byIdx('pins','planId',pl.id))if(keys.has(p.id)||(p.mergedFrom&&keys.has(p.mergedFrom)))local.push(p);
   /* bpm-v135: plan map (their plan id -> our plan id) for new pins and drawings */const myPl=(await all('plans')).filter(p=>p.projectId===project.id),myIds=new Set(myPl.map(p=>p.id)),planMap={};
   for(const rp of man.plans||[]){const o=rp.srcPlan||rp.id;if(myIds.has(o))planMap[rp.id]=o}
   const res=mergePins(local,remote,{planMap});const lm=[];for(const id of new Set(Object.values(planMap)))lm.push(...await byIdx('markups','planId',id));
   res.mk=mergeMarkups(lm,man.markups||[],planMap,man.split?.mk||man.project?.split?.mk||null);res.file={z,man};return res};
  async function applyMerge(res,picks){const{z,man}=res.file,byKey=new Map(man.pins.map(p=>[p.srcPin||p.id,p])),L=new Map();for(const pl of (await all('plans')).filter(p=>p.projectId===project.id))for(const p of await byIdx('pins','planId',pl.id))L.set(p.id,p);
+  for(const p of L.values())if(p.mergedFrom&&byKey.has(p.mergedFrom)&&!byKey.has(p.id))byKey.set(p.id,byKey.get(p.mergedFrom));
   const take=[...res.apply,...res.conflicts.filter(c=>picks[c.id]==='remote').map(c=>({id:c.id,fields:pickRes(c.remote)}))];let nm=0;
   const haveM=new Set((await all('media')).map(m=>m.srcMedia||m.id));
   for(const t of take){const l=L.get(t.id);if(!l)continue;const a={...l,...t.fields};for(const k in t.fields)if(t.fields[k]===undefined)delete a[k];await put('pins',a);
-   const r=byKey.get(t.id);for(const m of man.media.filter(m=>m.pinId===r.id)){if(haveM.has(m.srcMedia||m.id))continue;const{file:f,type,size,annotFile,annotType,...x}=m,o={...x,id:uid()+'m',srcMedia:m.srcMedia||m.id,pinId:t.id};if(f&&z.get(f))o.blob=new Blob([await z.get(f).blob.arrayBuffer()],{type});if(annotFile&&z.get(annotFile))o.annot=new Blob([await z.get(annotFile).blob.arrayBuffer()],{type:annotType});await put('media',o);nm++}}
+   const r=byKey.get(t.id);if(!r)continue;for(const m of man.media.filter(m=>m.pinId===r.id)){if(haveM.has(m.srcMedia||m.id))continue;const{file:f,type,size,annotFile,annotType,...x}=m,o={...x,id:uid()+'m',srcMedia:m.srcMedia||m.id,pinId:t.id};if(f&&z.get(f))o.blob=new Blob([await z.get(f).blob.arrayBuffer()],{type});if(annotFile&&z.get(annotFile))o.annot=new Blob([await z.get(annotFile).blob.arrayBuffer()],{type:annotType});await put('media',o);nm++}}
   const copyMedia=async(rid,pid)=>{for(const m of man.media.filter(m=>m.pinId===rid)){if(haveM.has(m.srcMedia||m.id))continue;const{file:f,type,size,annotFile,annotType,...x}=m,o={...x,id:uid()+'m',srcMedia:m.srcMedia||m.id,pinId:pid};if(f&&z.get(f))o.blob=new Blob([await z.get(f).blob.arrayBuffer()],{type});if(annotFile&&z.get(annotFile))o.annot=new Blob([await z.get(annotFile).blob.arrayBuffer()],{type:annotType});await put('media',o);nm++}};
   // bpm-v135: edits (address, model, location, type, position), new pins, drawings
   let ne=0,na=0;const eg={};for(const e of res.edits||[]){if(!e.groups.length)continue;const l=(await get('pins',e.id));if(!l)continue;await put('pins',{...l,...e.fields});ne++;for(const g of e.groups)eg[g]=(eg[g]||0)+1}
-  for(const r of res.added||[]){if(await get('pins',r.id))continue;const{base,srcPin,...x}=r,o={...x,id:uid()+'n',mergedFrom:r.id};await put('pins',o);await copyMedia(r.id,o.id);na++}
+  for(const r of res.added||[]){if(await get('pins',r.id)||[...L.values()].some(p=>p.mergedFrom===r.id))continue;const{base,srcPin,...x}=r,o={...x,id:uid()+'n',mergedFrom:r.id};await put('pins',o);await copyMedia(r.id,o.id);na++}
   const mk=res.mk||{apply:[],added:[],conflicts:[],gone:0};let mu=0,ma=0;
   for(const a of mk.apply){const l=await get('markups',a.id);if(!l)continue;const{srcMk,mbase,id,planId,...x}=a.m;await put('markups',{...x,id:l.id,planId:l.planId});mu++}
-  for(const r of mk.added){const{srcMk,mbase,...x}=r;await put('markups',{...x,id:uid()+'k'});ma++}
+  for(const r of mk.added){const{srcMk,mbase,...x}=r;await put('markups',{...x,id:uid()+'k',mergedFrom:r.id});ma++}
   const k='chlog:'+project.id;await put('meta',mergeLog((await get('meta',k))||[],man.changelog||[]),k);
   if(plan){pins=await byIdx('pins','planId',plan.id);markups=await byIdx('markups','planId',plan.id);draw();window.renderList&&renderList()}return{pins:take.length,media:nm,edits:ne,editGroups:eg,added:na,mkChanged:mu,mkAdded:ma,mkGone:mk.gone,mkConflicts:mk.conflicts.length,editConflicts:(res.edits||[]).reduce((a,e)=>a+e.conflicts.length,0)}}
  window.applyMerge=applyMerge;
@@ -115,6 +121,7 @@ window.mergeMarkups=mergeMarkups;window.mkHash=mkHash;
   if(r.pins)L.push(`${c(r.pins,'test result')} brought in`);if(r.added)L.push(`${c(r.added,'new device')} added`);
   for(const[g,n]of Object.entries(r.editGroups||{}))L.push(`${n} ${GN[g]} change${n===1?'':'s'}`);
   if(r.mkAdded)L.push(`${c(r.mkAdded,'new drawing')} added`);if(r.mkChanged)L.push(`${c(r.mkChanged,'changed drawing')} updated`);if(r.media)L.push(`${r.media} photo / media file${r.media===1?'':'s'}`);
+  {const ag=(res.again||0)+(res.mk?.again||0);if(ag)L.push(`${c(ag,'device or drawing')} already merged from this file before: not added again`)}
   const C=[];const rc=res.conflicts.length;if(rc){const th=res.conflicts.filter(x=>picks[x.id]==='remote').length;C.push(`${c(rc,'test result')} changed on both phones: kept ${th} from their phone and ${rc-th} from this phone`)}
   const ec=(res.edits||[]).flatMap(e=>e.conflicts);if(ec.length){const th=ec.filter(x=>x.won==='remote').length;C.push(`${c(ec.length,'edit')} made on both phones: the newest kept (${th} theirs, ${ec.length-th} this phone)`)}
   if(r.mkConflicts)C.push(`${c(r.mkConflicts,'drawing')} changed on both phones: the newest kept`);
