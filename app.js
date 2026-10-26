@@ -141,7 +141,7 @@ let dbp;function db(){return dbp||(dbp=new Promise((res,rej)=>{const r=indexedDB
  if(e.oldVersion<3&&!d.objectStoreNames.contains('learned'))d.createObjectStore('learned',{keyPath:'id'});
  if(e.oldVersion<4&&!d.objectStoreNames.contains('mycodes'))d.createObjectStore('mycodes',{keyPath:'id'})};r.onsuccess=()=>{r.result.onversionchange=()=>r.result.close();res(r.result)};r.onblocked=()=>console.info('db upgrade waiting for other tabs');r.onerror=()=>rej(r.error)}))}
 async function tx(store,mode,fn){const d=await db();return new Promise((res,rej)=>{const t=d.transaction(store,mode),s=t.objectStore(store);let out;const r=fn(s);if(r)r.onsuccess=()=>out=r.result;t.oncomplete=()=>res(out);t.onerror=()=>rej(t.error)})}
-const put=(s,v,k)=>tx(s,'readwrite',o=>o.put(v,k)),get=(s,k)=>tx(s,'readonly',o=>o.get(k)),del=(s,k)=>tx(s,'readwrite',o=>o.delete(k)),all=s=>tx(s,'readonly',o=>o.getAll()),byIdx=(s,i,v)=>tx(s,'readonly',o=>o.index(i).getAll(v));
+const put=(s,v,k)=>tx(s,'readwrite',o=>o.put(v,k)),get=(s,k)=>tx(s,'readonly',o=>o.get(k)),del=(s,k)=>tx(s,'readwrite',o=>o.delete(k)),all=s=>tx(s,'readonly',o=>o.getAll()),byIdx=(s,i,v,raw)=>tx(s,'readonly',o=>o.index(i).getAll(v)).then(r=>s==='media'&&!raw&&r?r.filter(m=>!m.lastVisit):r)/* bpm-v136: photos moved to a device's last-visit record (lastVisit) are hidden from the current visit unless raw */;
 // ---------- state ----------
 const cv=$('#cv'),ctx=cv.getContext('2d'),stage=$('#stage');
 let plan=null,pdf=null,page=1,pageW=0,pageH=0,curPH=()=>pageH,bmp=null,bmpScale=0,renderTask=null,renderTimer=0,baseBm=null,tile=null,project=null;
@@ -387,7 +387,7 @@ const _hitSel=()=>setTimeout(syncOpacFromSel,0);stage.addEventListener('pointeru
 const hist={};const H=()=>hist[plan.id]||(hist[plan.id]={u:[],r:[]});
 async function applyState(store,id,o,media){const arr=store==='pins'?pins:markups,i=arr.findIndex(x=>x.id===id);
  if(o){o=structuredClone(o);if(i>=0)arr[i]=o;else arr.push(o);await put(store,o);if(media)for(const m of media)await put('media',m);if(sel?.o.id===id)sel.o=o;return o}
- if(i>=0)arr.splice(i,1);if(sel?.o.id===id)sel=null;await del(store,id);if(store==='pins')for(const m of await byIdx('media','pinId',id))await del('media',m.id)}
+ if(i>=0)arr.splice(i,1);if(sel?.o.id===id)sel=null;await del(store,id);if(store==='pins')for(const m of await byIdx('media','pinId',id,true))await del('media',m.id)}
 async function change(store,before,after,media){if(!plan)return;const id=(after||before).id;await applyState(store,id,after);const h=H();h.u.push({store,id,before:before&&structuredClone(before),after:after&&structuredClone(after),media});if(h.u.length>300)h.u.shift();h.r=[];afterChange()}
 async function undo(){if(!plan)return;const h=H(),op=h.u.pop();if(!op)return;if(op.multi){for(const b of op.multi.slice().reverse())await applyState(b.store,b.id,b.before,b.media)}else if(op.batch){for(const b of op.batch)await applyState(op.store,b.id,b.before);if(op.ghosts)ghosts.push(...structuredClone(op.ghosts))}else await applyState(op.store,op.id,op.before,op.media);h.r.push(op);afterChange()}
 async function redo(){if(!plan)return;const h=H(),op=h.r.pop();if(!op)return;if(op.multi){for(const b of op.multi)await applyState(b.store,b.id,b.after)}else if(op.batch){for(const b of op.batch)await applyState(op.store,b.id,b.after);if(op.ghosts){const ids=new Set(op.ghosts.map(g=>g.id));ghosts=ghosts.filter(g=>!ids.has(g.id))}}else await applyState(op.store,op.id,op.after);h.u.push(op);afterChange()}
@@ -444,7 +444,7 @@ dlg.addEventListener('cancel',e=>{if(!pinDirty())return;if(pinBlockStop()){e.pre
 // bpm-v66: wait for the async Save to land before the walk re-reads the pin (it used to re-render with the pre-save pin)
 let dlgSave=null;dlg.addEventListener('close',()=>{dlg._wf=null;if(rec)rec.stop();const w=dlgSave;dlgSave=null;Promise.resolve(w).catch(()=>{}).then(()=>{if(walk)setTimeout(walkAfterDialog,0)})});
 $('#pinDel').onclick=async()=>{if(!await uiConfirm('Delete this pin and its media?'))return;await deletePin(cur);dlg.close()};
-async function deletePin(p){await change('pins',p,null,await byIdx('media','pinId',p.id))}
+async function deletePin(p){await change('pins',p,null,await byIdx('media','pinId',p.id,true))}
 // ---------- list ----------
 /* bpm-v111: one side panel at a time — Pins and Layers share the right-side slot; opening one closes the other, its own button closes it */
 window.pinsPanel=on=>{const P=$('#panel');if(P.hidden===!on)return;P.hidden=!on;if(WIDE_MQ.matches)PANEL_CLOSED=!on;if(on){try{window.layPanel&&document.body.classList.contains('lpOn')&&layPanel(false)}catch{}renderList()}panelBtnSync();try{resize()}catch{}};
@@ -535,7 +535,7 @@ async function loadProject(id){let ps=await refreshProjects();project=ps.find(p=
 $('#projSel').onchange=e=>loadProject(e.target.value);
 $('#projNew').onclick=async()=>{const n=await uiPrompt('New project name:','Project '+(($('#projSel').options.length||0)+1));if(!n||!n.trim())return;const p={id:'p'+uid(),name:n.trim(),created:Date.now()};await put('projects',p);await loadProject(p.id)};
 $('#projRen').onclick=async()=>{if(!project)return;const n=await uiPrompt('Rename project:',project.name);if(!n||!n.trim())return;project.name=n.trim();await put('projects',project);await refreshProjects()};
-async function deletePlanData(id){for(const m of await byIdx('markups','planId',id))await del('markups',m.id);for(const p of await byIdx('pins','planId',id)){for(const m of await byIdx('media','pinId',p.id))await del('media',m.id);await del('pins',p.id)}await del('plans',id)}
+async function deletePlanData(id){for(const m of await byIdx('markups','planId',id))await del('markups',m.id);for(const p of await byIdx('pins','planId',id)){for(const m of await byIdx('media','pinId',p.id,true))await del('media',m.id);await del('pins',p.id)}await del('plans',id)}
 $('#planDel').onclick=async()=>{if(!plan)return;const cur=plan,mine=(await all('plans')).filter(x=>x.projectId===cur.projectId),dups=mine.filter(x=>x.id!==cur.id&&x.name===cur.name&&x.blob?.size===cur.blob?.size);
  if(!await uiConfirm(`Delete plan "${cur.name}" and its markups, pins and media? This cannot be undone.`))return;let ids=[cur.id];
  if(dups.length&&await uiConfirm(`Also delete ${dups.length} duplicate upload(s) of this same file (same name and size), including any markups on them?`))ids=ids.concat(dups.map(x=>x.id));
@@ -615,7 +615,7 @@ const DG={spkw:{n:'Speaker/strobe – wall',t:'spkstrobe',d:['SPK_FOH_WALL','SPK
  facp:{n:'FACP (fire alarm control panel)',t:'panel',d:['FACP'],note:'FACP'},dact:{n:'DACT (communicator)',t:'dact',d:['DACT'],note:'DACT'},fatc:{n:'FATC (terminal cabinet)',t:'fatc',d:['FATC'],note:'FATC'},panelbox:{n:'Annunciator',t:'panelbox',d:['PANEL_BOX'],note:'annunciator'},rai:{n:'Remote alarm indicator (RI)',t:'rai',d:['RAI'],note:'remote alarm indicator'}};
 DG.farp={n:'FARP (remote panel)',t:'farp',d:['FARP'],note:'FARP'};
 for(const[k,n,t]of[['panel','FACP (manual)','panel'],['oth','Other device','other']])DG[k]={n,t,d:[],x:1};
-DG.heat={n:'Heat detector',t:'heat',d:['HEAT'],note:'heat'}; // bpm-v108: hex + H glyph (legend-checked on test plan/139/144/149)
+DG.heat={n:'Heat detector',t:'heat',d:['HEAT'],note:'heat'}; // bpm-v108: hex + H glyph (legend-checked on test plan)
 // bpm-v106: new types without a Detect glyph yet: manual pick / legend text / master templates only (multi-criteria looks like smoke, so never auto)
 for(const[k,n,t]of[['multi','Multi-criteria detector','multi'],['speaker','Speaker (no strobe)','speaker'],['lfs','Low-frequency sounder','lfs'],['bell','Bell – 120 VAC','bell'],['pad','PAD-4/PAD-5','pad'],['damper','Fire/smoke damper','damper'],['scs','Smoke control station','scs'],['loc','Local operator console','loc'],['oss','Operator safety switch','oss'],['eol','EOL resistor','eol'],['bfp','Sprinkler backflow preventer','bfp'],['pullbox','Electrical pull box','pullbox'],['ffphone','Firefighter phone jack','ffphone'],
  ['vesda','VESDA aspirating detector','vesda'],['vpsu','VESDA power supply','vpsu'],['vsp','VESDA sampling point','vsp'],['vcap','VESDA capillary sampling point','vcap'],['vlf','VESDA laser focus','vlf'],['vnet','VESDA network interface','vnet'],['vrem','VESDA remote enclosure','vrem'],['vtee','VESDA aspirating sampling tee','vtee']])DG[k]={n,t,d:[],x:1};
@@ -793,7 +793,7 @@ function renderSelBar(){const b=$('#selBar'),it=tool==='select'?selItems():msel,
 async function doCopy(cut){const it=selItems(),ms=it.filter(o=>!isPinO(o)),ps=clipPins?it.filter(isPinO):[];if(!ms.length&&!ps.length){toast(it.length?'Tick "incl. pins" to copy pins':'Nothing selected');return}
  const all=[...ms,...ps],bs=all.map(bb),cx=(Math.min(...bs.map(b=>b.x))+Math.max(...bs.map(b=>b.X)))/2,cy=(Math.min(...bs.map(b=>b.y))+Math.max(...bs.map(b=>b.Y)))/2;
  clip={m:structuredClone(ms),p:structuredClone(ps),cx,cy,from:plan.id,page};
- if(cut){const L=[];for(const m of ms)L.push({store:'markups',id:m.id,before:m,after:null});for(const p of ps)L.push({store:'pins',id:p.id,before:p,after:null,media:await byIdx('media','pinId',p.id)});msel=[];sel=null;await changeMulti(L);toast(`Cut ${all.length} item${all.length>1?'s':''}`,true)}
+ if(cut){const L=[];for(const m of ms)L.push({store:'markups',id:m.id,before:m,after:null});for(const p of ps)L.push({store:'pins',id:p.id,before:p,after:null,media:await byIdx('media','pinId',p.id,true)});msel=[];sel=null;await changeMulti(L);toast(`Cut ${all.length} item${all.length>1?'s':''}`,true)}
  else toast(`Copied ${all.length} item${all.length>1?'s':''}${ps.length?` (${ps.length} pin${ps.length>1?'s':''})`:''}`);renderSelBar()}
 async function doPaste(at){if(!clip||!plan)return;const dx=at?at.x-clip.cx:0,dy=at?at.y-clip.cy:0,L=[],now=Date.now();
  for(const m of clip.m){const n={...structuredClone(m),id:uid(),planId:plan.id,page,x1:m.x1+dx,y1:m.y1+dy,x2:m.x2+dx,y2:m.y2+dy};L.push({store:'markups',id:n.id,before:null,after:n})}
@@ -816,7 +816,7 @@ function startWalk(type=''){if(!plan)return uiAlert('Open a plan first.');if(!pi
  walk={type,types:arguments[1]||null,skip:new Set(),p:null,fail:false};msel=[];sel=null;renderSelBar();renderGhostBar();$('#walkBtn').classList.add('pri');
  const c=toW(stage.clientWidth/2,stage.clientHeight/2),L=walkLeft(),here=L.filter(p=>p.page===page);
  const first=sel?.kind==='p'&&untested(sel.o)?sel.o:nearestFrom(here.length?here:L,here.length?{page,...c}:null);walkGo(first)}
-function exitWalk(){if(vKeep)voiceStop();walk=null;$('#walk').hidden=true;$('#walkBtn').classList.remove('pri');renderGhostBar();renderSelBar();draw()}
+function exitWalk(){if(vPend)vResolve(false,'stop');if(vKeep)voiceStop();walk=null;$('#walk').hidden=true;$('#walkBtn').classList.remove('pri');renderGhostBar();renderSelBar();draw()}
 async function walkGo(p,back){if(!walk)return;walk.hist??=[];if(!back&&walk.p&&p&&walk.p.id!==p.id){walk.hist.push(walk.p.id);if(walk.hist.length>200)walk.hist.shift()}walk.p=p;walk.fail=false;walk.fr=[];walk.fnote='';walk.fcrit=false;renderWalk();if(!p){draw();return}const sKeep=view.s,pgChg=p.page!==page;if(pgChg)await gotoPage(p.page); // bpm-v100: keep the zoom across pages (gotoPage re-fits the view)
  const W=stage.clientWidth,Hh=stage.clientHeight-$('#walk').offsetHeight,s=walk.zoomed?sKeep:Math.max(view.s,Math.min(W,stage.clientHeight)/320),v0={...view};walk.zoomed=true;centerOn(p.x,p.y,s,W/2,Math.max(60,Hh/2));const v1={...view};sel={kind:'p',o:p};if(pgChg){draw();scheduleRender();return} // new page: land directly at the kept zoom (no zoom-out-then-in)
  view=v0;await prefetchPath(v0,v1);if(walk?.p!==p)return;await slideTo(v1)}
@@ -849,7 +849,7 @@ $('#micBtn').onclick=startVoice;
 let vKeep=false;
 function voiceOn(b){for(const x of[$('#micBtn'),$('#wMic')])if(x)x.classList.toggle('danger',b);const w=$('#wMic');if(w){w.textContent=b?'🎤 Voice on: tap to stop':'🎤 Voice off: tap to start';w.setAttribute('aria-pressed',b?'true':'false')}
  let c=$('#vChip');if(!c){c=document.createElement('button');c.type='button';c.id='vChip';c.className='btn danger';c.hidden=true;c.onclick=voiceStop;document.body.append(c)}c.textContent='⏹ Voice on: tap to stop listening';const g=$('#vGuide');c.hidden=!(b&&vKeep)||!!(g&&!g.hidden)}
-function voiceStop(){vKeep=false;const r=srec;if(r){r._stop=true;try{r.stop()}catch{}}voiceOn(false)}
+function voiceStop(){if(vPend)vResolve(false,'stop');vKeep=false;const r=srec;if(r){r._stop=true;try{r.stop()}catch{}}voiceOn(false)}
 function startVoice(auto){if(!SR)return;if(srec&&auto!==true){voiceStop();return}if(srec)return;
  if(auto!==true)vKeep=!!walk;
  if(!navigator.onLine)toast('You are offline: on many phones voice recognition needs internet. If it fails, use the buttons.');
@@ -864,15 +864,15 @@ function vGuide(st,txt){let g=$('#vGuide');if(!g){g=document.createElement('div'
   g.innerHTML=`<div class="vgH"><span class="vgMic" aria-hidden="true">🎤</span><b class="vgS"></b></div>
   <div class="vgT">Say one of these:</div>
   <ul class="vgL">
-   <li><q>pass</q> or <q>good</q><small>passes this device</small></li>
-   <li><q>fail</q> + reason<small>e.g. <q>fail damaged</q>, <q>fail no alarm</q>. Add <q>critical</q> for a critical deficiency: <q>fail damaged critical</q>. Reasons: no alarm, trouble, damaged, missing, obstructed, dirty, wrong location</small></li>
+   <li><q>pass</q> or <q>good</q>, then <q>yes</q><small>passes this device once you confirm: Marker shows the device, then say <q>yes</q> or <q>confirm</q>, or tap Confirm, within 6 seconds. Anything else cancels.</small></li>
+   <li><q>fail</q> + reason<small>during a walk this opens the fail card; otherwise confirm it the same way. E.g. <q>fail damaged</q>, <q>fail no alarm</q>. Add <q>critical</q> for a critical deficiency: <q>fail damaged critical</q>. Reasons: no alarm, trouble, damaged, missing, obstructed, dirty, wrong location</small></li>
    <li><q>skip</q> or <q>next</q><small>skips this device</small></li>
    <li><q>address L1D012</q><small>sets this device's address</small></li>
    <li><q>note</q> + your words<small>adds a note, e.g. <q>note cover cracked</q></small></li>
-   <li><q>L1D012 pass</q><small>passes (or <q>L1D012 fail damaged</q> fails) the device with that address</small></li>
+   <li><q>L1D012 pass</q><small>passes (or <q>L1D012 fail damaged</q> fails) the device with that address, after you confirm</small></li>
    <li><q>stop listening</q><small>turns voice off</small></li>
   </ul>
-  <div class="vgKeep">During a walk, voice stays on between devices (hands-free) until you tap <b>Stop listening</b>, say <q>stop listening</q>, or end the walk.</div>
+  <div class="vgKeep">Nothing is recorded until you confirm, and every result has Undo. During a walk, voice stays on between devices (hands-free) until you tap <b>Stop listening</b>, say <q>stop listening</q>, or end the walk.</div>
   <div class="vgHeard" aria-live="polite"></div>
   <div class="vgNet"></div>
   <div class="vgB"><button type="button" class="btn danger" id="vgStop">⏹ Stop listening</button><button type="button" class="btn pri" id="vgAgain">🎤 Listen again</button><button type="button" class="btn" id="vgX">✕ Close</button></div>`;
@@ -904,13 +904,35 @@ function parseVoice(text){const raw=String(text||'').trim(),t=raw.toLowerCase().
  if((m=raw.match(/^notes? (.+)$/i)))return{cmd:'note',v:m[1].trim()};
  if((m=t.match(/^(.+?) (pass|passed|passes|fail|failed|fails)\b ?(.*)$/))){const addr=normA(numW(m[1].replace(TYPEW,' ')));if(addr){const f=/^fail/.test(m[2]);return{cmd:f?'fail':'pass',addr,reason:f?reasonOf(m[3]):'',crit:f&&/\bcritical\b/.test(m[3])&&!/non.?critical/.test(m[3])}}}
  return{cmd:'?'}}
-async function runVoice(text){const c=parseVoice(text);window.__lastVoice={text,c};if(c.cmd==='?'){toast(`Heard “${text}” but didn't understand. Try “pass”, “fail damaged”, “skip”, “address L1D012”.`);return c}
+// bpm-v136: a spoken pass or fail never records on its own. Marker shows the device and asks to confirm: say "yes" or "confirm",
+// or tap Confirm, within V_CONF_MS. Anything else heard, Cancel, Stop listening, or the time running out cancels. The recorded result keeps Undo.
+let vPend=null;const V_CONF_MS=6000,V_YES=/^(yes|yeah|yep|confirm|confirmed|yes confirm|confirm it|correct|yes correct)$/;
+function vConfirmEl(){let e=$('#vConfirm');if(!e){e=document.createElement('div');e.id='vConfirm';e.setAttribute('role','alertdialog');e.setAttribute('aria-label','Confirm voice result');e.hidden=true;
+  e.innerHTML=`<div class="vcQ"></div><div class="vcDev"></div><div class="vcHow">Say <q>yes</q> or <q>confirm</q>, or tap Confirm. Anything else cancels. <b class="vcT"></b></div><div class="vcB"><button type="button" class="btn pri" id="vcOk">✓ Confirm</button><button type="button" class="btn" id="vcNo">✕ Cancel: do not record</button></div>`;
+  document.body.append(e);e.querySelector('#vcOk').onclick=()=>vResolve(true,'tap');e.querySelector('#vcNo').onclick=()=>vResolve(false,'tap')}return e}
+function vPlace(e){const vis=x=>x&&!x.hidden&&getComputedStyle(x).display!=='none'&&x.getBoundingClientRect().height>0;let hi=innerHeight-8;
+ for(const id of['walk','tools','thumbs','ghBar']){const x=document.getElementById(id);if(vis(x)){const r=x.getBoundingClientRect();if(r.top>innerHeight/2&&r.width>innerWidth/2)hi=Math.min(hi,r.top-8)}}e.style.bottom=Math.round(innerHeight-hi)+'px'}
+function vAsk(p,c,text){if(vPend)vResolve(false,'new');const e=vConfirmEl(),R=c.cmd==='pass'?'PASS':'FAIL'+(c.reason?' ('+c.reason+(c.crit?', critical':'')+')':'');
+ e.querySelector('.vcQ').textContent=`Heard “${text}”. Record ${R}?`;e.querySelector('.vcDev').textContent=`${TYPES[p.type]?.n||p.type}${p.address?' '+p.address:''}${p.model?' · '+p.model:''}`;
+ e.querySelector('#vcOk').textContent=`✓ Confirm ${c.cmd==='pass'?'pass':'fail'}`;e.classList.toggle('fail',c.cmd==='fail');
+ if(!(walk&&walk.p&&walk.p.id===p.id)){/* show the device */try{centerOn(p.x,p.y,Math.max(view.s,1),stage.clientWidth/2,stage.clientHeight/2);sel={kind:'p',o:p};draw();scheduleRender()}catch{}}
+ const g=$('#vGuide');if(g){clearTimeout(g._t);g.hidden=true}const ch=$('#vChip');if(ch)ch.hidden=true;vPlace(e);e.hidden=false;
+ const end=Date.now()+V_CONF_MS,tick=()=>{e.querySelector('.vcT').textContent=`Cancels in ${Math.max(0,Math.ceil((end-Date.now())/1000))} s.`};tick();
+ vPend={p:p.id,c,text,iv:setInterval(tick,250),to:setTimeout(()=>vResolve(false,'timeout'),V_CONF_MS)};
+ if(!vKeep&&SR)setTimeout(()=>{if(vPend&&!srec)startVoice(true)},350)/* one-shot voice: listen once more for the yes */}
+async function vResolve(ok,how,heard){const P=vPend;if(!P)return;vPend=null;clearInterval(P.iv);clearTimeout(P.to);const e=$('#vConfirm');if(e)e.hidden=true;
+ if(!vKeep&&srec&&how!=='voice'&&how!=='stop'){try{srec._stop=true;srec.abort?srec.abort():srec.stop()}catch{}}if(how!=='stop')voiceOn(!!srec&&vKeep);
+ window.__lastConfirm={ok,how};
+ if(!ok){if(how!=='new')toast(how==='timeout'?`Not recorded: no confirmation for “${P.text}”`:how==='voice'?`Not recorded: heard “${heard}”, not yes`:'Not recorded: cancelled');return}
+ const p=pins.find(x=>x.id===P.p);if(!p){toast('Not recorded: that device is not on this plan page any more');return}await testPin(p,P.c.cmd,P.c.reason,P.c.crit)}
+async function runVoice(text){if(vPend){const t=String(text||'').toLowerCase().replace(/[,.!?]/g,'').replace(/\s+/g,' ').trim();window.__lastVoice={text,c:{cmd:V_YES.test(t)?'confirm':'cancel'}};if(V_YES.test(t))await vResolve(true,'voice');else await vResolve(false,'voice',text);return window.__lastVoice.c}
+ const c=parseVoice(text);window.__lastVoice={text,c};if(c.cmd==='?'){toast(`Heard “${text}” but didn't understand. Try “pass”, “fail damaged”, “skip”, “address L1D012”.`);return c}
  if(c.cmd==='skip'){if(walk&&walk.p){walk.skip.add(walk.p.id);walkNext();toast(`Heard “${text}”: skipped`)}else toast('“Skip” works in walk mode (🚶).');return c}
  let p=null;if(c.addr){p=pins.find(x=>normA(x.address)===c.addr);if(!p){toast(`Heard “${text}”: no pin with address ${c.addr} in this plan`);return c}}else p=walk?.p?pins.find(x=>x.id===walk.p.id):sel?.kind==='p'?sel.o:null;
  if(!p){toast(`Heard “${text}”: select a pin or start walk mode (🚶) first`);return c}
  /* v131: in a walk test, saying “fail” opens the full checklist card exactly like tapping Fail (v129) instead of recording the fail at once */
  if(c.cmd==='fail'&&walk&&walk.p&&typeof window.walkFailCard==='function'){const g=$('#vGuide');if(g){clearTimeout(g._t);g.hidden=true}await window.walkFailCard(p);return c}
- if(c.cmd==='pass'||c.cmd==='fail'){await testPin(p,c.cmd,c.reason,c.crit);return c}
+ if(c.cmd==='pass'||c.cmd==='fail'){vAsk(p,c,text);return c}
  const b=structuredClone(p),a={...b};if(c.cmd==='address')a.address=c.v;else if(c.cmd==='note')a.notes=(b.notes?b.notes+'\n':'')+c.v;
  await change('pins',b,a);if(dlg.open&&cur?.id===a.id){const np=pins.find(x=>x.id===a.id)||a;cur=np;ckl=structuredClone(np.checks||checkItems(np.type));renderChecks();form.elements.status&&(form.elements.status.value=np.status||'');}toast(`${TYPES[a.type]?.n||a.type}: ${c.cmd} → ${c.v}`,true);if(walk)renderWalk();return c}
 // ---------- v9: learned detection rules (global, IndexedDB 'learned') ----------
@@ -924,7 +946,7 @@ $('#learnReset').onclick=async()=>{if(!await uiConfirm('Forget all learned symbo
 
 // ---------- v10: multi-select tools ----------
 function selectAll(f){if(!plan||!f)return;const L=[...(f!=='p'?markups.filter(m=>m.page===page&&mVis(m)):[]),...(f!=='m'?pins.filter(p=>p.page===page&&pVis(p)&&tVis(p)):[])];msel=L;sel=null;if(L.length)multiOn=true;renderSelBar();requestDraw(false);toast(L.length?`${L.length} selected`:'Nothing visible on this page')}
-async function bulkDelete(){const it=selItems().filter(o=>o.planId===plan?.id);if(!it.length)return;const L=[];for(const o of it){if(isPinO(o))L.push({store:'pins',id:o.id,before:o,after:null,media:await byIdx('media','pinId',o.id)});else L.push({store:'markups',id:o.id,before:o,after:null})}
+async function bulkDelete(){const it=selItems().filter(o=>o.planId===plan?.id);if(!it.length)return;const L=[];for(const o of it){if(isPinO(o))L.push({store:'pins',id:o.id,before:o,after:null,media:await byIdx('media','pinId',o.id,true)});else L.push({store:'markups',id:o.id,before:o,after:null})}
  msel=[];sel=null;await changeMulti(L);renderSelBar();toast(`Deleted ${L.length} item${L.length>1?'s':''}`,true)}
 $('#bkType').innerHTML='<option value="">unchanged</option>'+Object.entries(TYPES).map(([k,v])=>`<option value="${k}">${esc(v.n)}</option>`).join('');
 function openBulk(){const it=selItems();if(!it.length)return;const nm=it.filter(o=>!isPinO(o)).length,np=it.length-nm;$('#bkN').textContent=`${it.length} item${it.length>1?'s':''}`;$('#bkM').hidden=!nm;$('#bkP').hidden=!np;
@@ -963,7 +985,7 @@ async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),
  const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v105',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
-  for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
+  for(const p of ps)for(const md of await byIdx('media','pinId',p.id,true)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
   const ly=await get('meta','layers:'+pl.id);if(ly)man.layers[pl.id]=ly;const sc=await get('meta','scale:'+pl.id);if(sc)(man.scales??={})[pl.id]=sc;const ro=await get('meta','rot:'+pl.id);if(ro)(man.rots??={})[pl.id]=ro;const pn=await get('meta','pname:'+pl.id);if(pn&&Object.keys(pn).length)(man.pnames??={})[pl.id]=pn}
  const last=await get('meta','last:'+pid);if(last)man.meta.last=last;const job=await get('meta','job:'+pid);if(job)man.meta.job=job;if(withLearned)man.learned=await all('learned');man.mycodes=await all('mycodes');man.installLinks=(await get('meta','installLinks'))||null;man.userParts=(await get('meta','userParts'))||null;man.cktpl=Object.keys(CKT).length?CKT:null;
  {// bpm-v72: human-readable reports inside the archive (ignored on import)
@@ -1176,7 +1198,7 @@ function itmDeviceTable(doc,D,y){const C=[[40,'Address',52],[94,'Device type',92
  const head=()=>{doc.setFont(undefined,'bold');doc.setFontSize(8);C.forEach(([x,h])=>doc.text(h,x,y));y+=4;doc.setDrawColor(200);doc.line(40,y,572,y);y+=9;doc.setFont(undefined,'normal')};
  if(y>700){doc.addPage();y=44}y+=6;doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('Device test results (every device)',40,y);y+=14;
  for(const{pl,pins:ps}of D){if(!ps.length)continue;if(y>730){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.setFontSize(9);doc.text(doc.splitTextToSize(pl.name,530)[0],40,y);y+=12;head();
-  for(const p of ps.slice().sort((a,b)=>(a.page-b.page)||sortAddr(a,b))){const cells=[p.address||'-',TYPES[p.type]?.n||p.type,p.model||'',p.location||'',p.status+(p.status==='failed'&&p.reason?' ('+p.reason+')':'')+(p.prev?'\nLast: '+p.prev.status:''),p.testedAt?fmtT(p.testedAt):'',rdTxt(p)].map((t,i)=>doc.splitTextToSize(String(t),C[i][2]));
+  for(const p of ps.slice().sort((a,b)=>(a.page-b.page)||sortAddr(a,b))){const cells=[p.address||'-',TYPES[p.type]?.n||p.type,p.model||'',p.location||'',p.status+(p.status==='failed'&&p.reason?' ('+p.reason+')':'')+(p.prev?'\nLast visit: '+p.prev.status:''),p.testedAt?fmtT(p.testedAt):'',rdTxt(p)].map((t,i)=>doc.splitTextToSize(String(t),C[i][2]));
    const h=Math.max(...cells.map(c=>c.length))*9+3;if(y+h>760){doc.addPage();y=44;head()}
    const rc={failed:[185,28,28],corrected:[8,145,178],passed:[21,128,61]}[p.status]||[100,116,139];cells.forEach((c,i)=>{if(i===4)doc.setTextColor(...rc);doc.text(c,C[i][0],y);doc.setTextColor(0)});y+=h}y+=6}
  doc.setFontSize(10);return y}
@@ -1204,12 +1226,9 @@ $('#nfpaItm').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1,
  {const cd=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='corrected').map(p=>({pl,p})));if(cd.length){if(y>720){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text(`Corrected deficiencies (${cd.length})`,40,y);y+=14;doc.setFont(undefined,'normal');doc.setFontSize(10);
   for(const{pl,p}of cd){const lines=doc.splitTextToSize(`${TYPES[p.type]?.n||p.type}${p.model?' ['+p.model+']':''} ${p.address||''}${p.location?' @ '+p.location:''} — was ${p.severity||'-'}: ${p.reason||''}\n${corrTxt(p)} · ${pl.name} ${pgT(pl.id,p.page)}`,530);if(y+lines.length*12>760){doc.addPage();y=44}doc.text(lines,40,y);y+=lines.length*12+6}}}
  y=itmDeviceTable(doc,D,y);
- y+=8;if(y>620){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('Signatures',40,y);y+=20;doc.setFont(undefined,'normal');doc.setFontSize(10);
- const sg=(await get('meta','sig:'+project.id))||{};
- const sigRow=(lab,s,name,extra)=>{if(s?.img){try{doc.addImage(s.img,'PNG',150,y-26,160,40)}catch{}doc.text(`${lab}: ${s.name||name||'-'}`,40,y+20);doc.text(`Signed on screen ${fmtT(s.at)}${extra}`,320,y+20);y+=48}else{doc.text(`${lab}: ${name||'_______________________________'}  Sign: ______________  Date: __________${extra}`,40,y);y+=28}};
- sigRow('Inspector',sg.insp,j.techName,'  License: '+(j.techLic||j.license||'__________'));
- sigRow('Owner / representative',sg.owner,j.ownerName||j.owner,'');
- doc.text('AHJ (if required): _______________________________  Date: __________',40,y);
+ y+=8;if(y>620){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('People',40,y);y+=20;doc.setFont(undefined,'normal');doc.setFontSize(10);
+ doc.text(`Inspector: ${j.techName||'-'}  License: ${j.techLic||j.license||'-'}`,40,y);y+=20;
+ doc.text(`Owner / representative: ${j.ownerName||j.owner||'-'}`,40,y);y+=20;
  nfpaFooter(doc,project.name);dl(doc.output('blob'),fsafe(project.name)+'-inspection-testing-record.pdf');toast('Inspection & Testing Record exported')}
  catch(e){showErr('ITM record failed: '+e.message)}finally{busy(0)}};
 
@@ -1227,10 +1246,8 @@ $('#nfpaComp').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1
  if(!defs.length)doc.text('None.',40,y),y+=14;
  {const cd=all_.filter(p=>p.status==='corrected').length;if(cd){doc.text(`Corrected deficiencies: ${cd} (see the Deficiency report for details)`,40,y);y+=14}}
  for(const{pl,p}of defs){const t=`• ${p.severity}: ${TYPES[p.type]?.n||p.type}${p.model?' ['+p.model+']':''} ${p.address||''} — ${p.reason||''}${p.codes?.length?' ['+fmtCodes(p.codes)+']':''} (${pl.name} ${pgT(pl.id,p.page)})`;const ls=doc.splitTextToSize(t,530);if(y+ls.length*12>760){doc.addPage();y=44}doc.text(ls,40,y);y+=ls.length*12+4}
- y+=16;if(y>700){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text('Acceptance signatures',40,y);y+=22;doc.setFont(undefined,'normal');
- doc.text('Installing contractor: _________________________  Date: ________',40,y);y+=24;
- doc.text(`Inspector / acceptance tester: ${j.techName?j.techName+(j.techLic?' (Lic. '+j.techLic+')':'')+'  Sign: ___________':'_________________________'}  Date: ________`,40,y);y+=24;
- doc.text('Owner: _________________________  Date: ________    AHJ: _________________________',40,y);
+ y+=16;if(y>700){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text('People',40,y);y+=22;doc.setFont(undefined,'normal');
+ doc.text(`Inspector / acceptance tester: ${j.techName?j.techName+(j.techLic?' (Lic. '+j.techLic+')':''):'-'}`,40,y);y+=24;
  nfpaFooter(doc,project.name);dl(doc.output('blob'),fsafe(project.name)+'-record-of-completion.pdf');toast('Record of Completion summary exported')}
  catch(e){showErr('Completion record failed: '+e.message)}finally{busy(0)}};
 
@@ -1249,7 +1266,6 @@ $('#nfpaDef').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1,
  y+=12;if(y>700){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text('Impairment / correction log',40,y);y+=18;doc.setFont(undefined,'normal');
  doc.text('Date impaired: ________  Notified monitoring: ☐  Notified AHJ: ☐  Tag posted: ☐',40,y);y+=20;
  doc.text('Corrected by: _____________________  Date restored: ________  Retest result: ________',40,y);y+=28;
- doc.text('Owner sign: _____________________    Inspector sign: _____________________',40,y);y+=24;
  {const cd=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='corrected').map(p=>({pl,p})));if(cd.length){if(y>700){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text(`Corrected deficiencies (${cd.length})`,40,y);y+=16;doc.setFont(undefined,'normal');
   for(const{pl,p}of cd){const lines=doc.splitTextToSize(`${TYPES[p.type]?.n||p.type}${p.model?' ['+p.model+']':''} ${p.address||''}${p.location?' · '+p.location:''} — was ${p.severity||'-'}: ${p.reason||''}${p.reasonText?' — '+failReasonText(p.reasonText):''}\n${corrTxt(p)} · Plan: ${pl.name}, page ${p.page}`,530);if(y+lines.length*12>760){doc.addPage();y=44}doc.text(lines,40,y);y+=lines.length*12+6}}}
  nfpaFooter(doc,project.name);dl(doc.output('blob'),fsafe(project.name)+'-deficiencies-impairments.pdf');toast('Deficiency / Impairments list exported')}
@@ -1274,9 +1290,9 @@ $('#clrBtn').onclick=()=>clrWheel('pins');$('#clrMBtn').onclick=()=>clrWheel('ma
 $('#clrGo').onclick=async()=>{const v=document.querySelector('#clrDlg [name=clr]:checked').value,c=clrInfoUpd.n[v],P=clrWhat==='pins';
  if(!await uiConfirm(`Delete ${c} ${P?'pin(s) and their media':'markup(s)'}${v==='proj'?' across the whole project':v==='plan'?' on this plan':' on this page'}?`+(v==='proj'?` ${P?'Pins':'Markups'} on other plans cannot be undone.`:'')))return;$('#clrDlg').close();await clrRun(v)};
 async function clrRun(v){const P=clrWhat==='pins',st=clrWhat;if(ted)tedEnd(false);busy(1,P?'Clearing pins':'Clearing markups');
- try{const arr=P?pins:markups,L=[];const mine=v==='page'?arr.filter(p=>p.page===page):plan?arr.slice():[];for(const p of mine)L.push(P?{store:'pins',id:p.id,before:p,after:null,media:await byIdx('media','pinId',p.id)}:{store:'markups',id:p.id,before:p,after:null});
+ try{const arr=P?pins:markups,L=[];const mine=v==='page'?arr.filter(p=>p.page===page):plan?arr.slice():[];for(const p of mine)L.push(P?{store:'pins',id:p.id,before:p,after:null,media:await byIdx('media','pinId',p.id,true)}:{store:'markups',id:p.id,before:p,after:null});
   sel=null;msel=[];if(L.length)await changeMulti(L);let other=0;
-  if(v==='proj'){const ids=await planIdsOf();for(const p of await all(st)){if(!ids.includes(p.planId)||p.planId===plan?.id)continue;if(P)for(const m of await byIdx('media','pinId',p.id))await del('media',m.id);await del(st,p.id);other++}}
+  if(v==='proj'){const ids=await planIdsOf();for(const p of await all(st)){if(!ids.includes(p.planId)||p.planId===plan?.id)continue;if(P)for(const m of await byIdx('media','pinId',p.id,true))await del('media',m.id);await del(st,p.id);other++}}
   draw();renderList();toast(`Cleared ${L.length+other} ${P?'pin':'markup'}(s)`+(L.length?' — undo available for this plan':''),true)}catch(e){showErr('Clear failed: '+e.message)}finally{busy(0)}}
 // ---------- v13: split legacy generic Panel pins into FACP / DACT / FATC (best effort) ----------
 function migPanelType(p){if(p.type!=='panel'&&p.type!=='other')return null;const d=String(p.detected||'')+' '+String(p.detG||'')+' '+String(p.notes||'');

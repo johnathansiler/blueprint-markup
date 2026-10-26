@@ -6,7 +6,7 @@ const DG={spkw:{n:'Speaker/strobe – wall',t:'spkstrobe',d:['SPK_FOH_WALL','SPK
  facp:{n:'FACP (fire alarm control panel)',t:'panel',d:['FACP'],note:'FACP'},dact:{n:'DACT (communicator)',t:'dact',d:['DACT'],note:'DACT'},fatc:{n:'FATC (terminal cabinet)',t:'fatc',d:['FATC'],note:'FATC'},panelbox:{n:'Annunciator',t:'panelbox',d:['PANEL_BOX'],note:'annunciator'},rai:{n:'Remote alarm indicator (RI)',t:'rai',d:['RAI'],note:'remote alarm indicator'}};
 DG.farp={n:'FARP (remote panel)',t:'farp',d:['FARP'],note:'FARP'};
 for(const[k,n,t]of[['panel','FACP (manual)','panel'],['oth','Other device','other']])DG[k]={n,t,d:[],x:1};
-DG.heat={n:'Heat detector',t:'heat',d:['HEAT'],note:'heat'}; // bpm-v108: hex + H glyph (legend-checked on test plan/139/144/149)
+DG.heat={n:'Heat detector',t:'heat',d:['HEAT'],note:'heat'}; // bpm-v108: hex + H glyph (legend-checked on test plan)
 // bpm-v106: new types without a Detect glyph yet: manual pick / legend text / master templates only (multi-criteria looks like smoke, so never auto)
 for(const[k,n,t]of[['multi','Multi-criteria detector','multi'],['speaker','Speaker (no strobe)','speaker'],['lfs','Low-frequency sounder','lfs'],['bell','Bell – 120 VAC','bell'],['pad','PAD-4/PAD-5','pad'],['damper','Fire/smoke damper','damper'],['scs','Smoke control station','scs'],['loc','Local operator console','loc'],['oss','Operator safety switch','oss'],['eol','EOL resistor','eol'],['bfp','Sprinkler backflow preventer','bfp'],['pullbox','Electrical pull box','pullbox'],['ffphone','Firefighter phone jack','ffphone'],
  ['vesda','VESDA aspirating detector','vesda'],['vpsu','VESDA power supply','vpsu'],['vsp','VESDA sampling point','vsp'],['vcap','VESDA capillary sampling point','vcap'],['vlf','VESDA laser focus','vlf'],['vnet','VESDA network interface','vnet'],['vrem','VESDA remote enclosure','vrem'],['vtee','VESDA aspirating sampling tee','vtee']])DG[k]={n,t,d:[],x:1};
@@ -184,7 +184,7 @@ function renderSelBar(){const b=$('#selBar'),it=tool==='select'?selItems():msel,
 async function doCopy(cut){const it=selItems(),ms=it.filter(o=>!isPinO(o)),ps=clipPins?it.filter(isPinO):[];if(!ms.length&&!ps.length){toast(it.length?'Tick "incl. pins" to copy pins':'Nothing selected');return}
  const all=[...ms,...ps],bs=all.map(bb),cx=(Math.min(...bs.map(b=>b.x))+Math.max(...bs.map(b=>b.X)))/2,cy=(Math.min(...bs.map(b=>b.y))+Math.max(...bs.map(b=>b.Y)))/2;
  clip={m:structuredClone(ms),p:structuredClone(ps),cx,cy,from:plan.id,page};
- if(cut){const L=[];for(const m of ms)L.push({store:'markups',id:m.id,before:m,after:null});for(const p of ps)L.push({store:'pins',id:p.id,before:p,after:null,media:await byIdx('media','pinId',p.id)});msel=[];sel=null;await changeMulti(L);toast(`Cut ${all.length} item${all.length>1?'s':''}`,true)}
+ if(cut){const L=[];for(const m of ms)L.push({store:'markups',id:m.id,before:m,after:null});for(const p of ps)L.push({store:'pins',id:p.id,before:p,after:null,media:await byIdx('media','pinId',p.id,true)});msel=[];sel=null;await changeMulti(L);toast(`Cut ${all.length} item${all.length>1?'s':''}`,true)}
  else toast(`Copied ${all.length} item${all.length>1?'s':''}${ps.length?` (${ps.length} pin${ps.length>1?'s':''})`:''}`);renderSelBar()}
 async function doPaste(at){if(!clip||!plan)return;const dx=at?at.x-clip.cx:0,dy=at?at.y-clip.cy:0,L=[],now=Date.now();
  for(const m of clip.m){const n={...structuredClone(m),id:uid(),planId:plan.id,page,x1:m.x1+dx,y1:m.y1+dy,x2:m.x2+dx,y2:m.y2+dy};L.push({store:'markups',id:n.id,before:null,after:n})}

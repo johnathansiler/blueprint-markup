@@ -19,7 +19,7 @@ async function buildBpm(pid,withLearned,onP){const pr=await get('projects',pid),
  const man={format:BPM_FMT,version:BPM_VER,app:'bpm-v105',saved:new Date().toISOString(),project:pr,plans:[],markups:[],pins:[],media:[],layers:{},meta:{},learned:null,mycodes:null};
  for(const pl of pls){const{blob,...m}=pl,f=`plans/${pl.id}.${pl.kind==='pdf'?'pdf':((blob?.type||'').split('/')[1]||'img')}`;if(blob)files.push({name:f,blob});man.plans.push({...m,file:blob?f:null,type:blob?.type||'',size:blob?.size||0});
   man.markups.push(...await byIdx('markups','planId',pl.id));const ps=await byIdx('pins','planId',pl.id);man.pins.push(...ps);
-  for(const p of ps)for(const md of await byIdx('media','pinId',p.id)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
+  for(const p of ps)for(const md of await byIdx('media','pinId',p.id,true)){const{blob:mb,annot,...r}=md,e={...r,file:null};if(mb){e.file=`media/${md.id}`;e.type=mb.type;e.size=mb.size;files.push({name:e.file,blob:mb})}if(annot){e.annotFile=`media/${md.id}-annot`;e.annotType=annot.type;files.push({name:e.annotFile,blob:annot})}man.media.push(e)}
   const ly=await get('meta','layers:'+pl.id);if(ly)man.layers[pl.id]=ly;const sc=await get('meta','scale:'+pl.id);if(sc)(man.scales??={})[pl.id]=sc;const ro=await get('meta','rot:'+pl.id);if(ro)(man.rots??={})[pl.id]=ro;const pn=await get('meta','pname:'+pl.id);if(pn&&Object.keys(pn).length)(man.pnames??={})[pl.id]=pn}
  const last=await get('meta','last:'+pid);if(last)man.meta.last=last;const job=await get('meta','job:'+pid);if(job)man.meta.job=job;if(withLearned)man.learned=await all('learned');man.mycodes=await all('mycodes');man.installLinks=(await get('meta','installLinks'))||null;man.userParts=(await get('meta','userParts'))||null;man.cktpl=Object.keys(CKT).length?CKT:null;
  {// bpm-v72: human-readable reports inside the archive (ignored on import)
@@ -232,7 +232,7 @@ function itmDeviceTable(doc,D,y){const C=[[40,'Address',52],[94,'Device type',92
  const head=()=>{doc.setFont(undefined,'bold');doc.setFontSize(8);C.forEach(([x,h])=>doc.text(h,x,y));y+=4;doc.setDrawColor(200);doc.line(40,y,572,y);y+=9;doc.setFont(undefined,'normal')};
  if(y>700){doc.addPage();y=44}y+=6;doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('Device test results (every device)',40,y);y+=14;
  for(const{pl,pins:ps}of D){if(!ps.length)continue;if(y>730){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.setFontSize(9);doc.text(doc.splitTextToSize(pl.name,530)[0],40,y);y+=12;head();
-  for(const p of ps.slice().sort((a,b)=>(a.page-b.page)||sortAddr(a,b))){const cells=[p.address||'-',TYPES[p.type]?.n||p.type,p.model||'',p.location||'',p.status+(p.status==='failed'&&p.reason?' ('+p.reason+')':'')+(p.prev?'\nLast: '+p.prev.status:''),p.testedAt?fmtT(p.testedAt):'',rdTxt(p)].map((t,i)=>doc.splitTextToSize(String(t),C[i][2]));
+  for(const p of ps.slice().sort((a,b)=>(a.page-b.page)||sortAddr(a,b))){const cells=[p.address||'-',TYPES[p.type]?.n||p.type,p.model||'',p.location||'',p.status+(p.status==='failed'&&p.reason?' ('+p.reason+')':'')+(p.prev?'\nLast visit: '+p.prev.status:''),p.testedAt?fmtT(p.testedAt):'',rdTxt(p)].map((t,i)=>doc.splitTextToSize(String(t),C[i][2]));
    const h=Math.max(...cells.map(c=>c.length))*9+3;if(y+h>760){doc.addPage();y=44;head()}
    const rc={failed:[185,28,28],corrected:[8,145,178],passed:[21,128,61]}[p.status]||[100,116,139];cells.forEach((c,i)=>{if(i===4)doc.setTextColor(...rc);doc.text(c,C[i][0],y);doc.setTextColor(0)});y+=h}y+=6}
  doc.setFontSize(10);return y}
@@ -260,12 +260,9 @@ $('#nfpaItm').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1,
  {const cd=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='corrected').map(p=>({pl,p})));if(cd.length){if(y>720){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text(`Corrected deficiencies (${cd.length})`,40,y);y+=14;doc.setFont(undefined,'normal');doc.setFontSize(10);
   for(const{pl,p}of cd){const lines=doc.splitTextToSize(`${TYPES[p.type]?.n||p.type}${p.model?' ['+p.model+']':''} ${p.address||''}${p.location?' @ '+p.location:''} — was ${p.severity||'-'}: ${p.reason||''}\n${corrTxt(p)} · ${pl.name} ${pgT(pl.id,p.page)}`,530);if(y+lines.length*12>760){doc.addPage();y=44}doc.text(lines,40,y);y+=lines.length*12+6}}}
  y=itmDeviceTable(doc,D,y);
- y+=8;if(y>620){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('Signatures',40,y);y+=20;doc.setFont(undefined,'normal');doc.setFontSize(10);
- const sg=(await get('meta','sig:'+project.id))||{};
- const sigRow=(lab,s,name,extra)=>{if(s?.img){try{doc.addImage(s.img,'PNG',150,y-26,160,40)}catch{}doc.text(`${lab}: ${s.name||name||'-'}`,40,y+20);doc.text(`Signed on screen ${fmtT(s.at)}${extra}`,320,y+20);y+=48}else{doc.text(`${lab}: ${name||'_______________________________'}  Sign: ______________  Date: __________${extra}`,40,y);y+=28}};
- sigRow('Inspector',sg.insp,j.techName,'  License: '+(j.techLic||j.license||'__________'));
- sigRow('Owner / representative',sg.owner,j.ownerName||j.owner,'');
- doc.text('AHJ (if required): _______________________________  Date: __________',40,y);
+ y+=8;if(y>620){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('People',40,y);y+=20;doc.setFont(undefined,'normal');doc.setFontSize(10);
+ doc.text(`Inspector: ${j.techName||'-'}  License: ${j.techLic||j.license||'-'}`,40,y);y+=20;
+ doc.text(`Owner / representative: ${j.ownerName||j.owner||'-'}`,40,y);y+=20;
  nfpaFooter(doc,project.name);dl(doc.output('blob'),fsafe(project.name)+'-inspection-testing-record.pdf');toast('Inspection & Testing Record exported')}
  catch(e){showErr('ITM record failed: '+e.message)}finally{busy(0)}};
 
@@ -283,10 +280,8 @@ $('#nfpaComp').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1
  if(!defs.length)doc.text('None.',40,y),y+=14;
  {const cd=all_.filter(p=>p.status==='corrected').length;if(cd){doc.text(`Corrected deficiencies: ${cd} (see the Deficiency report for details)`,40,y);y+=14}}
  for(const{pl,p}of defs){const t=`• ${p.severity}: ${TYPES[p.type]?.n||p.type}${p.model?' ['+p.model+']':''} ${p.address||''} — ${p.reason||''}${p.codes?.length?' ['+fmtCodes(p.codes)+']':''} (${pl.name} ${pgT(pl.id,p.page)})`;const ls=doc.splitTextToSize(t,530);if(y+ls.length*12>760){doc.addPage();y=44}doc.text(ls,40,y);y+=ls.length*12+4}
- y+=16;if(y>700){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text('Acceptance signatures',40,y);y+=22;doc.setFont(undefined,'normal');
- doc.text('Installing contractor: _________________________  Date: ________',40,y);y+=24;
- doc.text(`Inspector / acceptance tester: ${j.techName?j.techName+(j.techLic?' (Lic. '+j.techLic+')':'')+'  Sign: ___________':'_________________________'}  Date: ________`,40,y);y+=24;
- doc.text('Owner: _________________________  Date: ________    AHJ: _________________________',40,y);
+ y+=16;if(y>700){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text('People',40,y);y+=22;doc.setFont(undefined,'normal');
+ doc.text(`Inspector / acceptance tester: ${j.techName?j.techName+(j.techLic?' (Lic. '+j.techLic+')':''):'-'}`,40,y);y+=24;
  nfpaFooter(doc,project.name);dl(doc.output('blob'),fsafe(project.name)+'-record-of-completion.pdf');toast('Record of Completion summary exported')}
  catch(e){showErr('Completion record failed: '+e.message)}finally{busy(0)}};
 
@@ -305,7 +300,6 @@ $('#nfpaDef').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1,
  y+=12;if(y>700){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text('Impairment / correction log',40,y);y+=18;doc.setFont(undefined,'normal');
  doc.text('Date impaired: ________  Notified monitoring: ☐  Notified AHJ: ☐  Tag posted: ☐',40,y);y+=20;
  doc.text('Corrected by: _____________________  Date restored: ________  Retest result: ________',40,y);y+=28;
- doc.text('Owner sign: _____________________    Inspector sign: _____________________',40,y);y+=24;
  {const cd=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='corrected').map(p=>({pl,p})));if(cd.length){if(y>700){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text(`Corrected deficiencies (${cd.length})`,40,y);y+=16;doc.setFont(undefined,'normal');
   for(const{pl,p}of cd){const lines=doc.splitTextToSize(`${TYPES[p.type]?.n||p.type}${p.model?' ['+p.model+']':''} ${p.address||''}${p.location?' · '+p.location:''} — was ${p.severity||'-'}: ${p.reason||''}${p.reasonText?' — '+failReasonText(p.reasonText):''}\n${corrTxt(p)} · Plan: ${pl.name}, page ${p.page}`,530);if(y+lines.length*12>760){doc.addPage();y=44}doc.text(lines,40,y);y+=lines.length*12+6}}}
  nfpaFooter(doc,project.name);dl(doc.output('blob'),fsafe(project.name)+'-deficiencies-impairments.pdf');toast('Deficiency / Impairments list exported')}
@@ -330,9 +324,9 @@ $('#clrBtn').onclick=()=>clrWheel('pins');$('#clrMBtn').onclick=()=>clrWheel('ma
 $('#clrGo').onclick=async()=>{const v=document.querySelector('#clrDlg [name=clr]:checked').value,c=clrInfoUpd.n[v],P=clrWhat==='pins';
  if(!await uiConfirm(`Delete ${c} ${P?'pin(s) and their media':'markup(s)'}${v==='proj'?' across the whole project':v==='plan'?' on this plan':' on this page'}?`+(v==='proj'?` ${P?'Pins':'Markups'} on other plans cannot be undone.`:'')))return;$('#clrDlg').close();await clrRun(v)};
 async function clrRun(v){const P=clrWhat==='pins',st=clrWhat;if(ted)tedEnd(false);busy(1,P?'Clearing pins':'Clearing markups');
- try{const arr=P?pins:markups,L=[];const mine=v==='page'?arr.filter(p=>p.page===page):plan?arr.slice():[];for(const p of mine)L.push(P?{store:'pins',id:p.id,before:p,after:null,media:await byIdx('media','pinId',p.id)}:{store:'markups',id:p.id,before:p,after:null});
+ try{const arr=P?pins:markups,L=[];const mine=v==='page'?arr.filter(p=>p.page===page):plan?arr.slice():[];for(const p of mine)L.push(P?{store:'pins',id:p.id,before:p,after:null,media:await byIdx('media','pinId',p.id,true)}:{store:'markups',id:p.id,before:p,after:null});
   sel=null;msel=[];if(L.length)await changeMulti(L);let other=0;
-  if(v==='proj'){const ids=await planIdsOf();for(const p of await all(st)){if(!ids.includes(p.planId)||p.planId===plan?.id)continue;if(P)for(const m of await byIdx('media','pinId',p.id))await del('media',m.id);await del(st,p.id);other++}}
+  if(v==='proj'){const ids=await planIdsOf();for(const p of await all(st)){if(!ids.includes(p.planId)||p.planId===plan?.id)continue;if(P)for(const m of await byIdx('media','pinId',p.id,true))await del('media',m.id);await del(st,p.id);other++}}
   draw();renderList();toast(`Cleared ${L.length+other} ${P?'pin':'markup'}(s)`+(L.length?' — undo available for this plan':''),true)}catch(e){showErr('Clear failed: '+e.message)}finally{busy(0)}}
 // ---------- v13: split legacy generic Panel pins into FACP / DACT / FATC (best effort) ----------
 function migPanelType(p){if(p.type!=='panel'&&p.type!=='other')return null;const d=String(p.detected||'')+' '+String(p.detG||'')+' '+String(p.notes||'');
