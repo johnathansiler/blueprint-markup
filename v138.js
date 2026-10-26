@@ -20,7 +20,7 @@
  const _rd=runDetect;runDetect=async function(groups,all,...a){window.foldLegend&&foldLegend();const r=await _rd.call(this,groups,all,...a);
   try{if(all&&plan&&ghosts.length&&!ghosts.some(g=>g.page===page)&&!walk){const n=Math.min(...ghosts.map(g=>g.page));await gotoPage(n);renderGhostBar();toast(`Went to page ${n}: the first page with suggestions`)}}catch(e){console.warn(e)}return r};
  const _rgb=renderGhostBar;renderGhostBar=function(...a){const r=_rgb.apply(this,a);const b=by('ghBar');if(b&&!b.hidden&&!by('ghSet')){const bb=b.querySelector('.ghBB')||b;
-  const x=ce('button','btn','<span aria-hidden="true">⚙</span> <span class="tl">Detect types and pages</span>');x.type='button';x.id='ghSet';x.title='Change the device types and pages Detect uses';x.onclick=()=>detDlgOpen();bb.append(x)}return r};
+  const x=ce('button','btn','<span aria-hidden="true">⚙</span> <span class="tl">Detect types and pages</span>');x.type='button';x.id='ghSet';x.title='Change the device types and pages Detect uses';x.setAttribute('aria-label','Detect types and pages');x.onclick=()=>detDlgOpen();bb.append(x)}return r};
  if(MO)MO.push(()=>[{i:'🔍',l:'Detect types and pages…',run:()=>plan?detDlgOpen():uiAlert('Open a plan first.')}]);
 
  // ---------- 2) walk test starts with the devices you actually test ----------
