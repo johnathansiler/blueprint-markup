@@ -50,3 +50,25 @@
   by('jobDlg').addEventListener('toggle',info);new MutationObserver(()=>{if(by('jobDlg').open)info()}).observe(by('jobDlg'),{attributes:true,attributeFilter:['open']})}
  MX.push(()=>[{i:'✍',l:'Sign inspection record…',run:open}]);
 })();
+// ---------- 5. Start next inspection (keep last results for comparison) ----------
+(()=>{const {by,ce,MX}=window.V135;const K=()=>project&&project.id;
+ const RESET=['testedAt','tester','reason','reasonText','severity','codes','correctedAt','correctedBy','corrNote','rdSens','rdCd','rdDb'];
+ const VISIT=['inspDate','testDate','result','startTime','finishTime','notifyBefore','notifyAfter','sigAlarm','sigSuper','sigTrouble','sigRestore','simNote'];
+ const tested=p=>p.status&&p.status!=='not tested'||p.testedAt;
+ function snap(p,j){const o={status:p.status||'not tested',inspDate:j.inspDate||'',endedAt:Date.now()};for(const k of ['testedAt','tester','reason','reasonText','severity','corrNote','correctedAt','rdSens','rdCd','rdDb'])if(p[k]!=null&&p[k]!=='')o[k]=structuredClone(p[k]);const ck=(p.checks||[]).filter(c=>c.v);if(ck.length)o.checks=ck.map(c=>({t:c.t,v:c.v}));return o}
+ async function nextInsp(){if(!K())return uiAlert('Open a project first.');const pid=K(),j=(await get('meta','job:'+pid))||{},D=await projData(),n=D.reduce((a,d)=>a+d.pins.length,0),nt=D.reduce((a,d)=>a+d.pins.filter(tested).length,0);
+  if(!n)return uiAlert('This project has no devices yet.');
+  if(!await uiConfirm(`Start the next inspection for this project?\n\nAll ${n} devices go back to "not tested". Checklists, fail reasons, readings and signatures are cleared for the new visit.\n\nThe last result of every device (${nt} tested) is kept: it shows on the pin card as "Last inspection" and in the device spreadsheet, so you can compare.\n\nTip: save a backup project file first (Menu > Save project file).`,{ok:'Start next inspection',cancel:'Cancel'}))return false;
+  busy(1,'Starting next inspection');try{const now=Date.now(),who=(typeof tester==='string'&&tester)||'';let c=0;
+   for(const{pl,pins:ps}of D)for(const p0 of ps){const p=pl.id===plan?.id?(pins.find(x=>x.id===p0.id)||p0):p0,a=structuredClone(p);if(tested(p))a.prev=snap(p,j);
+    a.status='not tested';if(Array.isArray(a.checks))a.checks=a.checks.map(c=>({...c,v:''}));for(const k of RESET)delete a[k];a.updatedAt=now;a.dev=window.DEVICE_ID;a.by=who;await put('pins',a);if(pl.id===plan?.id){const i=pins.findIndex(x=>x.id===a.id);if(i>=0)pins[i]=a}c++}
+   await put('meta',{...j,endedAt:now},'jobPrev:'+pid);const nj={...j};for(const k of VISIT)nj[k]='';await put('meta',nj,'job:'+pid);
+   const sg=await get('meta','sig:'+pid);if(sg){await put('meta',sg,'sigPrev:'+pid);await del('meta','sig:'+pid)}
+   if(plan)await openPlan(plan.id,page);afterChange?.();toast(`Next inspection started: ${c} devices reset, last results kept`);return true}
+  catch(e){showErr('Could not start the next inspection: '+e.message)}finally{busy(0)}}
+ window.nextInsp=nextInsp;
+ const prevTxt=p=>{const v=p&&p.prev;if(!v)return'';const R=window.RD||{};return `Last inspection${v.inspDate?' ('+v.inspDate+')':''}: ${v.status}${v.reason?' · '+v.reason:''}${v.testedAt?' · '+fmtT(v.testedAt):''}${v.tester?' by '+v.tester:''}${typeof rdTxt==='function'&&rdTxt({...v,type:p.type})?' · '+rdTxt({...v,type:p.type}):''}`};
+ window.prevTxt=prevTxt;
+ const _op=openPin;openPin=async function(p,...r){let e=by('prevInfo');if(!e){const t=by('testedInfo');if(t){e=ce('small',{id:'prevInfo'});t.after(e)}}if(e){const s=prevTxt(p);e.textContent=s;e.hidden=!s}return _op.call(this,p,...r)};
+ MX.push(()=>[{i:'🔁',l:'Start next inspection…',run:nextInsp}]);
+})();

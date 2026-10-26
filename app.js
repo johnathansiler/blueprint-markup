@@ -492,9 +492,9 @@ function renderSummary(){ // bpm-v35: progress = pass, fail, total, left, %
  $('#sum').innerHTML=`<summary><b>${c.pct}%</b> · <span class="st-passed">${c.passed} pass</span> · <span class="st-failed">${c.failed} fail</span>${c.corr?` · <span class="st-corrected">${c.corr} corrected</span>`:''} · ${c.t} total · ${c.left} left</summary>`;
  $('#sum').open=open}
 $('#testerBtn').onclick=()=>getTester(true);
-$('#csvBtn').onclick=async()=>{if(!project)return;await pnAll();const rows=[['plan','page','page name','type','address','model','location','status','tested','tester','notes','corrected on','what was fixed','sensitivity %/ft','candela','sound level dBA']];
+$('#csvBtn').onclick=async()=>{if(!project)return;await pnAll();const rows=[['plan','page','page name','type','address','model','location','status','tested','tester','notes','corrected on','what was fixed','sensitivity %/ft','candela','sound level dBA','last result','last tested','last readings']];
  for(const pl of(await all('plans')).filter(p=>p.projectId===project.id).sort((a,b)=>a.added-b.added))for(const p of(await byIdx('pins','planId',pl.id)).sort((a,b)=>a.page-b.page||String(a.address).localeCompare(b.address,undefined,{numeric:true})))
-  rows.push([pl.name,p.page,pnm(pl.id,p.page),TYPES[p.type]?.n||p.type,p.address,p.model||'',p.location||'',p.status,p.testedAt?fmtT(p.testedAt):'',p.tester||'',p.notes,p.correctedAt?fmtT(p.correctedAt):'',p.corrNote||'',p.rdSens||'',p.rdCd||'',p.rdDb||'']);
+  rows.push([pl.name,p.page,pnm(pl.id,p.page),TYPES[p.type]?.n||p.type,p.address,p.model||'',p.location||'',p.status,p.testedAt?fmtT(p.testedAt):'',p.tester||'',p.notes,p.correctedAt?fmtT(p.correctedAt):'',p.corrNote||'',p.rdSens||'',p.rdCd||'',p.rdDb||'',p.prev?.status||'',p.prev?.testedAt?fmtT(p.prev.testedAt):'',p.prev?rdTxt({...p.prev,type:p.type}):'']);
  const cell=v=>{v=String(v??'');if(/^[=+\-@\t\r]/.test(v))v="'"+v;return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
  dl(new Blob(['\ufeff'+rows.map(r=>r.map(cell).join(',')).join('\r\n')],{type:'text/csv'}),project.name.replace(/[\\/:*?"<>|]/g,'_')+'-devices.csv')};
 // ---------- export ----------
@@ -1165,7 +1165,7 @@ function itmDeviceTable(doc,D,y){const C=[[40,'Address',52],[94,'Device type',92
  const head=()=>{doc.setFont(undefined,'bold');doc.setFontSize(8);C.forEach(([x,h])=>doc.text(h,x,y));y+=4;doc.setDrawColor(200);doc.line(40,y,572,y);y+=9;doc.setFont(undefined,'normal')};
  if(y>700){doc.addPage();y=44}y+=6;doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('Device test results (every device)',40,y);y+=14;
  for(const{pl,pins:ps}of D){if(!ps.length)continue;if(y>730){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.setFontSize(9);doc.text(doc.splitTextToSize(pl.name,530)[0],40,y);y+=12;head();
-  for(const p of ps.slice().sort((a,b)=>(a.page-b.page)||sortAddr(a,b))){const cells=[p.address||'-',TYPES[p.type]?.n||p.type,p.model||'',p.location||'',p.status+(p.status==='failed'&&p.reason?' ('+p.reason+')':''),p.testedAt?fmtT(p.testedAt):'',rdTxt(p)].map((t,i)=>doc.splitTextToSize(String(t),C[i][2]));
+  for(const p of ps.slice().sort((a,b)=>(a.page-b.page)||sortAddr(a,b))){const cells=[p.address||'-',TYPES[p.type]?.n||p.type,p.model||'',p.location||'',p.status+(p.status==='failed'&&p.reason?' ('+p.reason+')':'')+(p.prev?'\nLast: '+p.prev.status:''),p.testedAt?fmtT(p.testedAt):'',rdTxt(p)].map((t,i)=>doc.splitTextToSize(String(t),C[i][2]));
    const h=Math.max(...cells.map(c=>c.length))*9+3;if(y+h>760){doc.addPage();y=44;head()}
    const rc={failed:[185,28,28],corrected:[8,145,178],passed:[21,128,61]}[p.status]||[100,116,139];cells.forEach((c,i)=>{if(i===4)doc.setTextColor(...rc);doc.text(c,C[i][0],y);doc.setTextColor(0)});y+=h}y+=6}
  doc.setFontSize(10);return y}
