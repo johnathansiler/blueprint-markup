@@ -1204,12 +1204,9 @@ $('#nfpaItm').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1,
  {const cd=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='corrected').map(p=>({pl,p})));if(cd.length){if(y>720){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text(`Corrected deficiencies (${cd.length})`,40,y);y+=14;doc.setFont(undefined,'normal');doc.setFontSize(10);
   for(const{pl,p}of cd){const lines=doc.splitTextToSize(`${TYPES[p.type]?.n||p.type}${p.model?' ['+p.model+']':''} ${p.address||''}${p.location?' @ '+p.location:''} — was ${p.severity||'-'}: ${p.reason||''}\n${corrTxt(p)} · ${pl.name} ${pgT(pl.id,p.page)}`,530);if(y+lines.length*12>760){doc.addPage();y=44}doc.text(lines,40,y);y+=lines.length*12+6}}}
  y=itmDeviceTable(doc,D,y);
- y+=8;if(y>620){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('Signatures',40,y);y+=20;doc.setFont(undefined,'normal');doc.setFontSize(10);
- const sg=(await get('meta','sig:'+project.id))||{};
- const sigRow=(lab,s,name,extra)=>{if(s?.img){try{doc.addImage(s.img,'PNG',150,y-26,160,40)}catch{}doc.text(`${lab}: ${s.name||name||'-'}`,40,y+20);doc.text(`Signed on screen ${fmtT(s.at)}${extra}`,320,y+20);y+=48}else{doc.text(`${lab}: ${name||'_______________________________'}  Sign: ______________  Date: __________${extra}`,40,y);y+=28}};
- sigRow('Inspector',sg.insp,j.techName,'  License: '+(j.techLic||j.license||'__________'));
- sigRow('Owner / representative',sg.owner,j.ownerName||j.owner,'');
- doc.text('AHJ (if required): _______________________________  Date: __________',40,y);
+ y+=8;if(y>620){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('People',40,y);y+=20;doc.setFont(undefined,'normal');doc.setFontSize(10);
+ doc.text(`Inspector: ${j.techName||'-'}  License: ${j.techLic||j.license||'-'}`,40,y);y+=20;
+ doc.text(`Owner / representative: ${j.ownerName||j.owner||'-'}`,40,y);y+=20;
  nfpaFooter(doc,project.name);dl(doc.output('blob'),fsafe(project.name)+'-inspection-testing-record.pdf');toast('Inspection & Testing Record exported')}
  catch(e){showErr('ITM record failed: '+e.message)}finally{busy(0)}};
 
@@ -1227,10 +1224,8 @@ $('#nfpaComp').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1
  if(!defs.length)doc.text('None.',40,y),y+=14;
  {const cd=all_.filter(p=>p.status==='corrected').length;if(cd){doc.text(`Corrected deficiencies: ${cd} (see the Deficiency report for details)`,40,y);y+=14}}
  for(const{pl,p}of defs){const t=`• ${p.severity}: ${TYPES[p.type]?.n||p.type}${p.model?' ['+p.model+']':''} ${p.address||''} — ${p.reason||''}${p.codes?.length?' ['+fmtCodes(p.codes)+']':''} (${pl.name} ${pgT(pl.id,p.page)})`;const ls=doc.splitTextToSize(t,530);if(y+ls.length*12>760){doc.addPage();y=44}doc.text(ls,40,y);y+=ls.length*12+4}
- y+=16;if(y>700){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text('Acceptance signatures',40,y);y+=22;doc.setFont(undefined,'normal');
- doc.text('Installing contractor: _________________________  Date: ________',40,y);y+=24;
- doc.text(`Inspector / acceptance tester: ${j.techName?j.techName+(j.techLic?' (Lic. '+j.techLic+')':'')+'  Sign: ___________':'_________________________'}  Date: ________`,40,y);y+=24;
- doc.text('Owner: _________________________  Date: ________    AHJ: _________________________',40,y);
+ y+=16;if(y>700){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text('People',40,y);y+=22;doc.setFont(undefined,'normal');
+ doc.text(`Inspector / acceptance tester: ${j.techName?j.techName+(j.techLic?' (Lic. '+j.techLic+')':''):'-'}`,40,y);y+=24;
  nfpaFooter(doc,project.name);dl(doc.output('blob'),fsafe(project.name)+'-record-of-completion.pdf');toast('Record of Completion summary exported')}
  catch(e){showErr('Completion record failed: '+e.message)}finally{busy(0)}};
 
@@ -1249,7 +1244,6 @@ $('#nfpaDef').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1,
  y+=12;if(y>700){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text('Impairment / correction log',40,y);y+=18;doc.setFont(undefined,'normal');
  doc.text('Date impaired: ________  Notified monitoring: ☐  Notified AHJ: ☐  Tag posted: ☐',40,y);y+=20;
  doc.text('Corrected by: _____________________  Date restored: ________  Retest result: ________',40,y);y+=28;
- doc.text('Owner sign: _____________________    Inspector sign: _____________________',40,y);y+=24;
  {const cd=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='corrected').map(p=>({pl,p})));if(cd.length){if(y>700){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text(`Corrected deficiencies (${cd.length})`,40,y);y+=16;doc.setFont(undefined,'normal');
   for(const{pl,p}of cd){const lines=doc.splitTextToSize(`${TYPES[p.type]?.n||p.type}${p.model?' ['+p.model+']':''} ${p.address||''}${p.location?' · '+p.location:''} — was ${p.severity||'-'}: ${p.reason||''}${p.reasonText?' — '+failReasonText(p.reasonText):''}\n${corrTxt(p)} · Plan: ${pl.name}, page ${p.page}`,530);if(y+lines.length*12>760){doc.addPage();y=44}doc.text(lines,40,y);y+=lines.length*12+6}}}
  nfpaFooter(doc,project.name);dl(doc.output('blob'),fsafe(project.name)+'-deficiencies-impairments.pdf');toast('Deficiency / Impairments list exported')}
