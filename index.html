@@ -143,6 +143,15 @@
  <label>Inspection date <input name="inspDate" type="date"></label>
  <label>Inspector license # <input name="license"></label>
  <label>Owner / contact <input name="owner"></label>
+ <details open id="itmBox"><summary><b>Inspection and Testing Record: this visit</b> <small style="color:#94a3b8">(all optional)</small></summary>
+ <div class="row"><label>Start time <input name="startTime" type="time"></label><button type="button" class="btn" id="itmStartNow">Set start to now</button></div>
+ <div class="row"><label>Finish time <input name="finishTime" type="time"></label><button type="button" class="btn" id="itmEndNow">Set finish to now</button></div>
+ <label>Notified before testing (name, company, time) <textarea name="notifyBefore" rows="2" placeholder="e.g. Monitoring company - Jane, 8:05 AM; Building engineer - Tom"></textarea></label>
+ <label>Notified after testing (name, company, time) <textarea name="notifyAfter" rows="2"></textarea></label>
+ <b>Monitoring station: time each signal was received</b>
+ <div class="row"><label>Alarm <input name="sigAlarm" type="time"></label><label>Supervisory <input name="sigSuper" type="time"></label><label>Trouble <input name="sigTrouble" type="time"></label><label>Restored <input name="sigRestore" type="time"></label></div>
+ <label>Simulated tests (devices tested by simulation and how) <textarea name="simNote" rows="2" placeholder="e.g. Duct detectors tested with test switch; heat detectors (fixed temp) tested by simulation, not heat"></textarea></label>
+ <div class="row"><button type="button" class="btn" id="itmSign">✍ Sign on screen…</button><small id="itmSignInfo" style="color:#94a3b8"></small></div></details>
  <div class="row"><span class="sp"></span><button class="btn" value="cancel">Cancel</button><button class="btn pri" id="jobSave" value="ok">Save</button></div></form></dialog>
 <dialog id="dsDlg"><form method="dialog"><div class="row"><h3 style="margin:4px 0">📄 Sheets</h3><span class="sp"></span><button type="button" class="btn" id="dsQr">📷 Scan QR code</button><button class="btn">✕</button></div><input id="dsQ" type="search" placeholder="Search model or type" autocomplete="off" style="width:100%"><small style="color:#94a3b8">📄 opens in Marker · 🔎 Siemens search · <span class="scB">scanned</span> your QR link</small> <button type="button" class="btn" id="dsOff" style="font-size:.8em">⬇ Save all offline</button> <small id="dsOffI" style="color:#94a3b8"></small><div id="dsBody" style="max-height:60vh;overflow:auto"></div></form></dialog>
 <dialog id="ivDlg"><div class="ivBar"><button type="button" class="btn" id="ivClose">← Back</button><b id="ivT"></b><span class="sp"></span><button type="button" class="btn" id="ivZo" title="Zoom out">−<span class="tl">Zoom out</span></button><span id="ivZ">100%</span><button type="button" class="btn" id="ivZi" title="Zoom in">+<span class="tl">Zoom in</span></button><button type="button" class="btn" id="ivRep" hidden>Replace with scanned</button><a class="btn" id="ivExt" target="_blank" rel="noopener">↗</a></div><div id="ivCov" hidden></div><div id="ivBody"></div></dialog>

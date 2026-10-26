@@ -399,8 +399,8 @@ const dlg=$('#pinDlg'),form=$('#pinForm');let cur=null,urls=[];
 for(const[k,t]of Object.entries(TYPES)){$('#pinType').add(new Option(t.n,k));$('#dType').add(new Option(t.n,k));$('#fType').add(new Option(t.n,k))}
 const PK=['type','address','model','location','status','notes','reason','reasonText','severity','corrNote','rdSens','rdCd','rdDb'];
 // bpm-v135: measured readings by device type
-const RD={rdSens:{n:'Sensitivity (% per ft)',u:'%/ft',t:['smoke','duct'],lo:0.5,hi:4.0},rdCd:{n:'Candela setting',u:'cd',t:['horn','spkstrobe','strobe']},rdDb:{n:'Sound level',u:'dBA',t:['horn','spkstrobe','linearray']}};
-const rdKeys=t=>Object.keys(RD).filter(k=>RD[k].t.includes(t)),rdTxt=p=>rdKeys(p.type).filter(k=>p[k]).map(k=>`${RD[k].n.replace(/ \(.*\)/,'')} ${p[k]} ${RD[k].u}`).join(', ');
+const RD={rdSens:{n:'Sensitivity (% per ft)',s:'Sensitivity',u:'%/ft',t:['smoke','duct'],lo:0.5,hi:4.0},rdCd:{n:'Candela setting',s:'Candela',u:'cd',t:['horn','spkstrobe','strobe']},rdDb:{n:'Sound level',s:'Sound level',u:'dBA',t:['horn','spkstrobe','linearray']}};
+const rdKeys=t=>Object.keys(RD).filter(k=>RD[k].t.includes(t)),rdTxt=p=>rdKeys(p.type).filter(k=>p[k]).map(k=>`${RD[k].s} ${p[k]} ${RD[k].u}`).join(', ');
 function rdUI(){const t=form.elements.type.value,ks=rdKeys(t);$('#rdBox').hidden=!ks.length;for(const l of document.querySelectorAll('#rdBox [data-rd]'))l.hidden=!ks.includes(l.dataset.rd);const v=parseFloat(form.elements.rdSens.value),R=RD.rdSens;$('#rdHint').textContent=ks.includes('rdSens')&&!isNaN(v)&&(v<R.lo||v>R.hi)?`Sensitivity ${v} is outside the usual ${R.lo.toFixed(1)}–${R.hi.toFixed(1)} % per ft range. Check the device listing.`:''}
 let ckl=[];async function openPin(p){cur=p;modelOpts(p.type);if(!Array.isArray(cur.codes))cur.codes=[];for(const k of PK)form.elements[k].value=p[k]||(k==='severity'?'Non-critical':'');if(p.reasonText)form.elements.reasonText.value=failReasonText(p.reasonText);autoR=false;ckl=structuredClone(p.checks||checkItems(p.type));renderChecks();failUI();rdUI();rtUpd();renderCodes();$('#testedInfo').textContent=testedTxt(p);await showMedia();dlg.showModal()}
 const fmtShort=t=>{const d=new Date(t);return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})};
@@ -1125,7 +1125,7 @@ $('#myCodeTypes').innerHTML=Object.entries(TYPES).map(([k,v])=>`<option value="$
 loadCodes();
 
 // ---------- v11: job / system info ----------
-const JOB0={building:'',address:'',ahj:'',systemType:'Protected premises (local)',monitoring:'',panel:'',inspType:'Annual',inspDate:'',license:'',owner:'',ownerName:'',ownerAddr:'',ownerPhone:'',occupancy:'',panelMake:'',panelModel:'',firmware:'',panelLoc:'',monAcct:'',monPhone:'',monMethod:'',priPower:'',priLoc:'',battery:'',batDate:'',batTest:'',aux:'',company:'',techName:'',techLic:'',installDate:'',testDate:'',nextDate:'',result:'',remarks:''};
+const JOB0={building:'',address:'',ahj:'',systemType:'Protected premises (local)',monitoring:'',panel:'',inspType:'Annual',inspDate:'',license:'',owner:'',ownerName:'',ownerAddr:'',ownerPhone:'',occupancy:'',panelMake:'',panelModel:'',firmware:'',panelLoc:'',monAcct:'',monPhone:'',monMethod:'',priPower:'',priLoc:'',battery:'',batDate:'',batTest:'',aux:'',company:'',techName:'',techLic:'',installDate:'',testDate:'',nextDate:'',result:'',remarks:'',startTime:'',finishTime:'',notifyBefore:'',notifyAfter:'',sigAlarm:'',sigSuper:'',sigTrouble:'',sigRestore:'',simNote:''};
 async function getJob(){return{...JOB0,...((await get('meta','job:'+project.id))||{})}}
 async function saveJob(j){await put('meta',j,'job:'+project.id)}
 function jobToForm(j){const f=$('#jobForm');for(const k of Object.keys(JOB0))if(f.elements[k])f.elements[k].value=j[k]||JOB0[k]}
@@ -1159,12 +1159,27 @@ function nfpaJobBlock(doc,j,y){const L=(t)=>{const ls=doc.splitTextToSize(t,530)
  H('Dates / result');L(`Installed: ${v(j.installDate)}    Inspection: ${v(j.inspDate)}    Test: ${v(j.testDate)}    Next due: ${v(j.nextDate)}`);L(`Overall test result: ${v(j.result)}`);if(j.remarks)L(`Remarks: ${j.remarks}`);
  doc.setDrawColor(180);doc.line(40,y,572,y);return y+14}
 function nfpaFooter(doc,name){const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(120);doc.text(`${name} · Marker report (NFPA 72-mapped) · page ${i} of ${n}`,40,780);doc.setTextColor(0)}}
+// bpm-v135: per-device results table for the Inspection and Testing Record
+const itmTime=t=>{if(!t)return'';const[h,m]=t.split(':').map(Number);if(isNaN(h))return t;return new Date(2000,0,1,h,m||0).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})};
+function itmDeviceTable(doc,D,y){const C=[[40,'Address',52],[94,'Device type',92],[188,'Model',58],[248,'Location',100],[350,'Result',62],[414,'Tested',78],[494,'Readings',78]];
+ const head=()=>{doc.setFont(undefined,'bold');doc.setFontSize(8);C.forEach(([x,h])=>doc.text(h,x,y));y+=4;doc.setDrawColor(200);doc.line(40,y,572,y);y+=9;doc.setFont(undefined,'normal')};
+ if(y>700){doc.addPage();y=44}y+=6;doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('Device test results (every device)',40,y);y+=14;
+ for(const{pl,pins:ps}of D){if(!ps.length)continue;if(y>730){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.setFontSize(9);doc.text(doc.splitTextToSize(pl.name,530)[0],40,y);y+=12;head();
+  for(const p of ps.slice().sort((a,b)=>(a.page-b.page)||sortAddr(a,b))){const cells=[p.address||'-',TYPES[p.type]?.n||p.type,p.model||'',p.location||'',p.status+(p.status==='failed'&&p.reason?' ('+p.reason+')':''),p.testedAt?fmtT(p.testedAt):'',rdTxt(p)].map((t,i)=>doc.splitTextToSize(String(t),C[i][2]));
+   const h=Math.max(...cells.map(c=>c.length))*9+3;if(y+h>760){doc.addPage();y=44;head()}
+   const rc={failed:[185,28,28],corrected:[8,145,178],passed:[21,128,61]}[p.status]||[100,116,139];cells.forEach((c,i)=>{if(i===4)doc.setTextColor(...rc);doc.text(c,C[i][0],y);doc.setTextColor(0)});y+=h}y+=6}
+ doc.setFontSize(10);return y}
 async function nfpaDeviceStats(D){const by={};for(const{pins:ps}of D)for(const p of ps){const t=p.type||'other';(by[t]??= {t,n:0,pass:0,fail:0,ip:0,nt:0,na:0});by[t].n++;
   if(p.status==='passed')by[t].pass++;else if(p.status==='failed')by[t].fail++;else if(p.status==='corrected')by[t].corr=(by[t].corr||0)+1;else if(p.status==='in progress')by[t].ip++;else by[t].nt++;
   for(const c of p.checks||[])if(c.v==='na')by[t].na++}return Object.values(by).sort((a,b)=>(TYPES[a.t]?.n||'').localeCompare(TYPES[b.t]?.n||''))}
 $('#nfpaItm').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1,'Building ITM record');try{
  const j=await ensureJob(),D=await projData(),all_=D.flatMap(d=>d.pins),c=cntSt(all_),tn=await getTester(),stats=await nfpaDeviceStats(D),{jsPDF}=window.jspdf,doc=new jsPDF({unit:'pt',format:'letter'});
  let y=nfpaHeader(doc,'Inspection & Testing Record',j,tn);y=nfpaJobBlock(doc,j,y);
+ // bpm-v135: this visit: times, who was notified, monitoring signal times, simulated tests
+ {const v=x=>x||'-',L=t=>{const ls=doc.splitTextToSize(t,530);if(y+ls.length*12>760){doc.addPage();y=44}doc.text(ls,40,y);y+=ls.length*12+2};doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('This inspection visit',40,y);y+=15;doc.setFont(undefined,'normal');doc.setFontSize(10);
+  L(`Date: ${v(j.inspDate)}    Start time: ${v(itmTime(j.startTime))}    Finish time: ${v(itmTime(j.finishTime))}`);L(`Notified before testing: ${v(j.notifyBefore)}`);L(`Notified after testing: ${v(j.notifyAfter)}`);
+  L(`Monitoring station signals received: Alarm ${v(itmTime(j.sigAlarm))}    Supervisory ${v(itmTime(j.sigSuper))}    Trouble ${v(itmTime(j.sigTrouble))}    Restored ${v(itmTime(j.sigRestore))}`);
+  L(`Simulated tests: ${j.simNote||'None noted. All devices were tested by their normal method.'}`);doc.setDrawColor(180);doc.line(40,y,572,y);y+=14}
  doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('Summary (live device data)',40,y);y+=14;doc.setFont(undefined,'normal');doc.setFontSize(10);
  doc.text(`Devices: ${c.t}    Passed: ${c.passed}    Failed: ${c.failed}    Corrected: ${c.corr}    In progress: ${c.ip}    Not tested: ${c.nt}    (${c.pct}% tested)`,40,y,{maxWidth:530});y+=18;
  doc.setFont(undefined,'bold');doc.text('Visual inspection / testing results by device type',40,y);y+=6;doc.setFontSize(8);doc.setTextColor(100);doc.text('Mapped to NFPA 72 Chapter 14 inspection and testing tables (section numbers cited in the deficiency list where attached).',40,y+10);doc.setTextColor(0);y+=22;
@@ -1177,9 +1192,12 @@ $('#nfpaItm').onclick=async()=>{if(!project)return;$('#saveDlg').close();busy(1,
   const lines=doc.splitTextToSize(block.join('\n'),530);if(y+lines.length*12>760){doc.addPage();y=44}if(p.severity==='Critical')doc.setTextColor(185,28,28);doc.text(lines,40,y);doc.setTextColor(0);y+=lines.length*12+8}
  {const cd=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='corrected').map(p=>({pl,p})));if(cd.length){if(y>720){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text(`Corrected deficiencies (${cd.length})`,40,y);y+=14;doc.setFont(undefined,'normal');doc.setFontSize(10);
   for(const{pl,p}of cd){const lines=doc.splitTextToSize(`${TYPES[p.type]?.n||p.type}${p.model?' ['+p.model+']':''} ${p.address||''}${p.location?' @ '+p.location:''} — was ${p.severity||'-'}: ${p.reason||''}\n${corrTxt(p)} · ${pl.name} ${pgT(pl.id,p.page)}`,530);if(y+lines.length*12>760){doc.addPage();y=44}doc.text(lines,40,y);y+=lines.length*12+6}}}
- y+=8;if(y>680){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.text('Signatures',40,y);y+=20;doc.setFont(undefined,'normal');
- doc.text(`Inspector: ${j.techName||'_______________________________'}  Sign: ______________  Date: __________  License: `+(j.techLic||j.license||'__________'),40,y);y+=28;
- doc.text('Owner / representative: _______________________________  Date: __________',40,y);y+=28;
+ y=itmDeviceTable(doc,D,y);
+ y+=8;if(y>620){doc.addPage();y=44}doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('Signatures',40,y);y+=20;doc.setFont(undefined,'normal');doc.setFontSize(10);
+ const sg=(await get('meta','sig:'+project.id))||{};
+ const sigRow=(lab,s,name,extra)=>{if(s?.img){try{doc.addImage(s.img,'PNG',150,y-26,160,40)}catch{}doc.text(`${lab}: ${s.name||name||'-'}`,40,y+20);doc.text(`Signed on screen ${fmtT(s.at)}${extra}`,320,y+20);y+=48}else{doc.text(`${lab}: ${name||'_______________________________'}  Sign: ______________  Date: __________${extra}`,40,y);y+=28}};
+ sigRow('Inspector',sg.insp,j.techName,'  License: '+(j.techLic||j.license||'__________'));
+ sigRow('Owner / representative',sg.owner,j.ownerName||j.owner,'');
  doc.text('AHJ (if required): _______________________________  Date: __________',40,y);
  nfpaFooter(doc,project.name);dl(doc.output('blob'),fsafe(project.name)+'-inspection-testing-record.pdf');toast('Inspection & Testing Record exported')}
  catch(e){showErr('ITM record failed: '+e.message)}finally{busy(0)}};
