@@ -39,6 +39,18 @@
   q('#qfX').onclick=()=>{walk.qf=null;renderWalk()};q('#qfCard').onclick=()=>{walk.qf=null;renderWalk();walkFailCard(p)};
   w.querySelectorAll('[data-qr]').forEach(b=>b.onclick=()=>{const c=!!walk.qcrit;walk.qf=null;walk.qcrit=false;testPin(p,'fail',b.dataset.qr,c)})}
 
+ // ---------- 9 + 10) during a walk: no Delete on the pin card, Pages strip tucked away, legend banner folded ----------
+ let thWas=null;
+ const _sw=startWalk;startWalk=function(...a){window.foldLegend&&foldLegend();const th=by('thumbs');if(th&&!th.hidden&&plan&&pins.length){thWas=true;th.hidden=true;by('thBtn')&&by('thBtn').classList.remove('pri')}else thWas=null;
+  const r=_sw.apply(this,a);if(!walk&&thWas&&th){th.hidden=false;by('thBtn')&&by('thBtn').classList.add('pri');thWas=null}dispatchEvent(new Event('resize'));return r};
+ const _ew=exitWalk;exitWalk=function(...a){const r=_ew.apply(this,a);const th=by('thumbs');if(thWas&&th&&plan){th.hidden=false;by('thBtn')&&by('thBtn').classList.add('pri');try{renderThumbs()}catch{}}thWas=null;dispatchEvent(new Event('resize'));return r};
+
+ // legend banner: shown once when a plan is first opened; it folds into More ("Review legend symbols") when Detect runs, a walk starts or a pin card opens
+ let LEG=null;function foldLegend(){const lg=by('legChip');if(!lg||lg.hidden)return;const rb=lg.querySelector('#legRev');if(rb&&rb.onclick)LEG={run:rb.onclick,t:rb.textContent.replace(/·\s*Review/,'').replace(/^\W+/,'').trim(),pl:plan&&plan.id};lg.hidden=true}
+ window.foldLegend=foldLegend;
+ const _op=openPin;openPin=async function(...a){window.foldLegend&&foldLegend();return _op.apply(this,a)};
+ if(MO)MO.push(()=>LEG&&plan&&LEG.pl===plan.id?[{i:'🔣',l:'Review legend symbols ('+LEG.t+')',run:()=>{const f=LEG.run;LEG=null;f()}}]:[]);
+
  // ---------- 8) Pins list: each row has Open card ----------
  const _rl=renderList;renderList=function(...a){const r=_rl.apply(this,a);const L=by('pinList');if(L)L.querySelectorAll('li[data-id]').forEach(li=>{if(li.querySelector('.pOpen'))return;
   const b=ce('button','btn pOpen','Open card');b.type='button';b.title='Open this pin’s card';b.onclick=async e=>{e.stopPropagation();const id=li.dataset.id;await jumpTo(plan.id,id);const p=pins.find(x=>x.id===id);if(p)openPin(p)};li.append(b)});return r};
