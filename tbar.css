@@ -315,6 +315,10 @@ body.light #pinDlg .pcRsz{background:#e2e8f0;color:#0f172a;border-color:#94a3b8}
 /* bpm-v130: Voice guide panel (readable, labelled buttons, inside the screen above the bottom bars) */
 #vGuide{position:fixed;z-index:59;left:50%;transform:translateX(-50%);bottom:96px;width:min(460px,calc(100vw - 16px));max-height:60vh;overflow:auto;background:#0f172a;color:#f1f5f9;border:1px solid #60a5fa66;border-radius:16px;box-shadow:0 14px 36px #000c;padding:12px 14px;font-size:15px;line-height:1.35}
 #vGuide[hidden]{display:none}
+/* bpm-v136: voice confirmation before a spoken pass or fail is recorded */
+#vConfirm{position:fixed;z-index:60;left:50%;transform:translateX(-50%);bottom:96px;width:min(460px,calc(100vw - 16px));background:#0f172a;color:#f1f5f9;border:2px solid #22c55e;border-radius:16px;box-shadow:0 14px 36px #000c;padding:12px 14px;font-size:15px}
+#vConfirm.fail{border-color:#ef4444}#vConfirm[hidden]{display:none}#vConfirm .vcQ{font-size:18px;font-weight:700}#vConfirm .vcDev{font-size:16px;margin:4px 0;color:#bfdbfe}#vConfirm .vcHow{color:#cbd5e1}
+#vConfirm .vcB{display:flex;gap:8px;margin-top:10px}#vConfirm .vcB .btn{flex:1;min-height:48px;font-size:16px}
 #vGuide .vgH{display:flex;align-items:center;gap:8px;font-size:17px}#vGuide .vgMic{font-size:22px}#vGuide.on .vgMic{animation:vgP 1s ease-in-out infinite}
 @keyframes vgP{50%{transform:scale(1.25)}}@media(prefers-reduced-motion:reduce){#vGuide.on .vgMic{animation:none}}
 #vGuide .vgT{margin:8px 0 4px;font-weight:700}

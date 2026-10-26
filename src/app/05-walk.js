@@ -8,7 +8,7 @@ function startWalk(type=''){if(!plan)return uiAlert('Open a plan first.');if(!pi
  walk={type,types:arguments[1]||null,skip:new Set(),p:null,fail:false};msel=[];sel=null;renderSelBar();renderGhostBar();$('#walkBtn').classList.add('pri');
  const c=toW(stage.clientWidth/2,stage.clientHeight/2),L=walkLeft(),here=L.filter(p=>p.page===page);
  const first=sel?.kind==='p'&&untested(sel.o)?sel.o:nearestFrom(here.length?here:L,here.length?{page,...c}:null);walkGo(first)}
-function exitWalk(){if(vKeep)voiceStop();walk=null;$('#walk').hidden=true;$('#walkBtn').classList.remove('pri');renderGhostBar();renderSelBar();draw()}
+function exitWalk(){if(vPend)vResolve(false,'stop');if(vKeep)voiceStop();walk=null;$('#walk').hidden=true;$('#walkBtn').classList.remove('pri');renderGhostBar();renderSelBar();draw()}
 async function walkGo(p,back){if(!walk)return;walk.hist??=[];if(!back&&walk.p&&p&&walk.p.id!==p.id){walk.hist.push(walk.p.id);if(walk.hist.length>200)walk.hist.shift()}walk.p=p;walk.fail=false;walk.fr=[];walk.fnote='';walk.fcrit=false;renderWalk();if(!p){draw();return}const sKeep=view.s,pgChg=p.page!==page;if(pgChg)await gotoPage(p.page); // bpm-v100: keep the zoom across pages (gotoPage re-fits the view)
  const W=stage.clientWidth,Hh=stage.clientHeight-$('#walk').offsetHeight,s=walk.zoomed?sKeep:Math.max(view.s,Math.min(W,stage.clientHeight)/320),v0={...view};walk.zoomed=true;centerOn(p.x,p.y,s,W/2,Math.max(60,Hh/2));const v1={...view};sel={kind:'p',o:p};if(pgChg){draw();scheduleRender();return} // new page: land directly at the kept zoom (no zoom-out-then-in)
  view=v0;await prefetchPath(v0,v1);if(walk?.p!==p)return;await slideTo(v1)}
@@ -41,7 +41,7 @@ $('#micBtn').onclick=startVoice;
 let vKeep=false;
 function voiceOn(b){for(const x of[$('#micBtn'),$('#wMic')])if(x)x.classList.toggle('danger',b);const w=$('#wMic');if(w){w.textContent=b?'🎤 Voice on: tap to stop':'🎤 Voice off: tap to start';w.setAttribute('aria-pressed',b?'true':'false')}
  let c=$('#vChip');if(!c){c=document.createElement('button');c.type='button';c.id='vChip';c.className='btn danger';c.hidden=true;c.onclick=voiceStop;document.body.append(c)}c.textContent='⏹ Voice on: tap to stop listening';const g=$('#vGuide');c.hidden=!(b&&vKeep)||!!(g&&!g.hidden)}
-function voiceStop(){vKeep=false;const r=srec;if(r){r._stop=true;try{r.stop()}catch{}}voiceOn(false)}
+function voiceStop(){if(vPend)vResolve(false,'stop');vKeep=false;const r=srec;if(r){r._stop=true;try{r.stop()}catch{}}voiceOn(false)}
 function startVoice(auto){if(!SR)return;if(srec&&auto!==true){voiceStop();return}if(srec)return;
  if(auto!==true)vKeep=!!walk;
  if(!navigator.onLine)toast('You are offline: on many phones voice recognition needs internet. If it fails, use the buttons.');
@@ -56,15 +56,15 @@ function vGuide(st,txt){let g=$('#vGuide');if(!g){g=document.createElement('div'
   g.innerHTML=`<div class="vgH"><span class="vgMic" aria-hidden="true">🎤</span><b class="vgS"></b></div>
   <div class="vgT">Say one of these:</div>
   <ul class="vgL">
-   <li><q>pass</q> or <q>good</q><small>passes this device</small></li>
-   <li><q>fail</q> + reason<small>e.g. <q>fail damaged</q>, <q>fail no alarm</q>. Add <q>critical</q> for a critical deficiency: <q>fail damaged critical</q>. Reasons: no alarm, trouble, damaged, missing, obstructed, dirty, wrong location</small></li>
+   <li><q>pass</q> or <q>good</q>, then <q>yes</q><small>passes this device once you confirm: Marker shows the device, then say <q>yes</q> or <q>confirm</q>, or tap Confirm, within 6 seconds. Anything else cancels.</small></li>
+   <li><q>fail</q> + reason<small>during a walk this opens the fail card; otherwise confirm it the same way. E.g. <q>fail damaged</q>, <q>fail no alarm</q>. Add <q>critical</q> for a critical deficiency: <q>fail damaged critical</q>. Reasons: no alarm, trouble, damaged, missing, obstructed, dirty, wrong location</small></li>
    <li><q>skip</q> or <q>next</q><small>skips this device</small></li>
    <li><q>address L1D012</q><small>sets this device's address</small></li>
    <li><q>note</q> + your words<small>adds a note, e.g. <q>note cover cracked</q></small></li>
-   <li><q>L1D012 pass</q><small>passes (or <q>L1D012 fail damaged</q> fails) the device with that address</small></li>
+   <li><q>L1D012 pass</q><small>passes (or <q>L1D012 fail damaged</q> fails) the device with that address, after you confirm</small></li>
    <li><q>stop listening</q><small>turns voice off</small></li>
   </ul>
-  <div class="vgKeep">During a walk, voice stays on between devices (hands-free) until you tap <b>Stop listening</b>, say <q>stop listening</q>, or end the walk.</div>
+  <div class="vgKeep">Nothing is recorded until you confirm, and every result has Undo. During a walk, voice stays on between devices (hands-free) until you tap <b>Stop listening</b>, say <q>stop listening</q>, or end the walk.</div>
   <div class="vgHeard" aria-live="polite"></div>
   <div class="vgNet"></div>
   <div class="vgB"><button type="button" class="btn danger" id="vgStop">⏹ Stop listening</button><button type="button" class="btn pri" id="vgAgain">🎤 Listen again</button><button type="button" class="btn" id="vgX">✕ Close</button></div>`;
@@ -96,13 +96,35 @@ function parseVoice(text){const raw=String(text||'').trim(),t=raw.toLowerCase().
  if((m=raw.match(/^notes? (.+)$/i)))return{cmd:'note',v:m[1].trim()};
  if((m=t.match(/^(.+?) (pass|passed|passes|fail|failed|fails)\b ?(.*)$/))){const addr=normA(numW(m[1].replace(TYPEW,' ')));if(addr){const f=/^fail/.test(m[2]);return{cmd:f?'fail':'pass',addr,reason:f?reasonOf(m[3]):'',crit:f&&/\bcritical\b/.test(m[3])&&!/non.?critical/.test(m[3])}}}
  return{cmd:'?'}}
-async function runVoice(text){const c=parseVoice(text);window.__lastVoice={text,c};if(c.cmd==='?'){toast(`Heard “${text}” but didn't understand. Try “pass”, “fail damaged”, “skip”, “address L1D012”.`);return c}
+// bpm-v136: a spoken pass or fail never records on its own. Marker shows the device and asks to confirm: say "yes" or "confirm",
+// or tap Confirm, within V_CONF_MS. Anything else heard, Cancel, Stop listening, or the time running out cancels. The recorded result keeps Undo.
+let vPend=null;const V_CONF_MS=6000,V_YES=/^(yes|yeah|yep|confirm|confirmed|yes confirm|confirm it|correct|yes correct)$/;
+function vConfirmEl(){let e=$('#vConfirm');if(!e){e=document.createElement('div');e.id='vConfirm';e.setAttribute('role','alertdialog');e.setAttribute('aria-label','Confirm voice result');e.hidden=true;
+  e.innerHTML=`<div class="vcQ"></div><div class="vcDev"></div><div class="vcHow">Say <q>yes</q> or <q>confirm</q>, or tap Confirm. Anything else cancels. <b class="vcT"></b></div><div class="vcB"><button type="button" class="btn pri" id="vcOk">✓ Confirm</button><button type="button" class="btn" id="vcNo">✕ Cancel: do not record</button></div>`;
+  document.body.append(e);e.querySelector('#vcOk').onclick=()=>vResolve(true,'tap');e.querySelector('#vcNo').onclick=()=>vResolve(false,'tap')}return e}
+function vPlace(e){const vis=x=>x&&!x.hidden&&getComputedStyle(x).display!=='none'&&x.getBoundingClientRect().height>0;let hi=innerHeight-8;
+ for(const id of['walk','tools','thumbs','ghBar']){const x=document.getElementById(id);if(vis(x)){const r=x.getBoundingClientRect();if(r.top>innerHeight/2&&r.width>innerWidth/2)hi=Math.min(hi,r.top-8)}}e.style.bottom=Math.round(innerHeight-hi)+'px'}
+function vAsk(p,c,text){if(vPend)vResolve(false,'new');const e=vConfirmEl(),R=c.cmd==='pass'?'PASS':'FAIL'+(c.reason?' ('+c.reason+(c.crit?', critical':'')+')':'');
+ e.querySelector('.vcQ').textContent=`Heard “${text}”. Record ${R}?`;e.querySelector('.vcDev').textContent=`${TYPES[p.type]?.n||p.type}${p.address?' '+p.address:''}${p.model?' · '+p.model:''}`;
+ e.querySelector('#vcOk').textContent=`✓ Confirm ${c.cmd==='pass'?'pass':'fail'}`;e.classList.toggle('fail',c.cmd==='fail');
+ if(!(walk&&walk.p&&walk.p.id===p.id)){/* show the device */try{centerOn(p.x,p.y,Math.max(view.s,1),stage.clientWidth/2,stage.clientHeight/2);sel={kind:'p',o:p};draw();scheduleRender()}catch{}}
+ const g=$('#vGuide');if(g){clearTimeout(g._t);g.hidden=true}const ch=$('#vChip');if(ch)ch.hidden=true;vPlace(e);e.hidden=false;
+ const end=Date.now()+V_CONF_MS,tick=()=>{e.querySelector('.vcT').textContent=`Cancels in ${Math.max(0,Math.ceil((end-Date.now())/1000))} s.`};tick();
+ vPend={p:p.id,c,text,iv:setInterval(tick,250),to:setTimeout(()=>vResolve(false,'timeout'),V_CONF_MS)};
+ if(!vKeep&&SR)setTimeout(()=>{if(vPend&&!srec)startVoice(true)},350)/* one-shot voice: listen once more for the yes */}
+async function vResolve(ok,how,heard){const P=vPend;if(!P)return;vPend=null;clearInterval(P.iv);clearTimeout(P.to);const e=$('#vConfirm');if(e)e.hidden=true;
+ if(!vKeep&&srec&&how!=='voice'&&how!=='stop'){try{srec._stop=true;srec.abort?srec.abort():srec.stop()}catch{}}if(how!=='stop')voiceOn(!!srec&&vKeep);
+ window.__lastConfirm={ok,how};
+ if(!ok){if(how!=='new')toast(how==='timeout'?`Not recorded: no confirmation for “${P.text}”`:how==='voice'?`Not recorded: heard “${heard}”, not yes`:'Not recorded: cancelled');return}
+ const p=pins.find(x=>x.id===P.p);if(!p){toast('Not recorded: that device is not on this plan page any more');return}await testPin(p,P.c.cmd,P.c.reason,P.c.crit)}
+async function runVoice(text){if(vPend){const t=String(text||'').toLowerCase().replace(/[,.!?]/g,'').replace(/\s+/g,' ').trim();window.__lastVoice={text,c:{cmd:V_YES.test(t)?'confirm':'cancel'}};if(V_YES.test(t))await vResolve(true,'voice');else await vResolve(false,'voice',text);return window.__lastVoice.c}
+ const c=parseVoice(text);window.__lastVoice={text,c};if(c.cmd==='?'){toast(`Heard “${text}” but didn't understand. Try “pass”, “fail damaged”, “skip”, “address L1D012”.`);return c}
  if(c.cmd==='skip'){if(walk&&walk.p){walk.skip.add(walk.p.id);walkNext();toast(`Heard “${text}”: skipped`)}else toast('“Skip” works in walk mode (🚶).');return c}
  let p=null;if(c.addr){p=pins.find(x=>normA(x.address)===c.addr);if(!p){toast(`Heard “${text}”: no pin with address ${c.addr} in this plan`);return c}}else p=walk?.p?pins.find(x=>x.id===walk.p.id):sel?.kind==='p'?sel.o:null;
  if(!p){toast(`Heard “${text}”: select a pin or start walk mode (🚶) first`);return c}
  /* v131: in a walk test, saying “fail” opens the full checklist card exactly like tapping Fail (v129) instead of recording the fail at once */
  if(c.cmd==='fail'&&walk&&walk.p&&typeof window.walkFailCard==='function'){const g=$('#vGuide');if(g){clearTimeout(g._t);g.hidden=true}await window.walkFailCard(p);return c}
- if(c.cmd==='pass'||c.cmd==='fail'){await testPin(p,c.cmd,c.reason,c.crit);return c}
+ if(c.cmd==='pass'||c.cmd==='fail'){vAsk(p,c,text);return c}
  const b=structuredClone(p),a={...b};if(c.cmd==='address')a.address=c.v;else if(c.cmd==='note')a.notes=(b.notes?b.notes+'\n':'')+c.v;
  await change('pins',b,a);if(dlg.open&&cur?.id===a.id){const np=pins.find(x=>x.id===a.id)||a;cur=np;ckl=structuredClone(np.checks||checkItems(np.type));renderChecks();form.elements.status&&(form.elements.status.value=np.status||'');}toast(`${TYPES[a.type]?.n||a.type}: ${c.cmd} → ${c.v}`,true);if(walk)renderWalk();return c}
 // ---------- v9: learned detection rules (global, IndexedDB 'learned') ----------
