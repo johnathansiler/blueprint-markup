@@ -1,4 +1,16 @@
 /* bpm-v138: flow improvements */
+/* 6) Menu as a grouped list */
+.mnuOv{position:fixed;inset:0;z-index:62;background:#0008;display:flex;align-items:flex-end;justify-content:center}
+.mnuOv[hidden]{display:none}
+.mnuP{width:min(720px,100%);max-height:min(92vh,100%);display:flex;flex-direction:column;background:var(--sf,#161616);color:var(--tx,#e7e7e7);border:1px solid #262626;border-bottom:0;border-radius:16px 16px 0 0;box-shadow:0 -10px 30px #000a}
+.mnuH{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #262626}.mnuH .mnuT{font-size:17px}
+.mnuB{overflow:auto;padding:4px 12px 14px;display:grid;grid-template-columns:1fr;gap:4px 14px}
+@media (min-width:700px){.mnuB{grid-template-columns:1fr 1fr}.mnuOv{align-items:center}.mnuP{border-radius:16px;border-bottom:1px solid #262626}}
+.mnuG h4{margin:10px 2px 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#a2a2a2}
+.mnuL{display:flex;flex-direction:column;gap:4px}
+.mnuI{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;text-align:left;justify-content:flex-start;background:var(--sf2,#1d1d1d);border:1px solid #262626;border-radius:10px;padding:6px 12px;font-size:15px}
+.mnuI .mnuIc{width:22px;text-align:center;flex:none}.mnuI .tl{white-space:normal}
+body.light .mnuP,body.light .mnuH,body.light .mnuI{border-color:#d4d4d4}body.light .mnuOv{background:#0004}
 /* 9) no Delete on the pin card during a walk */
 body.walking #pinDlg .pcDel{display:none!important}
 /* 8) Open card on each Pins list row */
