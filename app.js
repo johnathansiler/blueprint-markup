@@ -814,14 +814,14 @@ function startWalk(type=''){if(!plan)return uiAlert('Open a plan first.');if(!pi
  walk={type,types:arguments[1]||null,skip:new Set(),p:null,fail:false};msel=[];sel=null;renderSelBar();renderGhostBar();$('#walkBtn').classList.add('pri');
  const c=toW(stage.clientWidth/2,stage.clientHeight/2),L=walkLeft(),here=L.filter(p=>p.page===page);
  const first=sel?.kind==='p'&&untested(sel.o)?sel.o:nearestFrom(here.length?here:L,here.length?{page,...c}:null);walkGo(first)}
-function exitWalk(){walk=null;$('#walk').hidden=true;$('#walkBtn').classList.remove('pri');renderGhostBar();renderSelBar();draw()}
+function exitWalk(){if(vKeep)voiceStop();walk=null;$('#walk').hidden=true;$('#walkBtn').classList.remove('pri');renderGhostBar();renderSelBar();draw()}
 async function walkGo(p,back){if(!walk)return;walk.hist??=[];if(!back&&walk.p&&p&&walk.p.id!==p.id){walk.hist.push(walk.p.id);if(walk.hist.length>200)walk.hist.shift()}walk.p=p;walk.fail=false;walk.fr=[];walk.fnote='';walk.fcrit=false;renderWalk();if(!p){draw();return}const sKeep=view.s,pgChg=p.page!==page;if(pgChg)await gotoPage(p.page); // bpm-v100: keep the zoom across pages (gotoPage re-fits the view)
  const W=stage.clientWidth,Hh=stage.clientHeight-$('#walk').offsetHeight,s=walk.zoomed?sKeep:Math.max(view.s,Math.min(W,stage.clientHeight)/320),v0={...view};walk.zoomed=true;centerOn(p.x,p.y,s,W/2,Math.max(60,Hh/2));const v1={...view};sel={kind:'p',o:p};if(pgChg){draw();scheduleRender();return} // new page: land directly at the kept zoom (no zoom-out-then-in)
  view=v0;await prefetchPath(v0,v1);if(walk?.p!==p)return;await slideTo(v1)}
 function walkNext(){if(!walk)return;const cur=walk.p;walkGo(nearestFrom(walkLeft().filter(p=>p!==cur),cur))}
 function walkAfterDialog(){if(!walk||!walk.p)return;const p=pins.find(x=>x.id===walk.p.id);if(!p){walkNext();return}walk.p=p;if(!untested(p))walkNext();else renderWalk()}
 function renderWalk(){const w=$('#walk');if(!walk){w.hidden=true;return}const S=walkSet(),N=S.length,done=S.filter(p=>!untested(p)).length,p=walk.p&&pins.find(x=>x.id===walk.p.id)||walk.p;
- const types=[...new Set(pins.map(x=>x.type))];const head=`<div class="wh"><b>🚶 ${p?`${Math.min(done+1,N)} of ${N}`:`${done} of ${N} tested`}</b><select id="wType" title="Only this type"><option value="">All types</option>${types.map(t=>`<option value="${t}"${walk.type===t?' selected':''}>${esc(TYPES[t]?.n||t)}</option>`).join('')}</select><span class="sp"></span>${SR?'<button type="button" class="btn" id="wMic" title="Voice command">🎤</button>':''}<button type="button" class="btn" id="wGoto" title="Pick any device to test next">📍 Go to…</button><button type="button" class="btn" id="wExit">✕ Exit</button></div>`;
+ const types=[...new Set(pins.map(x=>x.type))];const head=`<div class="wh"><b>🚶 ${p?`${Math.min(done+1,N)} of ${N}`:`${done} of ${N} tested`}</b><select id="wType" title="Only this type"><option value="">All types</option>${types.map(t=>`<option value="${t}"${walk.type===t?' selected':''}>${esc(TYPES[t]?.n||t)}</option>`).join('')}</select><span class="sp"></span>${SR?`<button type="button" class="btn" id="wMic" aria-pressed="${srec?'true':'false'}">${srec?'🎤 Voice on: tap to stop':'🎤 Voice off: tap to start'}</button>`:''}<button type="button" class="btn" id="wGoto" title="Pick any device to test next">📍 Go to…</button><button type="button" class="btn" id="wExit">✕ Exit</button></div>`;
  if(!p){w.innerHTML=head+`<div class="wt">${walk.skip.size?`No untested devices left (${walk.skip.size} skipped).`:'All devices in this set are tested. 🎉'}</div>${walk.hist?.length?'<div class="row"><button type="button" class="btn" id="wPrev">⏮ Previous device</button></div>':''}${walk.skip.size?'<div class="row"><button type="button" class="btn" id="wRe">Revisit skipped</button></div>':''}`}
  else w.innerHTML=head+`<div class="wt"><span class="dot" style="display:inline-block;background:${(TYPES[p.type]||TYPES.other).c}"></span> ${esc(TYPES[p.type]?.n||p.type)} ${p.address?esc(p.address):'<small style="color:#94a3b8">(no address)</small>'}${p.location?' · '+esc(p.location):''} <small style="color:#94a3b8">${esc(pgT(plan.id,p.page))}${p.status==='in progress'?' · in progress':''}</small></div>
  <div id="wHeard" style="color:#93c5fd;font-size:13px"${walk.heard?'':' hidden'}>🎤 “${esc(walk.heard||'')}”</div>
@@ -842,13 +842,20 @@ async function testPin(p,res,reason,crit,more,note){p=pins.find(x=>x.id===p.id);
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let srec=null;
 if(SR)$('#micBtn').hidden=false;
 $('#micBtn').onclick=startVoice;
-function startVoice(){if(!SR)return;if(srec){try{srec.stop()}catch{}return}
+// bpm-v135: hands-free voice during a walk. Started while walking, voice keeps listening between devices (the phone's recognizer stops after each
+// phrase or a pause, so Marker starts it again). It stays on until Stop listening, the walk ends, or "stop listening" is said. The walk menu button says Voice on / Voice off.
+let vKeep=false;
+function voiceOn(b){for(const x of[$('#micBtn'),$('#wMic')])if(x)x.classList.toggle('danger',b);const w=$('#wMic');if(w){w.textContent=b?'🎤 Voice on: tap to stop':'🎤 Voice off: tap to start';w.setAttribute('aria-pressed',b?'true':'false')}
+ let c=$('#vChip');if(!c){c=document.createElement('button');c.type='button';c.id='vChip';c.className='btn danger';c.hidden=true;c.onclick=voiceStop;document.body.append(c)}c.textContent='⏹ Voice on: tap to stop listening';const g=$('#vGuide');c.hidden=!(b&&vKeep)||!!(g&&!g.hidden)}
+function voiceStop(){vKeep=false;const r=srec;if(r){r._stop=true;try{r.stop()}catch{}}voiceOn(false)}
+function startVoice(auto){if(!SR)return;if(srec&&auto!==true){voiceStop();return}if(srec)return;
+ if(auto!==true)vKeep=!!walk;
  if(!navigator.onLine)toast('You are offline: on many phones voice recognition needs internet. If it fails, use the buttons.');
- let r;try{r=new SR()}catch(e){toast('Voice is not available: '+e.message);return}srec=r;r.lang=navigator.language||'en-US';r.interimResults=false;r.maxAlternatives=1;r.continuous=false;
- const on=b=>{for(const x of[$('#micBtn'),$('#wMic')])if(x)x.classList.toggle('danger',b)};on(true);
- vGuide('listen');r.onresult=e=>{const t=e.results[0][0].transcript;vGuide('heard',t);voiceHeard(t)};
- r.onerror=e=>{const m={network:'Voice recognition needs an internet connection on this device. Use the buttons while offline.','not-allowed':'Microphone access is blocked. Allow the microphone for this site in Chrome settings.','service-not-allowed':'Voice recognition is turned off or unavailable on this device.','no-speech':'Didn\u2019t hear anything. Tap 🎤 and speak again.','audio-capture':'No microphone was found.','language-not-supported':'Voice recognition does not support this language here.'}[e.error]||('Voice error: '+e.error);if(e.error!=='aborted'){toast(m);vGuide('error',m)}};
- r.onend=()=>{srec=null;on(false);vGuide('end')};try{r.start()}catch(e){srec=null;on(false);toast('Could not start voice: '+e.message);vGuide('error','Could not start voice: '+e.message)}}
+ let r;try{r=new SR()}catch(e){toast('Voice is not available: '+e.message);return}srec=r;r.lang=navigator.language||'en-US';r.interimResults=false;r.maxAlternatives=1;r.continuous=vKeep;
+ const on=voiceOn;on(true);
+ if(auto!==true)vGuide('listen');r.onresult=e=>{const R=e.results[e.resultIndex??e.results.length-1]||e.results[0];if(R&&R.isFinal===false)return;const t=R[0].transcript;if(/^\s*(stop listening|voice off|stop voice)\s*[.!]?\s*$/i.test(t)){vGuide('heard',t);voiceStop();toast('Voice off');return}vGuide('heard',t);voiceHeard(t)};
+ r.onerror=e=>{const m={network:'Voice recognition needs an internet connection on this device. Use the buttons while offline.','not-allowed':'Microphone access is blocked. Allow the microphone for this site in Chrome settings.','service-not-allowed':'Voice recognition is turned off or unavailable on this device.','no-speech':'Didn\u2019t hear anything. Tap 🎤 and speak again.','audio-capture':'No microphone was found.','language-not-supported':'Voice recognition does not support this language here.'}[e.error]||('Voice error: '+e.error);if(vKeep&&(e.error==='no-speech'||e.error==='aborted'))return;/* hands-free: silence is normal, keep going */if(['not-allowed','service-not-allowed','audio-capture','network','language-not-supported'].includes(e.error))vKeep=false;if(e.error!=='aborted'){toast(m);vGuide('error',m)}};
+ r.onend=()=>{if(srec===r)srec=null;if(vKeep&&walk&&!r._stop){setTimeout(()=>{if(vKeep&&walk&&!srec)startVoice(true)},250);return}vKeep=false;on(false);vGuide('end')};try{r.start()}catch(e){srec=null;on(false);toast('Could not start voice: '+e.message);vGuide('error','Could not start voice: '+e.message)}}
 // bpm-v130: Voice guide. While Voice listens, a panel shows what to say (the real commands, with examples), what it heard, and that it needs internet.
 // It does not change what the commands do. Stop listening / Listen again / Close are labelled buttons. It hides itself 4 s after a command that was understood.
 function vGuide(st,txt){let g=$('#vGuide');if(!g){g=document.createElement('div');g.id='vGuide';g.setAttribute('role','dialog');g.setAttribute('aria-label','Voice commands');document.body.append(g);
@@ -861,18 +868,20 @@ function vGuide(st,txt){let g=$('#vGuide');if(!g){g=document.createElement('div'
    <li><q>address L1D012</q><small>sets this device's address</small></li>
    <li><q>note</q> + your words<small>adds a note, e.g. <q>note cover cracked</q></small></li>
    <li><q>L1D012 pass</q><small>passes (or <q>L1D012 fail damaged</q> fails) the device with that address</small></li>
+   <li><q>stop listening</q><small>turns voice off</small></li>
   </ul>
+  <div class="vgKeep">During a walk, voice stays on between devices (hands-free) until you tap <b>Stop listening</b>, say <q>stop listening</q>, or end the walk.</div>
   <div class="vgHeard" aria-live="polite"></div>
   <div class="vgNet"></div>
   <div class="vgB"><button type="button" class="btn danger" id="vgStop">⏹ Stop listening</button><button type="button" class="btn pri" id="vgAgain">🎤 Listen again</button><button type="button" class="btn" id="vgX">✕ Close</button></div>`;
-  g.querySelector('#vgStop').onclick=()=>{if(srec)try{srec.stop()}catch{}};g.querySelector('#vgAgain').onclick=()=>{if(!srec)startVoice()};g.querySelector('#vgX').onclick=()=>{clearTimeout(g._t);g.hidden=true;if(srec)try{srec.abort?srec.abort():srec.stop()}catch{}}}
+  g.querySelector('#vgStop').onclick=()=>{voiceStop()};g.querySelector('#vgAgain').onclick=()=>{if(!srec)startVoice()};g.querySelector('#vgX').onclick=()=>{clearTimeout(g._t);g.hidden=true;if(vKeep&&srec){voiceOn(true);return}/* hands-free: closing the guide keeps listening; the Voice on chip stops it */if(srec)try{srec._stop=true;srec.abort?srec.abort():srec.stop()}catch{}}}
  const S=g.querySelector('.vgS'),H=g.querySelector('.vgHeard'),N=g.querySelector('.vgNet'),lis=st==='listen';clearTimeout(g._t);
  N.textContent=navigator.onLine?'Needs an internet connection: the phone sends your voice to Google to turn it into text.':'You are offline. Voice needs an internet connection, so use the buttons until you are back online.';N.classList.toggle('off',!navigator.onLine);
- if(lis){g.hidden=false;g._ok=false;S.textContent='Listening… speak now';H.textContent='';H.className='vgHeard'}
- else if(st==='heard'){S.textContent='Got it';let c={cmd:'?'};try{c=parseVoice(txt)}catch{}g._ok=c.cmd!=='?';H.textContent=`Heard: “${txt}”`+(g._ok?'':' (not a command: try one of the above)');H.className='vgHeard '+(g._ok?'ok':'bad')}
+ if(lis){g.hidden=false;g._ok=false;S.textContent=vKeep?'Voice on (hands-free): listening… speak now':'Listening… speak now';H.textContent='';H.className='vgHeard'}
+ else if(st==='heard'){S.textContent=vKeep?'Got it. Still listening (voice on)':'Got it';let c={cmd:'?'};try{c=parseVoice(txt)}catch{}g._ok=c.cmd!=='?';H.textContent=`Heard: “${txt}”`+(g._ok?'':' (not a command: try one of the above)');H.className='vgHeard '+(g._ok?'ok':'bad')}
  else if(st==='error'){S.textContent='Voice stopped';H.textContent=txt||'';H.className='vgHeard bad';g._ok=false;g.hidden=false}
  else if(st==='end'){if(S.textContent.startsWith('Listening')){S.textContent='Didn’t hear a command';if(!H.textContent){H.textContent='Tap Listen again and speak after the beep.';H.className='vgHeard bad'}}if(g._ok)g._t=setTimeout(()=>{g.hidden=true},4000)}
- g.classList.toggle('on',!!srec||lis);g.querySelector('#vgStop').hidden=!(srec||lis);g.querySelector('#vgAgain').hidden=!!(srec||lis);
+ if(st==='heard'&&vKeep&&g._ok){g._t=setTimeout(()=>{g.hidden=true;voiceOn(!!srec)},4000)}g.classList.toggle('on',!!srec||lis);{const ch=$('#vChip');if(ch&&!g.hidden)ch.hidden=true}g.querySelector('#vgStop').hidden=!(srec||lis);g.querySelector('#vgAgain').hidden=!!(srec||lis);
  if(!g.hidden){/* free area between the top bars and the walk bar / Pages strip / tool bar */const vis=e=>e&&!e.hidden&&getComputedStyle(e).display!=='none'&&e.getBoundingClientRect().height>0;let lo=8,hi=innerHeight-8;
   for(const id of['proj','top','tb2']){const e=document.getElementById(id);if(vis(e)){const r=e.getBoundingClientRect();if(r.bottom<innerHeight/2)lo=Math.max(lo,r.bottom+8)}}
   for(const id of['walk','tools','thumbs','ghBar']){const e=document.getElementById(id);if(vis(e)){const r=e.getBoundingClientRect();if(r.top>innerHeight/2&&r.width>innerWidth/2)hi=Math.min(hi,r.top-8)}}
