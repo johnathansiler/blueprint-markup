@@ -11,6 +11,10 @@
 .mnuI{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;text-align:left;justify-content:flex-start;background:var(--sf2,#1d1d1d);border:1px solid #262626;border-radius:10px;padding:6px 12px;font-size:15px}
 .mnuI .mnuIc{width:22px;text-align:center;flex:none}.mnuI .tl{white-space:normal}
 body.light .mnuP,body.light .mnuH,body.light .mnuI{border-color:#d4d4d4}body.light .mnuOv{background:#0004}
+/* 3) quick fail reasons */
+#walk .qfCard .qfR{display:flex;flex-wrap:wrap;gap:6px}#walk .qfCard .qfR .btn{flex:1 1 auto;min-height:44px}
+#walk .qfCard .qfB{display:flex;align-items:center;gap:6px;flex-wrap:wrap}#walk .qfCard .qfB .wfCritL{display:inline-flex;align-items:center;gap:6px}
+#walk .qfCard .qfB .wfCritL input{width:20px;height:20px;min-height:20px}
 /* 9) no Delete on the pin card during a walk */
 body.walking #pinDlg .pcDel{display:none!important}
 /* 8) Open card on each Pins list row */
