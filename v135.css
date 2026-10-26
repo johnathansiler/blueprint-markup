@@ -1,0 +1,27 @@
+/* bpm-v135 */
+#bkBar{position:absolute;top:8px;left:calc((100% - var(--frR,0px))/2);transform:translateX(-50%);z-index:7;background:#78350f;color:#fff;border:1px solid #f59e0b;border-radius:10px;padding:6px 8px 6px 12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;max-width:calc(100% - var(--frR,0px) - 12px);font-size:14px;box-shadow:0 6px 18px #0008}
+#bkBar[hidden]{display:none}
+#bkBar .btn{min-height:40px;padding:4px 12px}
+#updBar:not([hidden])~#bkBar,#updBar:not([hidden])+#bkBar{top:64px}
+body.light #bkBar{background:#fef3c7;color:#451a03;border-color:#d97706}
+#mrgDlg .mNew{background:#16a34a;color:#fff;border-radius:6px;padding:0 6px;font-size:12px}
+#mrgSum ul{margin:4px 0 10px 18px;padding:0}#mrgSum li{margin:2px 0}
+
+/* item 7: corrected status */
+.st-corrected{color:#22d3ee}body.light .st-corrected{color:#0e7490}
+#defList li.defCorr{opacity:.85}
+#corrBox{margin:6px 0;padding:6px;border:1px solid #0891b2;border-radius:8px}
+.wSt.fix{color:#22d3ee}
+
+/* item 6: measured readings */
+#rdBox{margin:6px 0}#rdBox .rdRow{display:flex;flex-wrap:wrap;gap:8px}#rdBox label{display:flex;flex-direction:column;flex:1 1 140px;font-size:14px}#rdBox label[hidden]{display:none}#rdBox input{min-height:40px;font-size:16px}#rdHint{color:#fbbf24}
+/* item 3: signatures and visit fields */
+#sigDlg{max-width:640px;width:96vw}.sigPad{width:100%;height:auto;aspect-ratio:600/160;background:#fff;border:1px solid #94a3b8;border-radius:8px;touch-action:none;display:block;margin:4px 0}
+#itmBox .row{flex-wrap:wrap;align-items:flex-end;gap:8px}#itmBox .row label{flex:1 1 120px}
+#prevInfo{display:block;color:#a5b4fc;margin:2px 0}body.light #prevInfo{color:#4338ca}
+/* item 8: hands-free voice */
+#vChip{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 112px);z-index:60;min-height:44px;padding:6px 14px;font-size:15px;box-shadow:0 6px 18px #0008}
+#vGuide .vgKeep{font-size:14px;margin:6px 0;color:#a5f3fc}body.light #vGuide .vgKeep{color:#0e7490}
+
+/* bpm-v135 item 11: pinch zoom of the app screen allowed; no double-tap zoom on controls (plan stage keeps touch-action:none) */
+html{touch-action:manipulation}
