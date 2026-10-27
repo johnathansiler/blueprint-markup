@@ -1,3 +1,4 @@
+// @shared-globals: this file declares top-level names other files use, so tools/build.js joins it unwrapped.
 // bpm-v86: two-tech split & merge by file. mergePins() is PURE (no DOM/DB), so a future automatic
 // transport (WebRTC peer, cloud relay) can feed it the same pin records + change log.
 // Per-pin result record: RES fields + updatedAt (ms) + dev (device id) + by (tech name). Split copies carry

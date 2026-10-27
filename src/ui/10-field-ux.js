@@ -1,3 +1,4 @@
+// @shared-globals: this file declares top-level names other files use, so tools/build.js joins it unwrapped.
 // bpm-v86: field UX (compact walk, quick-place, bulk pass, pre-send check, export menu, detect ordering) + two-tech split/merge.
 // Loaded after app.js; shares its globals (classic scripts).
 (()=>{const ce=(t,a={},h='')=>{const e=document.createElement(t);Object.assign(e,a);if(h)e.innerHTML=h;return e};
