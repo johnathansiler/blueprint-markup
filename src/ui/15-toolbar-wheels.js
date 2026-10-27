@@ -42,8 +42,8 @@
  addEventListener('keydown',e=>{if(MS.hidden)return;if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();STK=[]}else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const B=[...MS.querySelectorAll('.mnuI')],i=B.indexOf(document.activeElement),n=e.key==='ArrowDown'?Math.min(B.length-1,i+1):Math.max(0,i-1);B[n]&&B[n].focus()}},true);
  window.wheelOpen=wheelOpen;window.listOpen=wheelOpen;window.listIsOpen=()=>!MS.hidden;
  // ---- grouped wheel buttons (tap = last pick; tap again or ▾ = wheel) ----
- const mkWheelBtn=(key,label,items,isOn)=>{const b=ce('button','tool tbw');b.type='button';b.dataset.w=key;
-  const it=()=>items().find(x=>x.k===UI.last[key])||items()[0],show=()=>{const x=it();b.innerHTML=`${x.i}<span class="tl">${label} ▾</span>`;b.title=label+': '+x.l;b.classList.toggle('on',!!isOn(x))};
+ const mkWheelBtn=(key,label,items,isOn,btnLabel)=>{/* bpm-v143: btnLabel = text on the button when it differs from the list title */const bl=btnLabel||label;const b=ce('button','tool tbw');b.type='button';b.dataset.w=key;
+  const it=()=>items().find(x=>x.k===UI.last[key])||items()[0],show=()=>{const x=it();b.innerHTML=`${x.i}<span class="tl">${bl} ▾</span>`;b.title=bl+': '+x.l;b.classList.toggle('on',!!isOn(x))};
   const open=()=>{const L=items();wheelOpen(label,L.map(x=>({...x,html:`<span class="whIc">${x.i}</span>${esc(x.l)}`})),L.indexOf(it()),x=>{UI.last[key]=x.k;save();x.run();show()})};
   b.onclick=e=>{const r=b.getBoundingClientRect(),car=e.clientY>r.bottom-14;const x=it();if(car||isOn(x))open();else{x.run();show()}};b._show=show;show();return b};
  const tool1=(t,i,l)=>({k:t,i,l,run:()=>tb(t).click(),on:()=>tool===t});
@@ -92,7 +92,7 @@
  // move originals out of the way
  ['pan','select','rect','rrect','ellipse','arc','tri','poly','star','check','cloud','arrow','line','pen','free','stamp','zig','measure','pin'].forEach(t=>hid.append(tb(t)));['#mkSnap','#pinType','#size','#del','#fit'].forEach(O);const opl=document.querySelector('#tools .opac');if(opl)hid.append(opl);
  const B={shapes:mkWheelBtn('shapes','Shapes',()=>SH,x=>x.on()),lines:mkWheelBtn('lines','Lines',()=>LN,x=>x.on()),width:mkWidthBtn(),
-  place:mkWheelBtn('place','Place',pinT,()=>tool==='pin'),select:mkWheelBtn('select','Select',()=>SEL,x=>x.on()),share:mkWheelBtn('share','Share',share,()=>0),more:mkWheelBtn('more','More',more,()=>0)};
+  place:mkWheelBtn('place','Place',pinT,()=>tool==='pin','Marker'),select:mkWheelBtn('select','Select',()=>SEL,x=>x.on()),share:mkWheelBtn('share','Share',share,()=>0),more:mkWheelBtn('more','More',more,()=>0)};
  const text=tb('text');hid.append(text);const textB=ce('button','tool','T<span class="tl">Text</span>');textB.type='button';textB.onclick=()=>text.click();
  const col=$('#color');const colW=ce('label','tool tbCol');colW.append(col,ce('span','tl','Color'));
  // bpm-v100: Color sheet: the basic markup colors + every distinct device pin color (read from TYPES, so new types appear automatically) + Custom… (native picker)

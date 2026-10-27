@@ -683,8 +683,8 @@ try{
  addEventListener('keydown',e=>{if(MS.hidden)return;if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();STK=[]}else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const B=[...MS.querySelectorAll('.mnuI')],i=B.indexOf(document.activeElement),n=e.key==='ArrowDown'?Math.min(B.length-1,i+1):Math.max(0,i-1);B[n]&&B[n].focus()}},true);
  window.wheelOpen=wheelOpen;window.listOpen=wheelOpen;window.listIsOpen=()=>!MS.hidden;
  // ---- grouped wheel buttons (tap = last pick; tap again or ▾ = wheel) ----
- const mkWheelBtn=(key,label,items,isOn)=>{const b=ce('button','tool tbw');b.type='button';b.dataset.w=key;
-  const it=()=>items().find(x=>x.k===UI.last[key])||items()[0],show=()=>{const x=it();b.innerHTML=`${x.i}<span class="tl">${label} ▾</span>`;b.title=label+': '+x.l;b.classList.toggle('on',!!isOn(x))};
+ const mkWheelBtn=(key,label,items,isOn,btnLabel)=>{/* bpm-v143: btnLabel = text on the button when it differs from the list title */const bl=btnLabel||label;const b=ce('button','tool tbw');b.type='button';b.dataset.w=key;
+  const it=()=>items().find(x=>x.k===UI.last[key])||items()[0],show=()=>{const x=it();b.innerHTML=`${x.i}<span class="tl">${bl} ▾</span>`;b.title=bl+': '+x.l;b.classList.toggle('on',!!isOn(x))};
   const open=()=>{const L=items();wheelOpen(label,L.map(x=>({...x,html:`<span class="whIc">${x.i}</span>${esc(x.l)}`})),L.indexOf(it()),x=>{UI.last[key]=x.k;save();x.run();show()})};
   b.onclick=e=>{const r=b.getBoundingClientRect(),car=e.clientY>r.bottom-14;const x=it();if(car||isOn(x))open();else{x.run();show()}};b._show=show;show();return b};
  const tool1=(t,i,l)=>({k:t,i,l,run:()=>tb(t).click(),on:()=>tool===t});
@@ -733,7 +733,7 @@ try{
  // move originals out of the way
  ['pan','select','rect','rrect','ellipse','arc','tri','poly','star','check','cloud','arrow','line','pen','free','stamp','zig','measure','pin'].forEach(t=>hid.append(tb(t)));['#mkSnap','#pinType','#size','#del','#fit'].forEach(O);const opl=document.querySelector('#tools .opac');if(opl)hid.append(opl);
  const B={shapes:mkWheelBtn('shapes','Shapes',()=>SH,x=>x.on()),lines:mkWheelBtn('lines','Lines',()=>LN,x=>x.on()),width:mkWidthBtn(),
-  place:mkWheelBtn('place','Place',pinT,()=>tool==='pin'),select:mkWheelBtn('select','Select',()=>SEL,x=>x.on()),share:mkWheelBtn('share','Share',share,()=>0),more:mkWheelBtn('more','More',more,()=>0)};
+  place:mkWheelBtn('place','Place',pinT,()=>tool==='pin','Marker'),select:mkWheelBtn('select','Select',()=>SEL,x=>x.on()),share:mkWheelBtn('share','Share',share,()=>0),more:mkWheelBtn('more','More',more,()=>0)};
  const text=tb('text');hid.append(text);const textB=ce('button','tool','T<span class="tl">Text</span>');textB.type='button';textB.onclick=()=>text.click();
  const col=$('#color');const colW=ce('label','tool tbCol');colW.append(col,ce('span','tl','Color'));
  // bpm-v100: Color sheet: the basic markup colors + every distinct device pin color (read from TYPES, so new types appear automatically) + Custom… (native picker)
@@ -1860,7 +1860,7 @@ try{
 try{
 // bpm-v132: "Big task bar" navigation (user-approved Option A).
 // Top row: Menu ▾, Prev, Page ▾, Next, Undo, Pages, Pins (wide screens add Layers, Teach, QR).
-// Bottom row: Detect and Sheets (double width, coloured), Place ▾, Walk test, Draw ▾ (phone) or the drawing tools laid out (wide), More ▾.
+// Bottom row: Detect and Sheets (double width, coloured), Marker ▾ (was Place ▾, v143), Walk test, Draw ▾ (phone) or the drawing tools laid out (wide), More ▾.
 // Every original button is MOVED or reached through Menu ▾ / More ▾ / Draw ▾, so all existing handlers keep working. Walk-test bar unchanged.
 (()=>{const X=window.TBX,T=$('#tools'),TOP=$('#top');if(!X||!T||!TOP||!window.wheelOpen)return;
  const HOLD=document.createElement('div');HOLD.id='navHold';HOLD.hidden=true;document.body.append(HOLD);
@@ -1884,11 +1884,11 @@ try{
    {i:'⚙',l:'Customize (theme, accent, size)',run:()=>openCz()}])},'Menu: project, plan, save, export, share, customize');
  // ---------- More ▾ (rarely used tools) ----------
  const moreB=mkTool('navMore','⋯','More ▾',function(){const a=this,w=wide(),L=[];
-  if(!w)L.push({i:'◧',l:'Layers',run:()=>tlayOpen()},{i:'📷',l:'Scan QR code',run:click('qrTool')},{i:'🎓',l:'Teach a symbol',run:click('teachBtn')});
+  if(!w)L.push({i:'📷',l:'Scan QR code',run:click('qrTool')},{i:'🎓',l:'Teach a symbol',run:click('teachBtn')});/* bpm-v143: Layers, Rotate and Redo are in the phone top row now */
   L.push({i:'➤',l:'Select',run:()=>{const t=document.querySelector('[data-t="select"]');t&&t.click()}},{i:'✋',l:'Pan',run:()=>{const t=document.querySelector('[data-t="pan"]');t&&t.click()}},
-   {i:'⤢',l:'Fit to screen',run:click('fit')},{i:'⟳',l:'Rotate view'+(typeof VR!=="undefined"&&VR?` (now ${VR}°)`:""),run:click('rotBtn')});
+   {i:'⤢',l:'Fit to screen',run:click('fit')});if(w)L.push({i:'⟳',l:'Rotate view'+(typeof VR!=="undefined"&&VR?` (now ${VR}°)`:""),run:click('rotBtn')});
   const mic=by('micBtn');if(mic&&!mic.hidden)L.push({i:'🎤',l:'Voice',run:()=>mic.click()});
-  L.push({i:'📘',l:'Guides',run:click('guidesBtn')},{i:'↷',l:'Redo',run:click('redo')},{i:'🗑',l:'Delete selected',run:click('del')},{i:'🧲',l:'Magnet snap '+(by('mkSnap')?.classList.contains('on')?'(on)':'(off)'),run:click('mkSnap')});
+  L.push({i:'📘',l:'Guides',run:click('guidesBtn')},...(w?[{i:'↷',l:'Redo',run:click('redo')}]:[]),{i:'🗑',l:'Delete selected',run:click('del')},{i:'🧲',l:'Magnet snap '+(by('mkSnap')?.classList.contains('on')?'(on)':'(off)'),run:click('mkSnap')});
   if(w)L.push({i:'📐',l:'Angle snap (15°)',run:click('cSnap')},{i:'✍',l:'Freehand',run:()=>X.freeB.click()});
   L.push({i:'👁',l:'Filters (markups, labels, status)',run:click('layBtn')});
   if(window.moreExtra)L.push(...moreExtra(a));
@@ -1897,8 +1897,8 @@ try{
  const DR=document.createElement('div');DR.id='navDraw';DR.hidden=true;DR.setAttribute('role','dialog');DR.setAttribute('aria-label','Drawing tools');document.body.append(DR);
  const drawB=mkTool('navDrawB','✏️','Draw ▾',()=>{DR.hidden=!DR.hidden;drawB.classList.toggle('on',!DR.hidden);if(!DR.hidden)placeDR()});
  function placeDR(){const r=T.getBoundingClientRect();DR.style.bottom=Math.round(innerHeight-r.top+6)+'px'}
- DR.addEventListener('click',e=>{const b=e.target.closest('button,label');if(!b)return;/* a tool was picked: close the panel (wheel / width bar open from the button first) */if(b.dataset.w==='width'||b.classList.contains('tbCol'))return;setTimeout(()=>{DR.hidden=true;drawB.classList.remove('on')},250)});
- document.addEventListener('pointerdown',e=>{if(!DR.hidden&&!DR.contains(e.target)&&!drawB.contains(e.target)&&!e.target.closest('#mnuSheet,.wbBar,#colDlg,.wbO')){DR.hidden=true;drawB.classList.remove('on')}},true);
+ DR.addEventListener('click',e=>{const b=e.target.closest('button,label');if(!b)return;/* a tool was picked: close the panel (wheel / width bar open from the button first) */if(b.dataset.w==='width'||b.classList.contains('tbCol'))return;/* v143: a list opened from Shapes / Lines keeps the panel (and its button) showing until the list closes */const shut=()=>{const M=document.getElementById('mnuSheet');if(M&&!M.hidden){setTimeout(shut,150);return}DR.hidden=true;drawB.classList.remove('on')};setTimeout(shut,250)});
+ document.addEventListener('pointerdown',e=>{if(!DR.hidden&&!DR.contains(e.target)&&!drawB.contains(e.target)&&!e.target.closest('#mnuSheet,.wbBar,#colDlg,.wbO,#widBar,#wbOp')){DR.hidden=true;drawB.classList.remove('on')}},true);
  // ---------- top-row extras on wide screens (proxies of the real buttons) ----------
  const teachT=mkTop('navTeach','🎓','Teach',click('teachBtn'),'Teach a symbol');const qrT=mkTop('navQr','📷','QR code',click('qrTool'),'Scan an install-sheet QR code');
  const layT=by('tb2Lay');
@@ -1922,7 +1922,8 @@ try{
   T.querySelectorAll('.tbG').forEach(g=>HOLD.append(g));
   T.replaceChildren(r);T.classList.add('navT');T.classList.toggle('navWide',w);
   // top row
-  const top=[menuB,by('prev'),by('tb2Page'),by('next'),by('undo'),by('thBtn'),by('listBtn')];if(w)top.push(layT,teachT,qrT);
+  /* bpm-v143: phone order Menu, Previous, Next, Rotate, Undo, Redo, Pages, Layers, Pins (Page ▾ leaves the row: the title line shows the page, the Pages bar jumps to one) */
+  const top=w?[menuB,by('prev'),by('tb2Page'),by('next'),by('undo'),by('thBtn'),by('listBtn'),layT,teachT,qrT]:[menuB,by('prev'),by('next'),by('rotBtn'),by('undo'),by('redo'),by('thBtn'),layT,by('listBtn')];
   const keep=new Set(top);[...TOP.children].forEach(e=>{if(!keep.has(e))HOLD.append(e)});TOP.replaceChildren(...top);TOP.classList.add('navTop');
   window.tlayMark&&tlayMark();if(!DR.hidden)placeDR()}
  window.navLayout=layout;layout();addEventListener('resize',()=>{clearTimeout(layout._t);layout._t=setTimeout(layout,100)});
@@ -2060,7 +2061,7 @@ try{
  const stg=document.getElementById('stage');if(stg)for(const ev of['gesturestart','gesturechange'])stg.addEventListener(ev,e=>e.preventDefault(),{passive:false});
  const VPC='width=device-width,initial-scale=1,minimum-scale=1';let zBusy=0;
  /* lock the page scale to 1 until the browser has actually applied it (or 0.7 s), then unlock so pinch-to-zoom keeps working */
- function resetZoom(){const m=document.querySelector('meta[name=viewport]');if(!m||zBusy)return;zBusy=1;const t0=performance.now();m.content=VPC+',maximum-scale=1';
+ function resetZoom(){const m=document.querySelector('meta[name=viewport]');if(!m||zBusy)return;zBusy=1;const t0=performance.now();/* v143: Chromium only re-applies the tag when the scale values change, so lock at a hair over 1 (was maximum-scale=1, which it ignored) */m.content='width=device-width,initial-scale=1.0001,minimum-scale=1,maximum-scale=1.0001';
   const vv=window.visualViewport;const chk=()=>{const t=performance.now()-t0;if(t>700||t>150&&(!vv||Math.abs(vv.scale-1)<.01)){m.content=VPC;zBusy=0;return}requestAnimationFrame(chk)};requestAnimationFrame(chk)}
  window.resetScreenZoom=resetZoom;
  MX.push(()=>[{i:'🔍',l:'Reset screen zoom',run:resetZoom}]);
@@ -2292,6 +2293,82 @@ try{
  if(MX)MX.push(()=>[{i:'🏁',l:'Finish inspection…',run:open}]);
 })();
 }catch(e){console.error('43-finish-inspection.js',e);setTimeout(()=>{throw e})}
+// ===== src/ui/44-phone-card-delete.js =====
+try{
+// bpm-v143: phone mode (under 600px wide): the pin card's Delete sits in the card's top row, left of Close and Save,
+// instead of floating above the card's corner, where it covered Menu in the top bar. Same button, same label and action.
+(()=>{const D=by('pinDlg');if(!D)return;
+ const place=()=>{const DB=D.querySelector('.pcDel')||document.querySelector('.pcDel');const row=D.querySelector('.pcTopRow');if(!DB||!row)return;
+  if(innerWidth<600){const X=row.querySelector('button[value=cancel]');if(DB.parentElement!==row)row.insertBefore(DB,X);/* never start with Delete focused: Close keeps the focus it had before */if(D.open&&document.activeElement===DB)X&&X.focus()}else if(DB.parentElement!==D)D.append(DB)};
+ new MutationObserver(()=>{place();setTimeout(place,0)}).observe(D,{attributes:true,attributeFilter:['open']});addEventListener('resize',place);place()})();
+}catch(e){console.error('44-phone-card-delete.js',e);setTimeout(()=>{throw e})}
+// ===== src/ui/45-stack.js =====
+try{
+// bpm-v143: stacking rule for floating pieces opened from a button: they never cover another bar, button or open control.
+// Free area = below the top bars (#proj, #top) and above whatever is docked at the bottom (#tools, a bottom Pages bar, the walk / sweep bars),
+// between side panels (vertical Pages bar on the left, Pins / Layers panels on the right).
+// Bottom chain, lowest first: bottom bar > Pages bar > Draw panel > Width row > Opacity row > list. Each piece sits right above the piece
+// below it (or right below its button when the button is in the top bar), keeps its own natural size, and only shrinks and scrolls when
+// the free area is smaller than its content. The plan canvas may sit underneath.
+(()=>{const M=6;
+ const vis=e=>{if(!e||e.hidden)return false;const s=getComputedStyle(e);if(s.display==='none'||s.visibility==='hidden')return false;const r=e.getBoundingClientRect();return r.width>1&&r.height>1&&r.bottom>0&&r.top<innerHeight};
+ const R=e=>e.getBoundingClientRect();
+ function area(){let top=0,bot=innerHeight,left=0,right=innerWidth;
+  for(const s of ['#proj','#top','#legChip','#vChip','#ghBar']){const e=document.querySelector(s);if(vis(e)&&R(e).top<innerHeight/2)top=Math.max(top,R(e).bottom)}
+  for(const s of ['#tools','#walk','#swBar']){const e=document.querySelector(s);if(vis(e)&&R(e).top>innerHeight/2)bot=Math.min(bot,R(e).top)}
+  const th=document.getElementById('thumbs');if(vis(th)){const r=R(th);if(r.width>r.height){if(r.top>innerHeight/2)bot=Math.min(bot,r.top)}else if(r.left<innerWidth/2)left=Math.max(left,r.right);else right=Math.min(right,r.left)}
+  for(const s of ['#panel','#lyrP']){const e=document.querySelector(s);if(vis(e)&&!e.classList.contains('rlOut')){const r=R(e);if(r.height>innerHeight/3){if(r.left>innerWidth/2)right=Math.min(right,r.left);else left=Math.max(left,r.right)}else if(r.top>innerHeight/2)bot=Math.min(bot,r.top)}}
+  for(const s of ['#fhBar','#penBar','#shpChip','#stBar','#selBar','#updBar','#toast']){const e=document.querySelector(s);if(vis(e)&&R(e).top>innerHeight/2)bot=Math.min(bot,R(e).top)}
+  if(right-left<240){left=0;right=innerWidth}/* narrow: never squeeze a list into a sliver */
+  return{top,bot,left,right}}
+ const CHAIN=['navDraw','widBar','wbOp'];
+ const inTop=a=>!!(a&&a.closest&&a.closest('#top,#proj'));
+ // floor for a piece: the lowest-chain pieces already showing, its button, the free area
+ function floorFor(id,a,A){let f=A.bot;const i=CHAIN.indexOf(id),lim=i<0?CHAIN.length:i;
+  for(let k=0;k<lim;k++){const e=document.getElementById(CHAIN[k]);if(vis(e))f=Math.min(f,R(e).top)}
+  if(a&&a.isConnected&&!inTop(a))f=Math.min(f,R(a).top);return f}
+ function fit(el,a,id,A,wantW){// natural size first, then shrink to the space
+  el.style.maxHeight='none';const ex=el._stackScroll||el;ex.style.maxHeight='';ex.style.overflowY='';
+  const space=Math.max(80,(inTop(a)?A.bot-M-(R(a).bottom+M):floorFor(id,a,A)-M-(A.top+M)));
+  let h=el.offsetHeight;if(h>space){const over=h-space;const inner=el._stackScroll;if(inner){inner.style.maxHeight=Math.max(40,inner.clientHeight-over)+'px';inner.style.overflowY='auto'}else{el.style.maxHeight=space+'px';el.style.overflowY='auto'}h=el.offsetHeight}
+  const w=el.offsetWidth,ar=a&&a.isConnected?R(a):null,cx=ar?ar.left+ar.width/2:(A.left+A.right)/2;
+  const left=Math.round(Math.max(A.left+M,Math.min(A.right-M-w,cx-w/2)));
+  const top=Math.round(inTop(a)&&ar?ar.bottom+M:floorFor(id,a,A)-M-h);
+  return{left,top:Math.max(A.top+M,top)}}
+ function stageFloats(){// bars that live on the plan area: lift them above the walk / sweep bar, keep the pin Delete chip out of side panels
+  const W=['#walk','#swBar'].map(q=>document.querySelector(q)).filter(vis).map(R);const st=document.getElementById('stage');if(!st)return;const sr=R(st);
+  for(const q of ['#fhBar','#penBar','#shpChip','#stBar','#selBar','#updBar']){const e=document.querySelector(q);if(!e)continue;
+   const was=e.dataset.stk;e.style.transition='none';e.style.bottom='';delete e.dataset.stk;if(!vis(e)){e.style.transition='';continue}const r=R(e);const hit=W.find(w=>r.bottom>w.top&&r.top<w.bottom);
+   if(hit){e.style.bottom=Math.round(sr.bottom-hit.top+M)+'px';e.dataset.stk=1}else if(!was)e.style.transition=''}
+  // top of the plan: the legend chip keeps clear of an open pin card / side panel, a notice sits below the legend chip
+  const LG=document.getElementById('legChip');if(LG){if(LG.dataset.stk){LG.style.left='';LG.style.maxWidth='';LG.style.transform='';delete LG.dataset.stk}
+   if(vis(LG)){const l=R(LG);for(const q of ['#pinDlg[open]','#panel','#lyrP']){const P=document.querySelector(q);if(!vis(P)||P.classList.contains('rlOut'))continue;const p=R(P);
+    if(l.right>p.left&&l.left<p.right&&l.bottom>p.top&&l.top<p.bottom){const rt=(p.left+p.right)/2>innerWidth/2,L0=Math.max(sr.left,rt?sr.left:p.right),R0=rt?p.left:sr.right;
+     LG.style.transform='none';LG.style.maxWidth=Math.max(120,R0-L0-2*M)+'px';const w=LG.offsetWidth;LG.style.left=Math.round((L0+R0)/2-w/2-sr.left)+'px';LG.dataset.stk=1;break}}}}
+  const TO=document.getElementById('toast');if(TO){if(TO.dataset.stk){TO.style.top='';delete TO.dataset.stk}
+   if(vis(TO)&&vis(LG)){const t=R(TO),l=R(LG);if(t.bottom>l.top&&t.top<l.bottom&&t.right>l.left&&t.left<l.right){TO.style.top=Math.round(l.bottom-sr.top+M)+'px';TO.dataset.stk=1}}}
+  const D=document.getElementById('pinDelF');if(D&&D.dataset.stk){D.style.left='';delete D.dataset.stk}if(vis(D)){for(const q of ['#panel','#lyrP']){const P=document.querySelector(q);if(!vis(P)||P.classList.contains('rlOut'))continue;const p=R(P),d=R(D);
+   if(d.right>p.left&&d.left<p.right&&d.bottom>p.top&&d.top<p.bottom){const dx=(p.left+p.right)/2>innerWidth/2?p.left-M-d.right:p.right+M-d.left;const lim=Math.max(sr.left+M-d.left,Math.min(sr.right-M-d.right,dx));D.style.left=Math.round(lim)+'px';D.dataset.stk=1;break}}}}
+ function place(){stageFloats();const A=area();
+  // Draw panel: above the bottom bar and the Pages bar
+  const DR=document.getElementById('navDraw');if(vis(DR)){const f=Math.min(A.bot,innerHeight);DR.style.bottom=Math.round(innerHeight-f+M)+'px';DR.style.top='auto';
+   const sp=f-M-(A.top+M);DR.style.maxHeight=sp+'px';DR.style.overflowY=DR.scrollHeight>sp?'auto':''}
+  // Width row and Opacity row: right above their button / the row below
+  const WB=document.getElementById('widBar'),WA=document.querySelector('[data-w=width].on')||document.querySelector('[data-w=width]');
+  if(vis(WB)){const p=fit(WB,WA,'widBar',A);WB.style.left=p.left+'px';WB.style.top=p.top+'px'}
+  const WO=document.getElementById('wbOp');if(vis(WO)){const p=fit(WO,WB,'wbOp',A);WO.style.left=p.left+'px';WO.style.top=p.top+'px'}
+  // lists: next to their button, natural size, scroll only when too tall
+  const MS=document.getElementById('mnuSheet');const P=MS&&!MS.hidden&&MS.querySelector('.mnuP');
+  if(P){const a=document.querySelector('.whPressed');if(a&&a.isConnected){MS.classList.add('mnuAnc');P._stackScroll=P.querySelector('.mnuB');
+    P.style.maxWidth=Math.max(200,A.right-A.left-2*M)+'px';const p=fit(P,a,'list',A);P.style.left=p.left+'px';P.style.top=p.top+'px'}else MS.classList.remove('mnuAnc')}
+ }
+ let raf=0;const kick=()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;try{place()}catch(e){}})};
+ window.stackPlace=place;
+ // react to anything opening, closing or moving; our own style writes are filtered out by the signature check
+ let sig='';const tick=()=>{const k=['navDraw','widBar','wbOp','mnuSheet','thumbs','panel','lyrP','walk','swBar','tools','top','fhBar','penBar','shpChip','selBar','pinDelF','legChip','toast','pinDlg'].map(id=>{const e=document.getElementById(id);if(!e)return'-';const r=e.getBoundingClientRect();return (e.hidden?'h':'v')+(r.top|0)+','+(r.height|0)+','+(r.left|0)+','+(r.width|0)}).join('|')+(document.getElementById('mnuSheet')?.innerHTML.length||0)+innerWidth+'x'+innerHeight;if(k!==sig){sig=k;try{place()}catch(e){}}requestAnimationFrame(tick)};
+ requestAnimationFrame(tick);addEventListener('resize',kick);
+})();
+}catch(e){console.error('45-stack.js',e);setTimeout(()=>{throw e})}
 // ===== src/ui/99-ui-ready.js =====
 try{
 // bpm-v141: last file of ui.js. Marks that the screen code started, for the update self-heal in src/app/09-update-heal.js.
