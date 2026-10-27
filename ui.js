@@ -683,8 +683,8 @@ try{
  addEventListener('keydown',e=>{if(MS.hidden)return;if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();STK=[]}else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const B=[...MS.querySelectorAll('.mnuI')],i=B.indexOf(document.activeElement),n=e.key==='ArrowDown'?Math.min(B.length-1,i+1):Math.max(0,i-1);B[n]&&B[n].focus()}},true);
  window.wheelOpen=wheelOpen;window.listOpen=wheelOpen;window.listIsOpen=()=>!MS.hidden;
  // ---- grouped wheel buttons (tap = last pick; tap again or ▾ = wheel) ----
- const mkWheelBtn=(key,label,items,isOn)=>{const b=ce('button','tool tbw');b.type='button';b.dataset.w=key;
-  const it=()=>items().find(x=>x.k===UI.last[key])||items()[0],show=()=>{const x=it();b.innerHTML=`${x.i}<span class="tl">${label} ▾</span>`;b.title=label+': '+x.l;b.classList.toggle('on',!!isOn(x))};
+ const mkWheelBtn=(key,label,items,isOn,btnLabel)=>{/* bpm-v143: btnLabel = text on the button when it differs from the list title */const bl=btnLabel||label;const b=ce('button','tool tbw');b.type='button';b.dataset.w=key;
+  const it=()=>items().find(x=>x.k===UI.last[key])||items()[0],show=()=>{const x=it();b.innerHTML=`${x.i}<span class="tl">${bl} ▾</span>`;b.title=bl+': '+x.l;b.classList.toggle('on',!!isOn(x))};
   const open=()=>{const L=items();wheelOpen(label,L.map(x=>({...x,html:`<span class="whIc">${x.i}</span>${esc(x.l)}`})),L.indexOf(it()),x=>{UI.last[key]=x.k;save();x.run();show()})};
   b.onclick=e=>{const r=b.getBoundingClientRect(),car=e.clientY>r.bottom-14;const x=it();if(car||isOn(x))open();else{x.run();show()}};b._show=show;show();return b};
  const tool1=(t,i,l)=>({k:t,i,l,run:()=>tb(t).click(),on:()=>tool===t});
@@ -733,7 +733,7 @@ try{
  // move originals out of the way
  ['pan','select','rect','rrect','ellipse','arc','tri','poly','star','check','cloud','arrow','line','pen','free','stamp','zig','measure','pin'].forEach(t=>hid.append(tb(t)));['#mkSnap','#pinType','#size','#del','#fit'].forEach(O);const opl=document.querySelector('#tools .opac');if(opl)hid.append(opl);
  const B={shapes:mkWheelBtn('shapes','Shapes',()=>SH,x=>x.on()),lines:mkWheelBtn('lines','Lines',()=>LN,x=>x.on()),width:mkWidthBtn(),
-  place:mkWheelBtn('place','Place',pinT,()=>tool==='pin'),select:mkWheelBtn('select','Select',()=>SEL,x=>x.on()),share:mkWheelBtn('share','Share',share,()=>0),more:mkWheelBtn('more','More',more,()=>0)};
+  place:mkWheelBtn('place','Place',pinT,()=>tool==='pin','Marker'),select:mkWheelBtn('select','Select',()=>SEL,x=>x.on()),share:mkWheelBtn('share','Share',share,()=>0),more:mkWheelBtn('more','More',more,()=>0)};
  const text=tb('text');hid.append(text);const textB=ce('button','tool','T<span class="tl">Text</span>');textB.type='button';textB.onclick=()=>text.click();
  const col=$('#color');const colW=ce('label','tool tbCol');colW.append(col,ce('span','tl','Color'));
  // bpm-v100: Color sheet: the basic markup colors + every distinct device pin color (read from TYPES, so new types appear automatically) + Custom… (native picker)
@@ -1860,7 +1860,7 @@ try{
 try{
 // bpm-v132: "Big task bar" navigation (user-approved Option A).
 // Top row: Menu ▾, Prev, Page ▾, Next, Undo, Pages, Pins (wide screens add Layers, Teach, QR).
-// Bottom row: Detect and Sheets (double width, coloured), Place ▾, Walk test, Draw ▾ (phone) or the drawing tools laid out (wide), More ▾.
+// Bottom row: Detect and Sheets (double width, coloured), Marker ▾ (was Place ▾, v143), Walk test, Draw ▾ (phone) or the drawing tools laid out (wide), More ▾.
 // Every original button is MOVED or reached through Menu ▾ / More ▾ / Draw ▾, so all existing handlers keep working. Walk-test bar unchanged.
 (()=>{const X=window.TBX,T=$('#tools'),TOP=$('#top');if(!X||!T||!TOP||!window.wheelOpen)return;
  const HOLD=document.createElement('div');HOLD.id='navHold';HOLD.hidden=true;document.body.append(HOLD);
@@ -1884,11 +1884,11 @@ try{
    {i:'⚙',l:'Customize (theme, accent, size)',run:()=>openCz()}])},'Menu: project, plan, save, export, share, customize');
  // ---------- More ▾ (rarely used tools) ----------
  const moreB=mkTool('navMore','⋯','More ▾',function(){const a=this,w=wide(),L=[];
-  if(!w)L.push({i:'◧',l:'Layers',run:()=>tlayOpen()},{i:'📷',l:'Scan QR code',run:click('qrTool')},{i:'🎓',l:'Teach a symbol',run:click('teachBtn')});
+  if(!w)L.push({i:'📷',l:'Scan QR code',run:click('qrTool')},{i:'🎓',l:'Teach a symbol',run:click('teachBtn')});/* bpm-v143: Layers, Rotate and Redo are in the phone top row now */
   L.push({i:'➤',l:'Select',run:()=>{const t=document.querySelector('[data-t="select"]');t&&t.click()}},{i:'✋',l:'Pan',run:()=>{const t=document.querySelector('[data-t="pan"]');t&&t.click()}},
-   {i:'⤢',l:'Fit to screen',run:click('fit')},{i:'⟳',l:'Rotate view'+(typeof VR!=="undefined"&&VR?` (now ${VR}°)`:""),run:click('rotBtn')});
+   {i:'⤢',l:'Fit to screen',run:click('fit')});if(w)L.push({i:'⟳',l:'Rotate view'+(typeof VR!=="undefined"&&VR?` (now ${VR}°)`:""),run:click('rotBtn')});
   const mic=by('micBtn');if(mic&&!mic.hidden)L.push({i:'🎤',l:'Voice',run:()=>mic.click()});
-  L.push({i:'📘',l:'Guides',run:click('guidesBtn')},{i:'↷',l:'Redo',run:click('redo')},{i:'🗑',l:'Delete selected',run:click('del')},{i:'🧲',l:'Magnet snap '+(by('mkSnap')?.classList.contains('on')?'(on)':'(off)'),run:click('mkSnap')});
+  L.push({i:'📘',l:'Guides',run:click('guidesBtn')},...(w?[{i:'↷',l:'Redo',run:click('redo')}]:[]),{i:'🗑',l:'Delete selected',run:click('del')},{i:'🧲',l:'Magnet snap '+(by('mkSnap')?.classList.contains('on')?'(on)':'(off)'),run:click('mkSnap')});
   if(w)L.push({i:'📐',l:'Angle snap (15°)',run:click('cSnap')},{i:'✍',l:'Freehand',run:()=>X.freeB.click()});
   L.push({i:'👁',l:'Filters (markups, labels, status)',run:click('layBtn')});
   if(window.moreExtra)L.push(...moreExtra(a));
@@ -1922,7 +1922,8 @@ try{
   T.querySelectorAll('.tbG').forEach(g=>HOLD.append(g));
   T.replaceChildren(r);T.classList.add('navT');T.classList.toggle('navWide',w);
   // top row
-  const top=[menuB,by('prev'),by('tb2Page'),by('next'),by('undo'),by('thBtn'),by('listBtn')];if(w)top.push(layT,teachT,qrT);
+  /* bpm-v143: phone order Menu, Previous, Next, Rotate, Undo, Redo, Pages, Layers, Pins (Page ▾ leaves the row: the title line shows the page, the Pages bar jumps to one) */
+  const top=w?[menuB,by('prev'),by('tb2Page'),by('next'),by('undo'),by('thBtn'),by('listBtn'),layT,teachT,qrT]:[menuB,by('prev'),by('next'),by('rotBtn'),by('undo'),by('redo'),by('thBtn'),layT,by('listBtn')];
   const keep=new Set(top);[...TOP.children].forEach(e=>{if(!keep.has(e))HOLD.append(e)});TOP.replaceChildren(...top);TOP.classList.add('navTop');
   window.tlayMark&&tlayMark();if(!DR.hidden)placeDR()}
  window.navLayout=layout;layout();addEventListener('resize',()=>{clearTimeout(layout._t);layout._t=setTimeout(layout,100)});
@@ -2292,6 +2293,15 @@ try{
  if(MX)MX.push(()=>[{i:'🏁',l:'Finish inspection…',run:open}]);
 })();
 }catch(e){console.error('43-finish-inspection.js',e);setTimeout(()=>{throw e})}
+// ===== src/ui/44-phone-card-delete.js =====
+try{
+// bpm-v143: phone mode (under 600px wide): the pin card's Delete sits in the card's top row, left of Close and Save,
+// instead of floating above the card's corner, where it covered Menu in the top bar. Same button, same label and action.
+(()=>{const D=by('pinDlg');if(!D)return;
+ const place=()=>{const DB=D.querySelector('.pcDel')||document.querySelector('.pcDel');const row=D.querySelector('.pcTopRow');if(!DB||!row)return;
+  if(innerWidth<600){const X=row.querySelector('button[value=cancel]');if(DB.parentElement!==row)row.insertBefore(DB,X);/* never start with Delete focused: Close keeps the focus it had before */if(D.open&&document.activeElement===DB)X&&X.focus()}else if(DB.parentElement!==D)D.append(DB)};
+ new MutationObserver(()=>{place();setTimeout(place,0)}).observe(D,{attributes:true,attributeFilter:['open']});addEventListener('resize',place);place()})();
+}catch(e){console.error('44-phone-card-delete.js',e);setTimeout(()=>{throw e})}
 // ===== src/ui/99-ui-ready.js =====
 try{
 // bpm-v141: last file of ui.js. Marks that the screen code started, for the update self-heal in src/app/09-update-heal.js.
