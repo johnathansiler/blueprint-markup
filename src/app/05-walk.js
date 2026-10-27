@@ -10,7 +10,7 @@ function nearestFrom(L,from){if(!walk||window.WALK_ORDER!=='addr'||!L.length)ret
  return S.find(p=>walkAddrCmp(p,from)>0)||S[0]}
 function nearestFromBase(L,from){if(!L.length)return null;if(!from)return L.slice().sort((a,b)=>a.page-b.page)[0];return L.slice().sort((a,b)=>(a.page===from.page?0:1)-(b.page===from.page?0:1)||Math.abs(a.page-from.page)-Math.abs(b.page-from.page)||Math.hypot(a.x-from.x,a.y-from.y)-Math.hypot(b.x-from.x,b.y-from.y))[0]}
 $('#walkBtn').onclick=()=>walk?exitWalk():walkPick();
-function startWalk(type=''){if(!plan)return uiAlert('Open a plan first.');if(!pins.length)return uiAlert('This plan has no pins yet. Place pins or use 🔍 Detect devices first.');
+function startWalk(type=''){if(!plan)return uiAlert('Open a plan first.');if(!pins.length)return uiAlert('This plan has no pins yet. Add markers with 📍 or use 🔍 Detect devices first.');
  walk={type,types:arguments[1]||null,skip:new Set(),p:null,fail:false};msel=[];sel=null;renderSelBar();renderGhostBar();$('#walkBtn').classList.add('pri');
  const c=toW(stage.clientWidth/2,stage.clientHeight/2),L=walkLeft(),here=L.filter(p=>p.page===page);
  const first=sel?.kind==='p'&&untested(sel.o)?sel.o:nearestFrom(here.length?here:L,here.length?{page,...c}:null);walkGo(first)}

@@ -18,7 +18,7 @@ const _start=startWalk,_exit=exitWalk;
 startWalk=function(...a){if(plan&&!pins.length)return walkHint();const r=_start.apply(this,a);if(walk){document.body.classList.add('walking');relayout()}return r};
 exitWalk=function(...a){document.body.classList.remove('walking');const r=_exit.apply(this,a);relayout();return r};
 const _pick=walkPick;walkPick=async function(...a){if(plan&&!pins.length)return walkHint();return _pick.apply(this,a)};
-function walkHint(){const w=$('#walk');w.hidden=false;w.innerHTML=`<div class="wh"><b>🚶 Walk</b><span class="sp"></span><button type="button" class="btn" id="wHx">✕</button></div><div class="wtx">This plan has no pins yet. Place pins with 📍, or let Detect find the devices on the plan.</div><div class="row"><button type="button" class="btn pri" id="wHdet">🔍 Detect devices</button></div>`;
+function walkHint(){const w=$('#walk');w.hidden=false;w.innerHTML=`<div class="wh"><b>🚶 Walk</b><span class="sp"></span><button type="button" class="btn" id="wHx">✕</button></div><div class="wtx">This plan has no pins yet. Add markers with 📍, or let Detect find the devices on the plan.</div><div class="row"><button type="button" class="btn pri" id="wHdet">🔍 Detect devices</button></div>`;
  w.querySelector('#wHx').onclick=()=>{w.hidden=true};w.querySelector('#wHdet').onclick=()=>{w.hidden=true;$('#detBtn').click()}}
 // bpm-v100: compact walk info: each fact once, date+time without the year, no tester name (still stored on the pin), capped scrollable area
 const wDate=t=>{const d=new Date(t);return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})};
@@ -733,7 +733,7 @@ try{
  // move originals out of the way
  ['pan','select','rect','rrect','ellipse','arc','tri','poly','star','check','cloud','arrow','line','pen','free','stamp','zig','measure','pin'].forEach(t=>hid.append(tb(t)));['#mkSnap','#pinType','#size','#del','#fit'].forEach(O);const opl=document.querySelector('#tools .opac');if(opl)hid.append(opl);
  const B={shapes:mkWheelBtn('shapes','Shapes',()=>SH,x=>x.on()),lines:mkWheelBtn('lines','Lines',()=>LN,x=>x.on()),width:mkWidthBtn(),
-  place:mkWheelBtn('place','Place',pinT,()=>tool==='pin','Marker'),select:mkWheelBtn('select','Select',()=>SEL,x=>x.on()),share:mkWheelBtn('share','Share',share,()=>0),more:mkWheelBtn('more','More',more,()=>0)};
+  place:mkWheelBtn('place','Marker',pinT,()=>tool==='pin'),select:mkWheelBtn('select','Select',()=>SEL,x=>x.on()),share:mkWheelBtn('share','Share',share,()=>0),more:mkWheelBtn('more','More',more,()=>0)};
  const text=tb('text');hid.append(text);const textB=ce('button','tool','T<span class="tl">Text</span>');textB.type='button';textB.onclick=()=>text.click();
  const col=$('#color');const colW=ce('label','tool tbCol');colW.append(col,ce('span','tl','Color'));
  // bpm-v100: Color sheet: the basic markup colors + every distinct device pin color (read from TYPES, so new types appear automatically) + Custom… (native picker)
