@@ -1,4 +1,4 @@
-// bpm-v138: Pins list rows get an Open card button (wraps renderList; the search and filter inputs still call the unwrapped renderList, as in v138).
+// bpm-v138: Pins list rows get an Open card button (wraps renderList; bpm-v140: the search and filter inputs call the wrapped one too).
 // Classic script; shares the app's globals. by/ce: src/ui/00-helpers.js.
 (()=>{
  // ---------- 8) Pins list: each row has Open card ----------

@@ -108,7 +108,7 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
  // labeled Close on every panel header
  const cl=by('closeList');const clL=()=>{if(!cl)return;if(!cl.querySelector('.tl'))cl.innerHTML='✕<span class="tl">Close</span>';if(cl.getAttribute('aria-label')!=='Close the Pins panel'){cl.setAttribute('aria-label','Close the Pins panel');cl.title='Close the Pins panel'}};clL();if(cl)new MutationObserver(clL).observe(cl,{childList:true,characterData:true,subtree:true});
  const thx=()=>{const x=TH.querySelector('#thX');if(x&&!x.dataset.rl){x.dataset.rl=1;x.innerHTML='✕<span class="tl">Close</span>';x.setAttribute('aria-label','Close the page preview');x.title='Close the page preview'}const r=TH.querySelector('#thRn');if(r&&!r.getAttribute('aria-label'))r.setAttribute('aria-label','Rename the current page')};new MutationObserver(thx).observe(TH,{childList:true,subtree:true});thx();
- addEventListener('resize',()=>{for(const k in PAN)W_[k]=getW(k);NOTR=1;sync();clearTimeout(rzT);rzT=setTimeout(()=>{NOTR=0},300);follow(120)});
+ addEventListener('resize',()=>{for(const k in PAN)W_[k]=getW(k);NOTR=1;sync();clearTimeout(rzT);rzT=setTimeout(()=>{NOTR=0;sync()},300)/* bpm-v140: put the slide back right after a resize (it used to stay off until the next panel change) */;follow(120)});
  new ResizeObserver(()=>sync()).observe(ST);
  let lastK='';setInterval(()=>{const k=[TH.hidden,TH.offsetHeight,rightK(),typeof walk!=='undefined'&&!!walk,innerWidth,innerHeight,ST.getBoundingClientRect().top|0].join();if(k!==lastK){lastK=k;sync()}},250);
  // ---- pin card: beside the selected pin, inside the plan area (never over panels or bars); below it, shorter, when there is no room ----

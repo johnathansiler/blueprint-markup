@@ -77,10 +77,17 @@
    // bpm-v100: sit below the selection bar so the chip never covers Multi/Box/Deselect
    const sb=document.getElementById('selBar');if(sb){const pos=()=>{h.style.top=(sb.hidden||!sb.offsetHeight?8:sb.offsetTop+sb.offsetHeight+6)+'px'};new ResizeObserver(pos).observe(sb);new MutationObserver(pos).observe(sb,{attributes:true,attributeFilter:['hidden'],childList:true});pos()}}
   h.innerHTML=`<button type="button" class="btn" id="legRev">🔣 ${c.length} new legend symbol${c.length>1?'s':''} · <b>Review</b></button><button type="button" class="btn" id="legX" title="Dismiss" aria-label="Dismiss">✕</button>`;h.hidden=false;
-  h.querySelector('#legRev').onclick=()=>{h.hidden=true;if(plan===pl)review(c,`Legend found: ${c.length} new symbol${c.length>1?'s':''}`)};h.querySelector('#legX').onclick=()=>h.hidden=true}
+  h.querySelector('#legRev').onclick=()=>{h.hidden=true;if(plan===pl)review(c,`Legend found: ${c.length} new symbol${c.length>1?'s':''}`)};h.querySelector('#legX').onclick=()=>h.hidden=true;busyClear()}
+ // bpm-v140: on a phone the chip sat on top of the busy notice (its text and progress were hidden, only Stop showed); the notice moves just below the chip while both show
+ function busyClear(){const b=document.getElementById('busy'),h=document.getElementById('legChip');if(!b)return;b.style.top='';if(b.hidden||!h||h.hidden)return;
+  if(!h._bzObs){h._bzObs=1;new MutationObserver(busyClear).observe(h,{attributes:true,attributeFilter:['hidden','style']})}
+  const a=b.getBoundingClientRect(),q=h.getBoundingClientRect();if(a.left<q.right&&q.left<a.right&&a.top<q.bottom&&q.top<a.bottom)b.style.top=(h.offsetTop+h.offsetHeight+6)+'px'}
+ {const _bz=busy;busy=function(...a){const r=_bz.apply(this,a);busyClear();return r}}
  window.legendChip=legendChip;
  // auto-scan new plans once
- const _op=openPlan;openPlan=async function(id,...a){const lc=document.getElementById('legChip');if(lc)lc.hidden=true;const r=await _op.call(this,id,...a);try{if(pdf&&plan&&!(await get('meta','legendScan:'+plan.id))){await put('meta',Date.now(),'legendScan:'+plan.id);const pl=plan;const c=await scanLegend(pdf,Array.from({length:Math.min(pl.pages,40)},(_,i)=>i+1));if(plan===pl&&c.length)legendChip(c,pl)}}catch(e){console.warn('legend scan',e)}return r};
+ let legSeq=0;const _op=openPlan;openPlan=async function(id,...a){const lc=document.getElementById('legChip');if(lc)lc.hidden=true;const r=await _op.call(this,id,...a);const my=++legSeq;try{if(pdf&&plan&&!(await get('meta','legendScan:'+plan.id))){const pl=plan;const c=await scanLegend(pdf,Array.from({length:Math.min(pl.pages,40)},(_,i)=>i+1));if(my===legSeq&&plan&&plan.id===pl.id){await put('meta',Date.now(),'legendScan:'+pl.id);if(c.length)legendChip(c,plan)}}}
+  /* bpm-v140: a plan counts as scanned only when its scan finishes and it is still the open plan; opening a plan again (or another one) while a scan runs starts a fresh scan, so the legend is never lost; the expected cancel is not a console warning */
+  catch(e){if(!/Cancel/i.test(e&&e.name||''))console.warn('legend scan',e)}return r};
  // ---- tap to teach ----
  window.teachSymbol=()=>{if(!plan||!pdf)return toast('Open a PDF plan first');document.querySelectorAll('dialog[open]').forEach(d=>d.close());const o=ce('div','teachOv','<div class="teachTip">Tap the middle of a device symbol</div>');stage.append(o);
   o.onpointerdown=async e=>{e.stopPropagation();const r=stage.getBoundingClientRect(),w=toW(e.clientX-r.left,e.clientY-r.top);o.remove();const S=3,pg=await pdf.getPage(page),c=await render(pg,S,{x:w.x-40,y:w.y-40,w:80,h:80}),k=crop(c,S,{x:w.x-16,y:w.y-16,w:32,h:32});const box=pxBox(c,S,k?.bb)||{x:72,y:72,w:96,h:96},cr=await cropUI(c,box,'Crop the symbol');if(!cr)return;const ex=exact(c,S,cr);let tag='';try{if(window.tagsNear)tag=(await tagsNear(pg,page,w.x,w.y,Math.max(ex.bb.w,ex.bb.h))).mods.join('+')}catch{}review([{...ex,name:'',type:'',tag,page,src:'tap',_c:c,_S:S}],'Teach symbol')}};

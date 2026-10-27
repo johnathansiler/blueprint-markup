@@ -457,7 +457,7 @@ async function deletePin(p){await change('pins',p,null,await byIdx('media','pinI
 /* bpm-v111: one side panel at a time — Pins and Layers share the right-side slot; opening one closes the other, its own button closes it */
 window.pinsPanel=on=>{const P=$('#panel');if(P.hidden===!on)return;P.hidden=!on;if(WIDE_MQ.matches)PANEL_CLOSED=!on;if(on){try{window.layPanel&&document.body.classList.contains('lpOn')&&layPanel(false)}catch{}renderList()}panelBtnSync();try{resize()}catch{}};
 $('#listBtn').onclick=()=>pinsPanel($('#panel').hidden);$('#closeList').onclick=()=>{$('#panel').hidden=true;if(WIDE_MQ.matches)PANEL_CLOSED=true;panelBtnSync()};
-['#q','#fType','#fStat','#allPages'].forEach(s=>$(s).oninput=renderList);/* bpm-v131: loops removed from the app */
+['#q','#fType','#fStat','#allPages'].forEach(s=>$(s).oninput=()=>renderList());/* bpm-v131: loops removed from the app */
 function renderList(){if($('#panel').hidden)return;const q=$('#q').value.toLowerCase(),ft=$('#fType').value,fs=$('#fStat').value,fl=''/* bpm-v118: Loop filter removed; any saved value ignored */,ap=$('#allPages').checked;
 
  renderSummary();renderCounts();if($('#panel').classList.contains('defmode'))renderDefs();
@@ -837,7 +837,7 @@ function startWalk(type=''){if(!plan)return uiAlert('Open a plan first.');if(!pi
  walk={type,types:arguments[1]||null,skip:new Set(),p:null,fail:false};msel=[];sel=null;renderSelBar();renderGhostBar();$('#walkBtn').classList.add('pri');
  const c=toW(stage.clientWidth/2,stage.clientHeight/2),L=walkLeft(),here=L.filter(p=>p.page===page);
  const first=sel?.kind==='p'&&untested(sel.o)?sel.o:nearestFrom(here.length?here:L,here.length?{page,...c}:null);walkGo(first)}
-function exitWalk(){if(vPend)vResolve(false,'stop');if(vKeep)voiceStop();walk=null;$('#walk').hidden=true;$('#walkBtn').classList.remove('pri');renderGhostBar();renderSelBar();draw()}
+function exitWalk(){if(vPend)vResolve(false,'stop');if(vKeep)voiceStop();{/* bpm-v140: the voice guide closes with the walk (it stayed over the plan) */const g=$('#vGuide');if(g){clearTimeout(g._t);g.hidden=true}}walk=null;$('#walk').hidden=true;$('#walkBtn').classList.remove('pri');renderGhostBar();renderSelBar();draw()}
 async function walkGo(p,back){if(!walk)return;walk.hist??=[];if(!back&&walk.p&&p&&walk.p.id!==p.id){walk.hist.push(walk.p.id);if(walk.hist.length>200)walk.hist.shift()}walk.p=p;walk.fail=false;walk.fr=[];walk.fnote='';walk.fcrit=false;renderWalk();if(!p){draw();return}const sKeep=view.s,pgChg=p.page!==page;if(pgChg)await gotoPage(p.page); // bpm-v100: keep the zoom across pages (gotoPage re-fits the view)
  const W=stage.clientWidth,Hh=stage.clientHeight-$('#walk').offsetHeight,s=walk.zoomed?sKeep:Math.max(view.s,Math.min(W,stage.clientHeight)/320),v0={...view};walk.zoomed=true;centerOn(p.x,p.y,s,W/2,Math.max(60,Hh/2));const v1={...view};sel={kind:'p',o:p};if(pgChg){draw();scheduleRender();return} // new page: land directly at the kept zoom (no zoom-out-then-in)
  view=v0;await prefetchPath(v0,v1);if(walk?.p!==p)return;await slideTo(v1)}

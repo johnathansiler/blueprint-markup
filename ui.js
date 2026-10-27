@@ -229,7 +229,11 @@ function penBar(){let b=$('#penBar');if(!b){b=ce('div');b.id='penBar';b.setAttri
  toastLift();const a=b.querySelector('.on');if(a&&b.scrollWidth>b.clientWidth&&(a.offsetLeft<b.scrollLeft||a.offsetLeft+a.offsetWidth>b.scrollLeft+b.clientWidth))b.scrollLeft=Math.max(0,a.offsetLeft-40)}
 window.penBar=penBar;
 // keep toasts above the floating tool bars so they never cover a button
-function toastLift(){const t=$('#toast');if(!t)return;const S=stage.getBoundingClientRect();let top=null;for(const id of['#penBar','#shpChip','#fhBar']){const e=$(id);if(e&&!e.hidden){const r=e.getBoundingClientRect();if(r.height)top=Math.min(top??1e9,r.top)}}t.style.bottom=top!=null?Math.round(S.bottom-top+6)+'px':''}window.toastLift=toastLift;
+function toastLift(){const t=$('#toast');if(!t)return;const S=stage.getBoundingClientRect();let top=null;for(const id of['#penBar','#shpChip','#fhBar']){const e=$(id);if(e&&!e.hidden){const r=e.getBoundingClientRect();if(r.height)top=Math.min(top??1e9,r.top)}}
+ /* bpm-v140: also clear the Detect suggestions bar (a long notice used to cover Review, By type, Check and Reject all); not in a walk, where the notice sits at the top */
+ const g=$('#ghBar');if(g&&!g.hidden&&!t.hidden&&!walk){const r=g.getBoundingClientRect(),q=t.getBoundingClientRect();if(r.height&&r.left<q.right&&q.left<r.right)top=Math.min(top??1e9,r.top)}
+ t.style.bottom=top!=null?Math.round(S.bottom-top+6)+'px':''}window.toastLift=toastLift;
+{const _t=toast;toast=function(...a){const r=_t.apply(this,a);try{toastLift()}catch(e){}return r};const _g=renderGhostBar;renderGhostBar=function(...a){const r=_g.apply(this,a);try{toastLift()}catch(e){}return r}}
 function penOp(op){if(!PD)return;const N=PD.N,i=PD.sel??-1;if(op==='del'){if(i<0)return;N.splice(i,1);PD.sel=-1;if(!N.length)PD=null}else if(op==='smooth'){if(i<0)return;convert(N,false,i)}penBar();requestDraw(false)}
 async function penDone(closed){const P=PD;PD=null;PM='add';if(!P||P.N.length<2){penBar();requestDraw(false);return}
  const m={id:uid(),planId:plan.id,page,type:'path',color:$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false)};writeNodes(m,P.N,closed,false);m.type='path';await change('markups',null,m);
@@ -734,12 +738,15 @@ try{
    CF.classList.toggle('below',below);CF.style.top=(r.top-br.top)+'px';CF.style.bottom='auto';CF.style.left=(r.left-br.left)+'px';CF.style.right='auto';CF.style.margin='0';return}}
  const setPend=i=>{WH.pend=i;W.querySelectorAll('.whS.hov').forEach(e=>e.classList.remove('hov'));if(i==null){CF.hidden=true;CF.classList.remove('below');CF.style.top=CF.style.bottom=CF.style.left=CF.style.right=CF.style.margin=CF.style.visibility='';return}const s_=W.querySelector(`.whS[data-i="${i}"]`);if(s_)s_.classList.add('hov');CF.textContent='Tap again to confirm';CF.style.visibility='hidden';CF.hidden=false;requestAnimationFrame(()=>{try{placeCf()}catch(e){console.warn('pill',e)}CF.style.visibility=''})};
  function anim(to,D,done){cancelAnimationFrame(WH.raf);const p0=WH.pos,t0=performance.now();to=clampP(to);if(Math.abs(to-p0)<.002){WH.pos=to;paint();done&&done();return}
-  const step=n=>{const k=Math.min(1,(n-t0)/D),e=1-Math.pow(1-k,3);WH.pos=p0+(to-p0)*e;paint();if(k<1)WH.raf=requestAnimationFrame(step);else{WH.pos=to;paint();WH.raf=0;done&&done()}};WH.raf=requestAnimationFrame(step)}
+  /* bpm-v140: frame times can be a little earlier than t0 (no backward jolt on the first frame), and a safety timer finishes the settle when frames are held back (busy phone), so the row is still picked */
+  let fin=0;const end=()=>{if(fin)return;fin=1;clearTimeout(WH.rafT);cancelAnimationFrame(WH.raf);WH.pos=to;paint();WH.raf=0;done&&done()};
+  const step=n=>{if(fin)return;const k=Math.max(0,Math.min(1,(n-t0)/D)),e=1-Math.pow(1-k,3);WH.pos=p0+(to-p0)*e;paint();if(k<1)WH.raf=requestAnimationFrame(step);else end()};
+  clearTimeout(WH.rafT);WH.raf=requestAnimationFrame(step);const w0=WH;WH.rafT=setTimeout(()=>{if(WH===w0&&!fin&&performance.now()-t0>=D)end()},D+400)}
  const isCancel=i=>{const it=WH.items[i];const t=(it&&(it.l||String(it.html||'').replace(/<[^>]*>/g,'')))||'';return /^\W*cancel\b/i.test(t.trim())};
  // pick row i (after a settle or a tap); destructive rows need a second tap on the highlighted row
  function pickAt(i,confirmTap){if(!WH)return;WH.pos=i;paint();if(DESTR()&&!isCancel(i)){if(confirmTap&&WH.pend===i){setPend(null);choose();return}setPend(i);return}setPend(null);choose()}
  let dr=null;
- win.addEventListener('pointerdown',e=>{if(!WH||W.hidden)return;if(e.button>0)return;e.preventDefault();try{win.setPointerCapture(e.pointerId)}catch{}const wasMoving=!!WH.raf;cancelAnimationFrame(WH.raf);WH.raf=0;
+ win.addEventListener('pointerdown',e=>{if(!WH||W.hidden)return;if(e.button>0)return;e.preventDefault();try{win.setPointerCapture(e.pointerId)}catch{}const wasMoving=!!WH.raf;cancelAnimationFrame(WH.raf);clearTimeout(WH.rafT);WH.raf=0;
   const u=projInv(e.clientY-cy()),n=performance.now();dr={id:e.pointerId,x0:e.clientX,y0:e.clientY,p0:WH.pos,u0:u,moved:0,S:[[n,WH.pos]],wasMoving}});
  win.addEventListener('pointermove',e=>{if(!dr||e.pointerId!==dr.id)return;dr.moved=Math.max(dr.moved,Math.hypot(e.clientX-dr.x0,e.clientY-dr.y0));if(dr.moved<4&&!dr.drag)return;dr.drag=1;
   const p=clampP(dr.p0+dr.u0-projInv(e.clientY-cy()));if(WH.pend!=null&&Math.round(p)!==WH.pend)setPend(null);WH.pos=p;const n=performance.now();dr.S.push([n,p]);while(dr.S.length>2&&n-dr.S[0][0]>80)dr.S.shift();paint()});
@@ -756,7 +763,7 @@ try{
  let wAcc=0,wTo=null;win.addEventListener('wheel',e=>{e.preventDefault();if(!WH)return;const dy=e.deltaMode===1?e.deltaY*40:e.deltaMode===2?e.deltaY*400:e.deltaY;let st=0;
   if(Math.abs(dy)>=40){st=Math.sign(dy);wAcc=0}else{wAcc+=dy;if(Math.abs(wAcc)>=40){st=Math.sign(wAcc);wAcc=0}}if(!st)return;
   const base=WH.raf&&wTo!=null?wTo:Math.round(WH.pos);wTo=clampP(base+st);if(WH.pend!=null&&wTo!==WH.pend)setPend(null);anim(wTo,160,()=>{wTo=null})},{passive:false});
- const close=()=>{W.classList.remove('in');if(PRESS){PRESS.classList.remove('whPressed');PRESS=null}if(WH){cancelAnimationFrame(WH.raf);WH.raf=0;setPend(null)}dr=null;setTimeout(()=>W.hidden=true,150)};function choose(){const i=Math.round(WH.pos),cb=WH.cb;close();cb(WH.items[i],i)}
+ const close=()=>{W.classList.remove('in');if(PRESS){PRESS.classList.remove('whPressed');PRESS=null}if(WH){cancelAnimationFrame(WH.raf);clearTimeout(WH.rafT);WH.raf=0;setPend(null)}dr=null;setTimeout(()=>W.hidden=true,150)};function choose(){const i=Math.round(WH.pos),cb=WH.cb;close();cb(WH.items[i],i)}
  W.querySelector('[data-w=x]').onclick=close;W.querySelector('[data-w=ok]').onclick=()=>pickAt(Math.round(WH.pos),true);W.addEventListener('click',e=>{if(e.target===W)close()});
  document.addEventListener('keydown',e=>{if(W.hidden||!WH)return;if(e.key==='Escape'){e.preventDefault();close()}else if(e.key==='Enter'){e.preventDefault();pickAt(Math.round(WH.pos),true)}else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();WH.pos=clampP(Math.round(WH.pos)+(e.key==='ArrowDown'?1:-1));if(WH.pend!=null&&WH.pos!==WH.pend)setPend(null);paint()}});
  window.wheelOpen=wheelOpen;window.wheelPos=()=>WH&&WH.pos;
@@ -1049,10 +1056,17 @@ try{
    // bpm-v100: sit below the selection bar so the chip never covers Multi/Box/Deselect
    const sb=document.getElementById('selBar');if(sb){const pos=()=>{h.style.top=(sb.hidden||!sb.offsetHeight?8:sb.offsetTop+sb.offsetHeight+6)+'px'};new ResizeObserver(pos).observe(sb);new MutationObserver(pos).observe(sb,{attributes:true,attributeFilter:['hidden'],childList:true});pos()}}
   h.innerHTML=`<button type="button" class="btn" id="legRev">🔣 ${c.length} new legend symbol${c.length>1?'s':''} · <b>Review</b></button><button type="button" class="btn" id="legX" title="Dismiss" aria-label="Dismiss">✕</button>`;h.hidden=false;
-  h.querySelector('#legRev').onclick=()=>{h.hidden=true;if(plan===pl)review(c,`Legend found: ${c.length} new symbol${c.length>1?'s':''}`)};h.querySelector('#legX').onclick=()=>h.hidden=true}
+  h.querySelector('#legRev').onclick=()=>{h.hidden=true;if(plan===pl)review(c,`Legend found: ${c.length} new symbol${c.length>1?'s':''}`)};h.querySelector('#legX').onclick=()=>h.hidden=true;busyClear()}
+ // bpm-v140: on a phone the chip sat on top of the busy notice (its text and progress were hidden, only Stop showed); the notice moves just below the chip while both show
+ function busyClear(){const b=document.getElementById('busy'),h=document.getElementById('legChip');if(!b)return;b.style.top='';if(b.hidden||!h||h.hidden)return;
+  if(!h._bzObs){h._bzObs=1;new MutationObserver(busyClear).observe(h,{attributes:true,attributeFilter:['hidden','style']})}
+  const a=b.getBoundingClientRect(),q=h.getBoundingClientRect();if(a.left<q.right&&q.left<a.right&&a.top<q.bottom&&q.top<a.bottom)b.style.top=(h.offsetTop+h.offsetHeight+6)+'px'}
+ {const _bz=busy;busy=function(...a){const r=_bz.apply(this,a);busyClear();return r}}
  window.legendChip=legendChip;
  // auto-scan new plans once
- const _op=openPlan;openPlan=async function(id,...a){const lc=document.getElementById('legChip');if(lc)lc.hidden=true;const r=await _op.call(this,id,...a);try{if(pdf&&plan&&!(await get('meta','legendScan:'+plan.id))){await put('meta',Date.now(),'legendScan:'+plan.id);const pl=plan;const c=await scanLegend(pdf,Array.from({length:Math.min(pl.pages,40)},(_,i)=>i+1));if(plan===pl&&c.length)legendChip(c,pl)}}catch(e){console.warn('legend scan',e)}return r};
+ let legSeq=0;const _op=openPlan;openPlan=async function(id,...a){const lc=document.getElementById('legChip');if(lc)lc.hidden=true;const r=await _op.call(this,id,...a);const my=++legSeq;try{if(pdf&&plan&&!(await get('meta','legendScan:'+plan.id))){const pl=plan;const c=await scanLegend(pdf,Array.from({length:Math.min(pl.pages,40)},(_,i)=>i+1));if(my===legSeq&&plan&&plan.id===pl.id){await put('meta',Date.now(),'legendScan:'+pl.id);if(c.length)legendChip(c,plan)}}}
+  /* bpm-v140: a plan counts as scanned only when its scan finishes and it is still the open plan; opening a plan again (or another one) while a scan runs starts a fresh scan, so the legend is never lost; the expected cancel is not a console warning */
+  catch(e){if(!/Cancel/i.test(e&&e.name||''))console.warn('legend scan',e)}return r};
  // ---- tap to teach ----
  window.teachSymbol=()=>{if(!plan||!pdf)return toast('Open a PDF plan first');document.querySelectorAll('dialog[open]').forEach(d=>d.close());const o=ce('div','teachOv','<div class="teachTip">Tap the middle of a device symbol</div>');stage.append(o);
   o.onpointerdown=async e=>{e.stopPropagation();const r=stage.getBoundingClientRect(),w=toW(e.clientX-r.left,e.clientY-r.top);o.remove();const S=3,pg=await pdf.getPage(page),c=await render(pg,S,{x:w.x-40,y:w.y-40,w:80,h:80}),k=crop(c,S,{x:w.x-16,y:w.y-16,w:32,h:32});const box=pxBox(c,S,k?.bb)||{x:72,y:72,w:96,h:96},cr=await cropUI(c,box,'Crop the symbol');if(!cr)return;const ex=exact(c,S,cr);let tag='';try{if(window.tagsNear)tag=(await tagsNear(pg,page,w.x,w.y,Math.max(ex.bb.w,ex.bb.h))).mods.join('+')}catch{}review([{...ex,name:'',type:'',tag,page,src:'tap',_c:c,_S:S}],'Teach symbol')}};
@@ -1793,7 +1807,7 @@ function fitName(w){const n=w.querySelector('.wName');if(!n||!n.offsetParent)ret
  // labeled Close on every panel header
  const cl=by('closeList');const clL=()=>{if(!cl)return;if(!cl.querySelector('.tl'))cl.innerHTML='✕<span class="tl">Close</span>';if(cl.getAttribute('aria-label')!=='Close the Pins panel'){cl.setAttribute('aria-label','Close the Pins panel');cl.title='Close the Pins panel'}};clL();if(cl)new MutationObserver(clL).observe(cl,{childList:true,characterData:true,subtree:true});
  const thx=()=>{const x=TH.querySelector('#thX');if(x&&!x.dataset.rl){x.dataset.rl=1;x.innerHTML='✕<span class="tl">Close</span>';x.setAttribute('aria-label','Close the page preview');x.title='Close the page preview'}const r=TH.querySelector('#thRn');if(r&&!r.getAttribute('aria-label'))r.setAttribute('aria-label','Rename the current page')};new MutationObserver(thx).observe(TH,{childList:true,subtree:true});thx();
- addEventListener('resize',()=>{for(const k in PAN)W_[k]=getW(k);NOTR=1;sync();clearTimeout(rzT);rzT=setTimeout(()=>{NOTR=0},300);follow(120)});
+ addEventListener('resize',()=>{for(const k in PAN)W_[k]=getW(k);NOTR=1;sync();clearTimeout(rzT);rzT=setTimeout(()=>{NOTR=0;sync()},300)/* bpm-v140: put the slide back right after a resize (it used to stay off until the next panel change) */;follow(120)});
  new ResizeObserver(()=>sync()).observe(ST);
  let lastK='';setInterval(()=>{const k=[TH.hidden,TH.offsetHeight,rightK(),typeof walk!=='undefined'&&!!walk,innerWidth,innerHeight,ST.getBoundingClientRect().top|0].join();if(k!==lastK){lastK=k;sync()}},250);
  // ---- pin card: beside the selected pin, inside the plan area (never over panels or bars); below it, shorter, when there is no room ----
@@ -2210,7 +2224,7 @@ try{
 }catch(e){console.error('37-walk-flow.js',e);setTimeout(()=>{throw e})}
 // ===== src/ui/38-pins-open-card.js =====
 try{
-// bpm-v138: Pins list rows get an Open card button (wraps renderList; the search and filter inputs still call the unwrapped renderList, as in v138).
+// bpm-v138: Pins list rows get an Open card button (wraps renderList; bpm-v140: the search and filter inputs call the wrapped one too).
 // Classic script; shares the app's globals. by/ce: src/ui/00-helpers.js.
 (()=>{
  // ---------- 8) Pins list: each row has Open card ----------
