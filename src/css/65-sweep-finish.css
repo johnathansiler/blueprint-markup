@@ -1,0 +1,34 @@
+/* bpm-v142: Address sweep bar (sits above the big bottom bar) and the Finish inspection screen. Button look is unchanged (existing .btn classes). */
+#swBar{position:fixed;left:6px;right:6px;bottom:80px;z-index:25;background:var(--sf,var(--gray-16));color:var(--tx,var(--gray-e7));border:1px solid var(--gray-4a);border-radius:10px;padding:8px 10px;box-shadow:0 4px 16px #0008;display:flex;flex-direction:column;gap:6px;max-width:720px;margin:0 auto}
+#swBar[hidden]{display:none}
+#swBar .swH{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+#swBar .swT{font-size:16px}
+#swBar .swN{font-size:16px;font-weight:700;margin-left:auto}
+#swBar .swS{font-size:13px;color:var(--mu2,#b0b0b0)}
+#swBar .swB{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+#swBar .swB .btn{min-height:44px;padding:4px 6px;white-space:normal;line-height:1.15}
+@media(max-width:560px){#swBar .swB{grid-template-columns:1fr 1fr}}
+body.light #swBar{background:#fafafa;color:var(--gray-0a);border-color:var(--gray-c0,#c0c0c0)}
+#finDlg{width:min(560px,96vw);padding:0;display:none;flex-direction:column}
+#finDlg[open]{display:flex}
+#finDlg .finTop{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--gray-4a);position:sticky;top:0;background:inherit;z-index:1}
+#finDlg .finTop h3{margin:0;font-size:18px}
+#finDlg .finTop .btn{min-height:40px}
+#finDlg .finBody{overflow:auto;padding:4px 12px;flex:1;min-height:0}
+#finDlg h4{margin:12px 0 4px;font-size:15px}
+#finDlg .finSum{margin:8px 0;font-size:15px}
+#finDlg .finSub{font-size:13px;color:var(--mu2,#b0b0b0);margin:6px 0 2px}
+#finDlg .finL{list-style:none;padding:0;margin:0}
+#finDlg .finL li{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--gray-3a,#3a3a3a);min-height:40px}
+#finDlg .finR{flex:1;min-width:0;overflow-wrap:anywhere}
+#finDlg .finC{min-width:2.5em;text-align:right}
+#finDlg .finL .btn{min-height:40px;white-space:nowrap}
+#finDlg .finOk{color:#86efac;padding:4px 0}
+#finDlg .finWarn{color:#fcd34d;padding:4px 0}
+#finDlg .finY{color:#86efac}#finDlg .finN{color:#fca5a5}
+#finDlg #finSweep,#finDlg #finJob{margin:6px 0;min-height:44px}
+#finDlg .finFoot{border-top:1px solid var(--gray-4a);padding:8px 12px calc(10px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:6px}
+#finDlg .finFoot label{display:flex;align-items:center;gap:8px;min-height:36px}
+#finDlg .finFoot .btn{min-height:48px}
+body.light #finDlg .finOk,body.light #finDlg .finY{color:#166534}body.light #finDlg .finWarn{color:#92400e}body.light #finDlg .finN{color:#b91c1c}
+body.light #finDlg .finL li{border-bottom-color:#d4d4d4}
