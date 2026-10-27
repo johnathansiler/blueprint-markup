@@ -5,7 +5,7 @@
  const stg=document.getElementById('stage');if(stg)for(const ev of['gesturestart','gesturechange'])stg.addEventListener(ev,e=>e.preventDefault(),{passive:false});
  const VPC='width=device-width,initial-scale=1,minimum-scale=1';let zBusy=0;
  /* lock the page scale to 1 until the browser has actually applied it (or 0.7 s), then unlock so pinch-to-zoom keeps working */
- function resetZoom(){const m=document.querySelector('meta[name=viewport]');if(!m||zBusy)return;zBusy=1;const t0=performance.now();m.content=VPC+',maximum-scale=1';
+ function resetZoom(){const m=document.querySelector('meta[name=viewport]');if(!m||zBusy)return;zBusy=1;const t0=performance.now();/* v143: Chromium only re-applies the tag when the scale values change, so lock at a hair over 1 (was maximum-scale=1, which it ignored) */m.content='width=device-width,initial-scale=1.0001,minimum-scale=1,maximum-scale=1.0001';
   const vv=window.visualViewport;const chk=()=>{const t=performance.now()-t0;if(t>700||t>150&&(!vv||Math.abs(vv.scale-1)<.01)){m.content=VPC;zBusy=0;return}requestAnimationFrame(chk)};requestAnimationFrame(chk)}
  window.resetScreenZoom=resetZoom;
  MX.push(()=>[{i:'🔍',l:'Reset screen zoom',run:resetZoom}]);

@@ -37,12 +37,12 @@
   // top of the plan: the legend chip keeps clear of an open pin card / side panel, a notice sits below the legend chip
   const LG=document.getElementById('legChip');if(LG){if(LG.dataset.stk){LG.style.left='';LG.style.maxWidth='';LG.style.transform='';delete LG.dataset.stk}
    if(vis(LG)){const l=R(LG);for(const q of ['#pinDlg[open]','#panel','#lyrP']){const P=document.querySelector(q);if(!vis(P)||P.classList.contains('rlOut'))continue;const p=R(P);
-    if(l.right>p.left&&l.left<p.right&&l.bottom>p.top&&l.top<p.bottom){const L0=Math.max(sr.left,p.left>innerWidth/2?sr.left:p.right),R0=p.left>innerWidth/2?p.left:sr.right;
+    if(l.right>p.left&&l.left<p.right&&l.bottom>p.top&&l.top<p.bottom){const rt=(p.left+p.right)/2>innerWidth/2,L0=Math.max(sr.left,rt?sr.left:p.right),R0=rt?p.left:sr.right;
      LG.style.transform='none';LG.style.maxWidth=Math.max(120,R0-L0-2*M)+'px';const w=LG.offsetWidth;LG.style.left=Math.round((L0+R0)/2-w/2-sr.left)+'px';LG.dataset.stk=1;break}}}}
   const TO=document.getElementById('toast');if(TO){if(TO.dataset.stk){TO.style.top='';delete TO.dataset.stk}
    if(vis(TO)&&vis(LG)){const t=R(TO),l=R(LG);if(t.bottom>l.top&&t.top<l.bottom&&t.right>l.left&&t.left<l.right){TO.style.top=Math.round(l.bottom-sr.top+M)+'px';TO.dataset.stk=1}}}
   const D=document.getElementById('pinDelF');if(D&&D.dataset.stk){D.style.left='';delete D.dataset.stk}if(vis(D)){for(const q of ['#panel','#lyrP']){const P=document.querySelector(q);if(!vis(P)||P.classList.contains('rlOut'))continue;const p=R(P),d=R(D);
-   if(d.right>p.left&&d.left<p.right&&d.bottom>p.top&&d.top<p.bottom){const dx=p.left>innerWidth/2?p.left-M-d.right:p.right+M-d.left;const lim=Math.max(sr.left+M-d.left,Math.min(sr.right-M-d.right,dx));D.style.left=Math.round(lim)+'px';D.dataset.stk=1;break}}}}
+   if(d.right>p.left&&d.left<p.right&&d.bottom>p.top&&d.top<p.bottom){const dx=(p.left+p.right)/2>innerWidth/2?p.left-M-d.right:p.right+M-d.left;const lim=Math.max(sr.left+M-d.left,Math.min(sr.right-M-d.right,dx));D.style.left=Math.round(lim)+'px';D.dataset.stk=1;break}}}}
  function place(){stageFloats();const A=area();
   // Draw panel: above the bottom bar and the Pages bar
   const DR=document.getElementById('navDraw');if(vis(DR)){const f=Math.min(A.bot,innerHeight);DR.style.bottom=Math.round(innerHeight-f+M)+'px';DR.style.top='auto';
@@ -59,6 +59,6 @@
  let raf=0;const kick=()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;try{place()}catch(e){}})};
  window.stackPlace=place;
  // react to anything opening, closing or moving; our own style writes are filtered out by the signature check
- let sig='';const tick=()=>{const k=['navDraw','widBar','wbOp','mnuSheet','thumbs','panel','lyrP','walk','swBar','tools','top','fhBar','penBar','shpChip','selBar','pinDelF','legChip','toast','pinDlg'].map(id=>{const e=document.getElementById(id);if(!e)return'-';const r=e.getBoundingClientRect();return (e.hidden?'h':'v')+(r.top|0)+','+(r.height|0)+','+(r.left|0)+','+(r.width|0)}).join('|')+(document.getElementById('mnuSheet')?.innerHTML.length||0)+innerWidth+'x'+innerHeight;if(k!==sig){sig=k;place();sig=k}requestAnimationFrame(tick)};
+ let sig='';const tick=()=>{const k=['navDraw','widBar','wbOp','mnuSheet','thumbs','panel','lyrP','walk','swBar','tools','top','fhBar','penBar','shpChip','selBar','pinDelF','legChip','toast','pinDlg'].map(id=>{const e=document.getElementById(id);if(!e)return'-';const r=e.getBoundingClientRect();return (e.hidden?'h':'v')+(r.top|0)+','+(r.height|0)+','+(r.left|0)+','+(r.width|0)}).join('|')+(document.getElementById('mnuSheet')?.innerHTML.length||0)+innerWidth+'x'+innerHeight;if(k!==sig){sig=k;try{place()}catch(e){}}requestAnimationFrame(tick)};
  requestAnimationFrame(tick);addEventListener('resize',kick);
 })();
