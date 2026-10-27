@@ -734,12 +734,15 @@ try{
    CF.classList.toggle('below',below);CF.style.top=(r.top-br.top)+'px';CF.style.bottom='auto';CF.style.left=(r.left-br.left)+'px';CF.style.right='auto';CF.style.margin='0';return}}
  const setPend=i=>{WH.pend=i;W.querySelectorAll('.whS.hov').forEach(e=>e.classList.remove('hov'));if(i==null){CF.hidden=true;CF.classList.remove('below');CF.style.top=CF.style.bottom=CF.style.left=CF.style.right=CF.style.margin=CF.style.visibility='';return}const s_=W.querySelector(`.whS[data-i="${i}"]`);if(s_)s_.classList.add('hov');CF.textContent='Tap again to confirm';CF.style.visibility='hidden';CF.hidden=false;requestAnimationFrame(()=>{try{placeCf()}catch(e){console.warn('pill',e)}CF.style.visibility=''})};
  function anim(to,D,done){cancelAnimationFrame(WH.raf);const p0=WH.pos,t0=performance.now();to=clampP(to);if(Math.abs(to-p0)<.002){WH.pos=to;paint();done&&done();return}
-  const step=n=>{const k=Math.min(1,(n-t0)/D),e=1-Math.pow(1-k,3);WH.pos=p0+(to-p0)*e;paint();if(k<1)WH.raf=requestAnimationFrame(step);else{WH.pos=to;paint();WH.raf=0;done&&done()}};WH.raf=requestAnimationFrame(step)}
+  /* bpm-v140: frame times can be a little earlier than t0 (no backward jolt on the first frame), and a safety timer finishes the settle when frames are held back (busy phone), so the row is still picked */
+  let fin=0;const end=()=>{if(fin)return;fin=1;clearTimeout(WH.rafT);cancelAnimationFrame(WH.raf);WH.pos=to;paint();WH.raf=0;done&&done()};
+  const step=n=>{if(fin)return;const k=Math.max(0,Math.min(1,(n-t0)/D)),e=1-Math.pow(1-k,3);WH.pos=p0+(to-p0)*e;paint();if(k<1)WH.raf=requestAnimationFrame(step);else end()};
+  clearTimeout(WH.rafT);WH.raf=requestAnimationFrame(step);const w0=WH;WH.rafT=setTimeout(()=>{if(WH===w0&&!fin&&performance.now()-t0>=D)end()},D+400)}
  const isCancel=i=>{const it=WH.items[i];const t=(it&&(it.l||String(it.html||'').replace(/<[^>]*>/g,'')))||'';return /^\W*cancel\b/i.test(t.trim())};
  // pick row i (after a settle or a tap); destructive rows need a second tap on the highlighted row
  function pickAt(i,confirmTap){if(!WH)return;WH.pos=i;paint();if(DESTR()&&!isCancel(i)){if(confirmTap&&WH.pend===i){setPend(null);choose();return}setPend(i);return}setPend(null);choose()}
  let dr=null;
- win.addEventListener('pointerdown',e=>{if(!WH||W.hidden)return;if(e.button>0)return;e.preventDefault();try{win.setPointerCapture(e.pointerId)}catch{}const wasMoving=!!WH.raf;cancelAnimationFrame(WH.raf);WH.raf=0;
+ win.addEventListener('pointerdown',e=>{if(!WH||W.hidden)return;if(e.button>0)return;e.preventDefault();try{win.setPointerCapture(e.pointerId)}catch{}const wasMoving=!!WH.raf;cancelAnimationFrame(WH.raf);clearTimeout(WH.rafT);WH.raf=0;
   const u=projInv(e.clientY-cy()),n=performance.now();dr={id:e.pointerId,x0:e.clientX,y0:e.clientY,p0:WH.pos,u0:u,moved:0,S:[[n,WH.pos]],wasMoving}});
  win.addEventListener('pointermove',e=>{if(!dr||e.pointerId!==dr.id)return;dr.moved=Math.max(dr.moved,Math.hypot(e.clientX-dr.x0,e.clientY-dr.y0));if(dr.moved<4&&!dr.drag)return;dr.drag=1;
   const p=clampP(dr.p0+dr.u0-projInv(e.clientY-cy()));if(WH.pend!=null&&Math.round(p)!==WH.pend)setPend(null);WH.pos=p;const n=performance.now();dr.S.push([n,p]);while(dr.S.length>2&&n-dr.S[0][0]>80)dr.S.shift();paint()});
@@ -756,7 +759,7 @@ try{
  let wAcc=0,wTo=null;win.addEventListener('wheel',e=>{e.preventDefault();if(!WH)return;const dy=e.deltaMode===1?e.deltaY*40:e.deltaMode===2?e.deltaY*400:e.deltaY;let st=0;
   if(Math.abs(dy)>=40){st=Math.sign(dy);wAcc=0}else{wAcc+=dy;if(Math.abs(wAcc)>=40){st=Math.sign(wAcc);wAcc=0}}if(!st)return;
   const base=WH.raf&&wTo!=null?wTo:Math.round(WH.pos);wTo=clampP(base+st);if(WH.pend!=null&&wTo!==WH.pend)setPend(null);anim(wTo,160,()=>{wTo=null})},{passive:false});
- const close=()=>{W.classList.remove('in');if(PRESS){PRESS.classList.remove('whPressed');PRESS=null}if(WH){cancelAnimationFrame(WH.raf);WH.raf=0;setPend(null)}dr=null;setTimeout(()=>W.hidden=true,150)};function choose(){const i=Math.round(WH.pos),cb=WH.cb;close();cb(WH.items[i],i)}
+ const close=()=>{W.classList.remove('in');if(PRESS){PRESS.classList.remove('whPressed');PRESS=null}if(WH){cancelAnimationFrame(WH.raf);clearTimeout(WH.rafT);WH.raf=0;setPend(null)}dr=null;setTimeout(()=>W.hidden=true,150)};function choose(){const i=Math.round(WH.pos),cb=WH.cb;close();cb(WH.items[i],i)}
  W.querySelector('[data-w=x]').onclick=close;W.querySelector('[data-w=ok]').onclick=()=>pickAt(Math.round(WH.pos),true);W.addEventListener('click',e=>{if(e.target===W)close()});
  document.addEventListener('keydown',e=>{if(W.hidden||!WH)return;if(e.key==='Escape'){e.preventDefault();close()}else if(e.key==='Enter'){e.preventDefault();pickAt(Math.round(WH.pos),true)}else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();WH.pos=clampP(Math.round(WH.pos)+(e.key==='ArrowDown'?1:-1));if(WH.pend!=null&&WH.pos!==WH.pend)setPend(null);paint()}});
  window.wheelOpen=wheelOpen;window.wheelPos=()=>WH&&WH.pos;
