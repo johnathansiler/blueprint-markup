@@ -2151,9 +2151,10 @@ try{
 try{
 // bpm-v138: Menu as a grouped list (Job, Plan, Files, Settings). bpm-v141: the list sheet itself now lives in src/ui/15-toolbar-wheels.js and is used by
 // every former wheel; this file only supplies the Menu's groups through window.listGroups(title,items) -> [[group name, [item indexes]], ...].
+// bpm-v142: Finish inspection in Job, Address sweep in Plan.
 // Classic script; shares the app's globals.
 (()=>{
- const GR=[['Job',/^(New project|Open project file|Switch project|Rename project|Delete project|Start next inspection)/],['Plan',/^(Open plan|Switch plan|Rename page|Delete plan)/],
+ const GR=[['Job',/^(New project|Open project file|Switch project|Rename project|Delete project|Start next inspection|Finish inspection)/],['Plan',/^(Open plan|Switch plan|Rename page|Delete plan|Address sweep)/],
   ['Files',/^(Save project file|Export|Share|Backup reminder|Save this job|Make saved photos)/],['Settings',/^(Reset screen zoom|Customize)/]];
  window.listGroups=(title,items)=>{if(title!=='Menu')return null;const used=new Set();
   const g=GR.map(([n,rx])=>[n,items.map((x,i)=>i).filter(i=>{const ok=!used.has(i)&&rx.test(items[i].l||'');if(ok)used.add(i);return ok})]);
@@ -2176,6 +2177,121 @@ try{
  const row=ce('div','row detTopRow');h.replaceWith(row);row.append(h,ce('span','sp'));
  const b=ce('button','btn','Cancel');b.type='button';b.id='detCancelTop';b.title='Close without detecting';b.onclick=()=>d.close('cancel');row.append(b)})();
 }catch(e){console.error('41-detect-cancel.js',e);setTimeout(()=>{throw e})}
+// ===== src/ui/42-address-sweep.js =====
+try{
+// bpm-v142: Address sweep (recommendation 4). Type the first address once, then tap the devices in order: each tapped device gets the next address.
+// The loop stays inside the address (L1D001, L1D002 …); there is no loop field and no panel import. Only the address changes: pin position, size and
+// type are never touched. Every address goes through change() so the top-bar Undo works too. Menu > Address sweep…, and Finish inspection's No address group.
+// Classic script; shares the app's globals (plan, pins, page, walk, sel, msel, change, openPin, toast, uiPrompt, uiAlert …).
+(()=>{const MX=window.V135&&V135.MX;
+ // next address: the last number in the address goes up by one and keeps its zero padding (L1D009 -> L1D010, 2-099 -> 2-100)
+ const parseA=a=>{const m=String(a||'').trim().match(/^(.*?)(\d+)(\D*)$/);return m?{pre:m[1],n:+m[2],w:m[2].length,suf:m[3]}:null};
+ const nextA=(a,k=1)=>{const p=parseA(a);if(!p)return null;const n=Math.max(0,p.n+k);return p.pre+String(n).padStart(p.w,'0')+p.suf};
+ window.sweepNext=nextA;
+ const SW={on:false,next:'',hist:[],n:0,last:null,tapT:0,planId:null,tm:0};window.SWEEP=SW;
+ const key=()=>'bpm-sweep:'+(project&&project.id||'');
+ let bar=null;
+ function mkBar(){if(bar)return bar;bar=ce('div','',`<div class="swH"><b class="swT">Address sweep</b><span class="swN"></span></div><div class="swS"></div>
+  <div class="swB"><button type="button" class="btn" id="swUndo">Undo last</button><button type="button" class="btn" id="swSkip">Skip number</button><button type="button" class="btn" id="swEdit">Change next address</button><button type="button" class="btn pri" id="swDone">Done</button></div>`);
+  bar.id='swBar';bar.hidden=true;bar.setAttribute('role','status');document.body.append(bar);
+  by('swUndo').onclick=undoLast;by('swSkip').onclick=()=>{const n=nextA(SW.next);if(n){SW.next=n;save();render();toast('Skipped a number. Next: '+n,true)}};
+  by('swEdit').onclick=async()=>{const a=await ask(SW.next);if(a){SW.next=a;SW.last=null;save();render()}};by('swDone').onclick=()=>stop(true);return bar}
+ const save=()=>{try{localStorage.setItem(key(),SW.next)}catch{}};
+ const used=a=>pins.some(p=>p.address&&String(p.address).trim().toUpperCase()===String(a).trim().toUpperCase()&&p.id!==SW.last);
+ function render(){if(!bar)return;by('swUndo').disabled=!SW.hist.length;
+  bar.querySelector('.swN').textContent=`Next: ${SW.next} · ${SW.n} set`;
+  bar.querySelector('.swS').textContent=used(SW.next)?`${SW.next} is already on another device on this plan. Tap a device to use it anyway, or Skip number.`:'Tap each device in order. Each one gets the next address.';place()}
+ // sits just above the big bottom bar (and the Pages strip / Detect suggestions bar when they show)
+ function place(){if(!bar||bar.hidden)return;let top=innerHeight;for(const s of['#tools','#thumbs','#ghBar','#bkBar']){const e=document.querySelector(s);if(!e||e.hidden)continue;const cs=getComputedStyle(e);if(cs.display==='none'||cs.visibility==='hidden')continue;const r=e.getBoundingClientRect();if(r.height>0&&r.top>innerHeight*0.45&&r.top<top)top=r.top}
+  bar.style.bottom=Math.max(6,Math.round(innerHeight-top+6))+'px'}
+ async function ask(def){for(;;){const a=await uiPrompt('Address sweep\n\nType the first address. Then tap the devices in order: each one gets the next address (for example L1D001, then L1D002, L1D003 …). The loop is part of the address.',def||'',{ok:'Start sweep',cancel:'Cancel'});
+   if(a===null)return null;const t=String(a).trim();if(parseA(t))return t;uiAlert('The address has to end in a number, for example L1D001.')}}
+ async function start(){if(!plan)return uiAlert('Open a plan first.');if(walk)return uiAlert('Leave the walk test first, then start the address sweep.');
+  const a=await ask(SW.on?SW.next:(localStorage.getItem(key())||''));if(!a)return false;
+  try{const t=document.querySelector('[data-t="select"]');if(t&&tool!=='select')t.click()}catch{}
+  Object.assign(SW,{on:true,next:a,hist:[],n:0,last:null,planId:plan.id});save();mkBar().hidden=false;document.body.classList.add('sweeping');render();
+  clearInterval(SW.tm);SW.tm=setInterval(place,500);toast('Address sweep: tap the device for '+a,true);return true}
+ function stop(say){if(!SW.on)return;SW.on=false;clearInterval(SW.tm);if(bar)bar.hidden=true;document.body.classList.remove('sweeping');if(say)toast(`Address sweep done: ${SW.n} address${SW.n===1?'':'es'} set`,true)}
+ async function assign(p){const q=pins.find(x=>x.id===p.id);if(!q)return;
+  if(SW.last===q.id){toast(`Already set to ${q.address}. Use Undo last to change it.`,true);return}
+  const a=SW.next,b=structuredClone(q),na={...b,address:a,updatedAt:Date.now()};await change('pins',b,na);
+  SW.hist.push({id:q.id,was:b.address||'',a});SW.n++;SW.last=q.id;SW.next=nextA(a)||a;save();sel=null;msel=[];try{renderSelBar()}catch{}draw();render();
+  toast(`${TYPES[q.type]?.n||q.type}: ${a}${b.address&&b.address!==a?` (was ${b.address})`:''}`,true)}
+ async function undoLast(){const h=SW.hist.pop();if(!h)return;const q=pins.find(x=>x.id===h.id);
+  if(q&&String(q.address)===h.a){const b=structuredClone(q);await change('pins',b,{...b,address:h.was,updatedAt:Date.now()})}
+  SW.n=Math.max(0,SW.n-1);SW.next=h.a;SW.last=SW.hist.length?SW.hist[SW.hist.length-1].id:null;save();draw();render();toast('Undone. Next: '+h.a,true)}
+ window.sweepStart=start;window.sweepStop=stop;
+ // a tap on a pin on the plan gives it the next address instead of opening its card (cards from the Pins list still open)
+ document.addEventListener('pointerup',e=>{if(SW.on&&typeof cv!=='undefined'&&(e.target===cv||e.target===stage))SW.tapT=Date.now()},true);
+ const fromTap=()=>SW.on&&!walk&&Date.now()-SW.tapT<1500;
+ const _op=openPin;openPin=function(p,...r){if(fromTap()&&p&&p.id){SW.tapT=0;assign(p);return}return _op.call(this,p,...r)};
+ const _pd=window.pdTap;if(_pd)window.pdTap=p=>_pd(fromTap()?null:p);
+ // a walk test, another project or another plan ends the sweep
+ const _sw=startWalk;startWalk=function(...a){stop(false);return _sw.apply(this,a)};
+ const _lp=loadProject;loadProject=async function(...a){stop(false);return _lp.apply(this,a)};
+ const _o=openPlan;openPlan=async function(id,...a){const r=await _o.call(this,id,...a);if(SW.on&&plan&&plan.id!==SW.planId){SW.hist=[];SW.last=null;SW.planId=plan.id;render()}return r};
+ addEventListener('resize',place);
+ if(MX)MX.push(()=>[{i:'#',l:'Address sweep…',run:start}]);
+})();
+}catch(e){console.error('42-address-sweep.js',e);setTimeout(()=>{throw e})}
+// ===== src/ui/43-finish-inspection.js =====
+try{
+// bpm-v142: Finish inspection step (recommendation 5). One screen with what's left, grouped instead of one row per device: not tested by page and by
+// type, failed without a photo or a reason, no address by page, tester details. Then one button makes the report PDF and saves the project file (the
+// backup) in one go. Menu > Finish inspection…  Uses the same checks as the Before you send list; Go to buttons are per group, not per device.
+// Classic script; shares the app's globals (project, plan, pins, page, walk, projData, pnAll, pgT, untested, byIdx, getJob, deliver, buildBpm …).
+(()=>{const MX=window.V135&&V135.MX;let d=null,FIN={skipPre:false};
+ const _ps=window.preSend;window.preSend=async function(...a){if(FIN.skipPre)return true;return _ps.apply(this,a)};
+ const isFail=p=>String(p.status).includes('fail');
+ async function gather(){await pnAll();const D=await projData(),multi=D.length>1,G={total:0,tested:0,failed:0,left:0,pg:new Map(),ty:new Map(),noPhoto:[],noReason:[],noAddr:new Map(),noAddrN:0,tester:'',lic:''};
+  const pgName=(pl,n)=>(multi?(pl.name||'Plan')+' · ':'')+pgT(pl.id,n);
+  for(const{pl,pins:ps}of D)for(const p of ps.slice().sort((a,b)=>a.page-b.page||a.y-b.y||a.x-b.x)){G.total++;const k=pl.id+'|'+p.page;
+   if(untested(p)){G.left++;const g=G.pg.get(k)||{pl:pl.id,page:p.page,t:pgName(pl,p.page),n:0,p};g.n++;G.pg.set(k,g);G.ty.set(p.type,(G.ty.get(p.type)||0)+1)}else G.tested++;
+   if(isFail(p)){G.failed++;const nm={pl:pl.id,p,t:`${TYPES[p.type]?.n||p.type} ${p.address||'(no address)'} · ${pgName(pl,p.page)}`};if(!p.reason)G.noReason.push(nm);
+    const md=await byIdx('media','pinId',p.id);if(!md.some(m=>!m.lastVisit&&(m.kind||'photo')!=='audio'))G.noPhoto.push(nm)}
+   if(!String(p.address||'').trim()){G.noAddrN++;const g=G.noAddr.get(k)||{pl:pl.id,page:p.page,t:pgName(pl,p.page),n:0,p};g.n++;G.noAddr.set(k,g)}}
+  const tn=tester===null?await get('meta','tester'):tester,j=project?await getJob():{};G.tester=tn||j.techName||'';G.lic=j.techLic||j.license||'';return G}
+ async function goTo(pl,pg,p,card){d&&d.close();document.querySelectorAll('dialog[open]').forEach(x=>x.close());if(plan?.id!==pl||page!==pg)await openPlan(pl,pg);
+  if(p){const q=pins.find(x=>x.id===p.id);if(q){centerOn(q.x,q.y,Math.max(view.s,1),stage.clientWidth/2,stage.clientHeight/2);draw();if(card)openPin(q)}}}
+ const row=(t,n,btn,data)=>`<li><span class="finR">${esc(t)}</span>${n!=null?`<b class="finC">${n}</b>`:''}${btn?`<button type="button" class="btn" data-go="${data}">${btn}</button>`:''}</li>`;
+ const none=t=>`<div class="finOk">✔ ${esc(t)}</div>`;
+ async function open(){if(!project)return uiAlert('Open a project first.');if(walk)return uiAlert('Leave the walk test first, then finish the inspection.');
+  busy(1,'Checking what is left');let G;try{G=await gather()}finally{busy(0)}
+  if(!G.total)return uiAlert('This project has no devices yet.');
+  if(!d){d=ce('dialog','');d.id='finDlg';document.body.append(d)}
+  const GO=[],go=(x)=>(GO.push(x),GO.length-1),pgs=[...G.pg.values()],tys=[...G.ty.entries()].sort((a,b)=>b[1]-a[1]),na=[...G.noAddr.values()];
+  const failRows=L=>L.slice(0,50).map(x=>row(x.t,null,'Go to device',go({pl:x.pl,p:x.p,card:1}))).join('')+(L.length>50?`<li><span class="finR">and ${L.length-50} more</span></li>`:'');
+  d.innerHTML=`<div class="finTop"><h3>Finish inspection</h3><span class="sp"></span><button type="button" class="btn" id="finX">Close</button></div>
+   <div class="finBody"><p class="finSum"><b>${G.tested} of ${G.total}</b> devices tested · ${G.failed} failed · ${G.left} not tested</p>
+   <section id="finLeft"><h4>Not tested yet (${G.left})</h4>${G.left?`<div class="finSub">By page</div><ul class="finL">${pgs.map(g=>row(g.t,g.n,'Go to page',go({pl:g.pl,page:g.page,p:g.p}))).join('')}</ul><div class="finSub">By type</div><ul class="finL">${tys.map(([t,n])=>row(TYPES[t]?.n||t,n)).join('')}</ul>`:none('Every device is tested')}</section>
+   <section id="finPhoto"><h4>Failed without a photo (${G.noPhoto.length})</h4>${G.noPhoto.length?`<ul class="finL">${failRows(G.noPhoto)}</ul>`:none('Every failed device has a photo')}</section>
+   <section id="finReason"><h4>Failed without a reason (${G.noReason.length})</h4>${G.noReason.length?`<ul class="finL">${failRows(G.noReason)}</ul>`:none('Every failed device has a reason')}</section>
+   <section id="finAddr"><h4>No address (${G.noAddrN})</h4>${G.noAddrN?`<ul class="finL">${na.map(g=>row(g.t,g.n,'Go to page',go({pl:g.pl,page:g.page,p:g.p}))).join('')}</ul><button type="button" class="btn" id="finSweep">Start address sweep</button>`:none('Every device has an address')}</section>
+   <section id="finTester"><h4>Tester</h4>${G.tester&&G.lic?none(`${G.tester}, license ${G.lic}`):`<div class="finWarn">${!G.tester?'Tester name is missing. ':''}${!G.lic?'Tester license number is missing.':''}</div><button type="button" class="btn" id="finJob">Open job info</button>`}</section></div>
+   <div class="finFoot"><label><input type="checkbox" id="finRep" checked> Make the report PDF</label><label><input type="checkbox" id="finBpm" checked> Save the project file (your backup)</label>
+    <div class="row"><span class="sp"></span><button type="button" class="btn pri" id="finGo">Finish and save</button></div></div>`;
+  d.querySelector('#finX').onclick=()=>d.close();
+  d.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{const x=GO[+b.dataset.go];goTo(x.pl,x.p?.page??x.page,x.p,x.card)});
+  const sw=d.querySelector('#finSweep');if(sw)sw.onclick=async()=>{const g=na[0];await goTo(g.pl,g.page,null);window.sweepStart&&sweepStart()};
+  const jb=d.querySelector('#finJob');if(jb)jb.onclick=()=>{d.close();by('jobBtn')&&by('jobBtn').click()};
+  d.querySelector('#finGo').onclick=()=>finish(d.querySelector('#finRep').checked,d.querySelector('#finBpm').checked);
+  d.showModal();d.querySelector('.finBody').scrollTop=0;return true}
+ async function saveFile(){const pr=project;busy(1,'Saving project file');prog(0);
+  try{let wl=false;try{wl=(await learnedRules()).length>0}catch{}const r=await deliver(fsafe(pr.name)+'.bpm','application/octet-stream','.bpm',async()=>{const b=await buildBpm(pr.id,wl,prog);window.__lastBpm=b;return b});
+   if(r){window.bkSaved&&await bkSaved(pr.id);return 'saved'}return 'cancelled'}catch(e){showErr('Saving the project file failed: '+e.message);return 'failed'}finally{busy(0)}}
+ async function makeReport(){const b=by('reportPdf');if(!b||!b.onclick)return 'failed';let got=false;const _dl=window.dl;window.dl=function(blob,name,...r){if(/inspection-report\.pdf$/.test(name))got=true;return _dl.call(this,blob,name,...r)};
+  FIN.skipPre=true;try{await b.onclick(new Event('click'))}catch(e){showErr('Report failed: '+e.message)}finally{FIN.skipPre=false;window.dl=_dl}return got?'saved':'failed'}
+ async function finish(rep,bpm){if(!rep&&!bpm)return uiAlert('Tick the report, the project file, or both.');const R=[];
+  d.querySelector('#finGo').disabled=true;
+  try{if(rep)R.push(['Report PDF',await makeReport()]);if(bpm)R.push(['Project file (backup)',await saveFile()])}finally{const g=d.querySelector('#finGo');if(g)g.disabled=false}
+  const W={saved:'saved',cancelled:'not saved (cancelled)',failed:'not saved (failed)'};window.__finLast=R;
+  d.querySelector('.finBody').innerHTML=`<p class="finSum">${R.every(r=>r[1]==='saved')?'All done.':'Finished with a problem.'}</p><ul class="finL">${R.map(([t,s])=>`<li><span class="finR">${t}</span><b class="finC ${s==='saved'?'finY':'finN'}">${W[s]}</b></li>`).join('')}</ul>`;
+  d.querySelector('.finFoot').innerHTML=`<div class="row"><span class="sp"></span><button type="button" class="btn pri" id="finClose">Close</button></div>`;d.querySelector('#finClose').onclick=()=>d.close();
+  if(!d.open)d.showModal();toast(R.map(([t,s])=>t+' '+W[s]).join(' · '),true)}
+ window.finishOpen=open;
+ if(MX)MX.push(()=>[{i:'🏁',l:'Finish inspection…',run:open}]);
+})();
+}catch(e){console.error('43-finish-inspection.js',e);setTimeout(()=>{throw e})}
 // ===== src/ui/99-ui-ready.js =====
 try{
 // bpm-v141: last file of ui.js. Marks that the screen code started, for the update self-heal in src/app/09-update-heal.js.
