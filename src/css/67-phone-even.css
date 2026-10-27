@@ -25,3 +25,9 @@ body.rlPh #thumbs .thh .btn{min-height:40px!important;min-width:56px;height:100%
 /* top-row label size: 10px fits all 9 labels at 400px and up; Fold closed (under 380px) needs 8.5px for "Previous" to fit without cutting */
 @media(max-width:599px){:root{--tb9:10px}}
 @media(max-width:379px){:root{--tb9:8.5px}#top.navTop .tl{letter-spacing:-.25px}}
+/* bpm-v143: a list opened from a button sits next to it at its own size (see src/ui/45-stack.js); the backdrop stays clear so the button shows as active */
+.mnuOv.mnuAnc,body.light .mnuOv.mnuAnc{background:transparent;display:block}
+.mnuOv.mnuAnc .mnuP{position:fixed;width:max-content;min-width:min(260px,calc(100vw - 12px));border-radius:14px;border-bottom:1px solid var(--gray-26);box-shadow:0 10px 30px #000a;max-height:none}
+.mnuOv.mnuAnc .mnuB{grid-template-columns:1fr}
+/* bpm-v143: during a walk test a notice sits at the top of the plan at its own height (an older phone rule also pinned its bottom and stretched it) */
+body #walk:not([hidden])~#toast{bottom:auto!important}
