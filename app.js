@@ -1306,7 +1306,7 @@ async function clrOpen(what){if(!project)return;clrWhat=what;$('#clrH').textCont
 async function clrWheel(what){if(!project)return;clrWhat=what;const n=await clrCounts(),P=what==='pins',W=P?'pin':'markup',pl=x=>`${x} ${W}${x===1?'':'s'}`;
  const opts=[];if(plan){opts.push({i:'📄',l:`This page (${pl(n.page)})`,v:'page',c:n.page},{i:'🗺',l:`This plan (${pl(n.plan)})`,v:'plan',c:n.plan})}opts.push({i:'📁',l:`Whole project (${pl(n.proj)})`,v:'proj',c:n.proj},{i:'✕',l:'Cancel',v:null});
  const go=()=>{if(!window.wheelOpen)return clrOpen(what);wheelOpen(P?'Clear pins':'Clear markups',opts.map(o=>({...o,html:`<span class="whIc">${o.i}</span>${esc(o.l)}`})),0,o=>{if(!o||!o.v)return;if(!o.c){toast(`No ${what} in this scope`);return}clrRun(o.v)})};
- if(window.WHOPEN_T)clearTimeout(WHOPEN_T);const ov=document.querySelector('.whOv');if(ov&&!ov.hidden)window.WHOPEN_T=setTimeout(go,180);else go()}
+ if(window.WHOPEN_T)clearTimeout(WHOPEN_T);const ov=document.querySelector('#mnuSheet');if(ov&&!ov.hidden)window.WHOPEN_T=setTimeout(go,180);else go()}
 $('#clrBtn').onclick=()=>clrWheel('pins');$('#clrMBtn').onclick=()=>clrWheel('markups');
 $('#clrGo').onclick=async()=>{const v=document.querySelector('#clrDlg [name=clr]:checked').value,c=clrInfoUpd.n[v],P=clrWhat==='pins';
  if(!await uiConfirm(`Delete ${c} ${P?'pin(s) and their media':'markup(s)'}${v==='proj'?' across the whole project':v==='plan'?' on this plan':' on this page'}?`+(v==='proj'?` ${P?'Pins':'Markups'} on other plans cannot be undone.`:'')))return;$('#clrDlg').close();await clrRun(v)};
@@ -1533,7 +1533,7 @@ function pcPut(n,b){if(!plan||!b)return;const k=plan.id+':'+n;PCACHE.delete(k);P
 async function upgradeBase(pn,seq,full){if(!pdf||pn!==page||seq!==opSeq)return;if(SLIDING||renderTask){setTimeout(()=>upgradeBase(pn,seq,full),250);return}try{const pg=await pdf.getPage(pn);const c=await raster(pg,full,{x:0,y:0,w:pageW,h:pageH});if(!c||pn!==page||seq!==opSeq)return;const old=baseBm;baseBm={c,s:c._s};if(bmpScale<c._s)bmpScale=c._s;pcPut(pn,baseBm);if(old&&old!==baseBm&&old.c&&![...PCACHE.values()].includes(old))old.c.width=old.c.height=0;requestDraw();scheduleRender()}catch{}}
 
 // ---------- v64: walk "Go to" picker — leave the sequence, test any device ----------
-function walkGoto(){if(!walk)return;let d=$('#wGotoDlg');if(!d){d=document.createElement('dialog');d.id='wGotoDlg';d.style.cssText='max-width:520px;width:94vw;max-height:85vh;padding:10px;background:#0a0a0a;color:#e7e7e7;border:1px solid #262626;border-radius:10px';document.body.appendChild(d)}
+function walkGoto(){if(!walk)return;let d=$('#wGotoDlg');if(!d){d=document.createElement('dialog');d.id='wGotoDlg';d.style.cssText='max-width:520px;width:94vw;max-height:85vh;padding:10px;background:var(--gray-0a);color:#e7e7e7;border:1px solid var(--gray-26);border-radius:10px';document.body.appendChild(d)}
  const cur=walk.p?.id,S=walkSet(),st={pass:'✔',fail:'✖'};let f='',only=true;
  const draw_=()=>{const L=S.filter(p=>(!only||untested(p))&&(!f||[p.address,p.location,TYPES[p.type]?.n||p.type].join(' ').toLowerCase().includes(f))).sort((a,b)=>a.page-b.page||String(a.address||'').localeCompare(String(b.address||''),undefined,{numeric:true}));
   d.querySelector('#wgL').innerHTML=L.length?L.map(p=>{const t=untested(p)?(walk.skip.has(p.id)?'⏭':'○'):(String(p.status).toLowerCase().includes('fail')?'✖':'✔');return `<button type="button" class="btn" data-id="${p.id}" style="display:flex;width:100%;gap:8px;align-items:center;text-align:left;min-height:44px;margin:3px 0${p.id===cur?';border:2px solid #38bdf8':''}"><span style="width:18px">${t}</span><span class="dot" style="display:inline-block;background:${(TYPES[p.type]||TYPES.other).c}"></span><span style="flex:1">${esc(TYPES[p.type]?.n||p.type)} ${p.address?esc(p.address):'<small style="color:#a2a2a2">(no address)</small>'}${p.location?' · '+esc(p.location):''}</span><small style="color:#a2a2a2">${esc(pgT(plan.id,p.page))}</small></button>`}).join(''):'<div style="padding:12px;color:#a2a2a2">No matching devices.</div>';
@@ -1947,3 +1947,18 @@ let pfW=null,pfWT=0;function pfWheel(e){const d=e.deltaY||e.deltaX;
  const minY=Math.min(8,H-D.h*view.s-8),maxY=Math.max(8,H-D.h*view.s-8);if(ny<minY){pfW.o=(pfW.o||0)+(minY-ny);ny=minY}else if(ny>maxY){pfW.o=(pfW.o||0)-(ny-maxY);ny=maxY}else pfW.o=0;
  view={...view,y:ny};fastView();const o=pfW.o||0,dir=o>0?1:o<0?-1:0,ok=dir&&(dir>0?page<plan.pages:page>1);pfHint(ok&&dir,Math.abs(o)/PF_T);
  if(ok&&Math.abs(o)>=PF_T){pfW=null;pfFlip(dir);return}pfWT=setTimeout(()=>{pfW=null;pfHint(0)},350)}
+
+// bpm-v141: keep the app on one version after an update.
+// 1) Self-heal: if the screen code (ui.js) did not start (a slow or interrupted update mixed an old cached page with new files), reload once or twice
+//    while online so the phone does not stay on the bare old-looking layout. ui.js sets window.__bpmUI at its end.
+// 2) Check for a new version whenever the app is reopened (and every 30 minutes); a ready update is applied on reopen when nothing is in progress
+//    (no walk test, no open card or dialog, nothing busy). Otherwise the "Update ready · Reload" bar stays as before.
+(()=>{if(!('serviceWorker'in navigator)||!location.protocol.startsWith('http'))return;
+ const K='bpmHeal';addEventListener('load',()=>setTimeout(()=>{let n=0;try{n=+sessionStorage.getItem(K)||0}catch{}
+  if(window.__bpmUI){try{sessionStorage.removeItem(K)}catch{}return}
+  if(n>=2||!navigator.onLine)return;try{sessionStorage.setItem(K,String(n+1))}catch{}location.reload()},1500));
+ const safe=()=>!walk&&!document.querySelector('dialog[open]')&&$('#busy').hidden&&!document.querySelector('#mnuSheet:not([hidden])');
+ let last=0;const check=()=>{if(document.hidden||Date.now()-last<60000)return;last=Date.now();navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{})};
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)return;const u=$('#updBar');if(u&&!u.hidden&&safe()){location.reload();return}check()});
+ setInterval(check,30*60e3);window.bpmUpdCheck=()=>{last=0;check()};
+})();

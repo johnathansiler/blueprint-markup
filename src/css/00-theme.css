@@ -9,3 +9,6 @@
 :root{--acc:#7e7e7e;--sf:#161616;--sf2:#1d1d1d;--tx:#e7e7e7;--mu2:#a2a2a2;--shd:0 4px 14px #0007}
 body.light{--sf:#ffffff;--sf2:#ededed;--tx:#0a0a0a;--mu2:#636363;--shd:0 4px 14px #0a0a0a22}
 :root{--gray-0a:#0a0a0a;--gray-16:#161616;--gray-1d:#1d1d1d;--gray-26:#262626;--gray-3a:#3a3a3a;--gray-4a:#4a4a4a;--gray-60:#606060;--gray-63:#636363;--gray-7e:#7e7e7e;--gray-a2:#a2a2a2;--gray-c0:#c0c0c0;--gray-d4:#d4d4d4;--gray-e7:#e7e7e7;--gray-f1:#f1f1f1;--gray-f4:#f4f4f4}
+/* bpm-v141: dark theme one step lighter (user: "too dark grey"); same order and gaps between layers. Light theme unchanged (these names are also light-theme text and borders, so only dark is changed). */
+/* bpm-v141 (2nd step, user: "a bit lighter still"): +10 each; secondary text #a2a2a2 -> #b0b0b0 in dark so it keeps 4.5:1 on the lightest surfaces */
+body:not(.light){--sf:#2e2e2e;--sf2:#343434;--gray-0a:#222222;--gray-16:#2e2e2e;--gray-1d:#343434;--gray-26:#3d3d3d;--gray-3a:#555555;--gray-4a:#656565;--mu2:#b0b0b0;--gray-a2:#b0b0b0}

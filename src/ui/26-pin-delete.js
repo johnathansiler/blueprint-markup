@@ -6,8 +6,8 @@
  const tapPin=()=>PDT&&pins.find(p=>p.id===PDT&&p.page===page)||null;
  function items(){if(walk||!plan)return[];const S=selItems().filter(o=>isPinO(o)&&o.page===page&&tVis(o));if(S.length)return S;if(tool!=='select'){const p=tapPin();if(p&&tVis(p)&&pVis(p))return[p]}return[]}
  const scr=p=>{const o=OFFMAP&&OFFMAP.get(p.id);return toS(p.x+(o?o.dx:0),p.y+(o?o.dy:0))};
- let lastK='';function tick(){requestAnimationFrame(tick);const L=items(),modal=[...document.querySelectorAll('dialog[open]')].length>0||(document.querySelector('.whOv')&&!document.querySelector('.whOv').hidden);
-  const mine=B.classList.contains('whPressed')&&document.querySelector('.whOv')&&!document.querySelector('.whOv').hidden;if(mine)return;
+ let lastK='';function tick(){requestAnimationFrame(tick);const L=items(),modal=[...document.querySelectorAll('dialog[open]')].length>0||(document.querySelector('#mnuSheet')&&!document.querySelector('#mnuSheet').hidden);
+  const mine=B.classList.contains('whPressed')&&document.querySelector('#mnuSheet')&&!document.querySelector('#mnuSheet').hidden;if(mine)return;
   if(!L.length||modal){if(!B.hidden)B.hidden=true;return}
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;const SW=stage.clientWidth,SH=stage.clientHeight,onS=L.filter(p=>{const s=scr(p);return s.x>=0&&s.x<=SW&&s.y>=0&&s.y<=SH});for(const p of (onS.length?onS:L)){const s=scr(p),h=pinHalf(p)*view.s+2;x0=Math.min(x0,s.x-h);x1=Math.max(x1,s.x+h);y0=Math.min(y0,s.y-h);y1=Math.max(y1,s.y+h)}
   const lab=L.length>1?`Delete ${L.length}`:'Delete';if(B._l!==lab){B._l=lab;B.innerHTML=`<span class="pdI">🗑</span><span class="tl">${lab}</span>`}

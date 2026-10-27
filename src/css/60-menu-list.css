@@ -15,3 +15,9 @@ body.light .mnuP,body.light .mnuH,body.light .mnuI{border-color:var(--gray-d4)}b
 #mnuSheet .mnuI .mnuIc{font-size:18px;line-height:1;width:24px}
 #mnuSheet .mnuI .tl{display:inline;font-size:15px;line-height:1.25;margin:0;color:inherit;font-weight:500;text-align:left;white-space:normal}
 #mnuSheet .mnuG:only-child{grid-column:1/-1}
+/* bpm-v141: the same list replaces every former rolling wheel: the current choice is marked; destructive lists ask for a second tap */
+#mnuSheet .mnuI.on{border-color:var(--gray-a2);background:var(--gray-26);font-weight:700}
+#mnuSheet .mnuI.on::after{content:'✓';margin-left:auto;font-size:16px}
+#mnuSheet .mnuI.pend{border-color:#b91c1c;background:#b91c1c33}
+#mnuSheet .mnuCf{font:700 13px/1.2 system-ui,sans-serif;color:#fff;background:#b91c1c;border-radius:8px;padding:6px 10px;margin:2px 0 4px;text-align:center}
+#mnuSheet .mnuIc svg{width:22px;height:22px;vertical-align:middle}

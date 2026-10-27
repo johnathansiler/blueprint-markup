@@ -319,7 +319,7 @@ async function clrOpen(what){if(!project)return;clrWhat=what;$('#clrH').textCont
 async function clrWheel(what){if(!project)return;clrWhat=what;const n=await clrCounts(),P=what==='pins',W=P?'pin':'markup',pl=x=>`${x} ${W}${x===1?'':'s'}`;
  const opts=[];if(plan){opts.push({i:'📄',l:`This page (${pl(n.page)})`,v:'page',c:n.page},{i:'🗺',l:`This plan (${pl(n.plan)})`,v:'plan',c:n.plan})}opts.push({i:'📁',l:`Whole project (${pl(n.proj)})`,v:'proj',c:n.proj},{i:'✕',l:'Cancel',v:null});
  const go=()=>{if(!window.wheelOpen)return clrOpen(what);wheelOpen(P?'Clear pins':'Clear markups',opts.map(o=>({...o,html:`<span class="whIc">${o.i}</span>${esc(o.l)}`})),0,o=>{if(!o||!o.v)return;if(!o.c){toast(`No ${what} in this scope`);return}clrRun(o.v)})};
- if(window.WHOPEN_T)clearTimeout(WHOPEN_T);const ov=document.querySelector('.whOv');if(ov&&!ov.hidden)window.WHOPEN_T=setTimeout(go,180);else go()}
+ if(window.WHOPEN_T)clearTimeout(WHOPEN_T);const ov=document.querySelector('#mnuSheet');if(ov&&!ov.hidden)window.WHOPEN_T=setTimeout(go,180);else go()}
 $('#clrBtn').onclick=()=>clrWheel('pins');$('#clrMBtn').onclick=()=>clrWheel('markups');
 $('#clrGo').onclick=async()=>{const v=document.querySelector('#clrDlg [name=clr]:checked').value,c=clrInfoUpd.n[v],P=clrWhat==='pins';
  if(!await uiConfirm(`Delete ${c} ${P?'pin(s) and their media':'markup(s)'}${v==='proj'?' across the whole project':v==='plan'?' on this plan':' on this page'}?`+(v==='proj'?` ${P?'Pins':'Markups'} on other plans cannot be undone.`:'')))return;$('#clrDlg').close();await clrRun(v)};

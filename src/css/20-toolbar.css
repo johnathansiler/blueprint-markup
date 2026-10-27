@@ -16,18 +16,6 @@ body.light #top,body.light #proj{background:var(--sf);color:var(--tx)}body.light
 body.light dialog{background:#fff;color:var(--gray-0a)}body.light #stage{background:var(--gray-d4)}
 .btn.pri,.pri{background:var(--acc)}
 /* wheel */
-.whOv{position:fixed;inset:0;z-index:60;background:#0006;display:flex;align-items:flex-end;justify-content:center;opacity:0;transition:opacity .15s}.whOv[hidden]{display:none}.whOv.in{opacity:1}
-.whBox{width:min(420px,94vw);margin-bottom:calc(150px + env(safe-area-inset-bottom));background:var(--sf);color:var(--tx);border-radius:22px;box-shadow:0 10px 40px #000a;padding:10px;transform:translateY(40px) scale(.92);transition:transform .2s cubic-bezier(.2,.9,.3,1.2)}
-.whOv.in .whBox{transform:none}
-.whT{text-align:center;font-size:11px;letter-spacing:.06em;color:var(--mu2);text-transform:uppercase}
-.whWin{position:relative;height:210px;perspective:520px;overflow:hidden;touch-action:none;cursor:grab;user-select:none}
-.whDrum{position:absolute;left:0;right:0;top:50%;transform-style:preserve-3d}
-.whI{position:absolute;left:0;right:0;height:40px;margin-top:-20px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:17px;backface-visibility:hidden}
-.whI.cen{font-weight:700;color:var(--acc)}.whIc{display:inline-flex;min-width:22px;justify-content:center}
-.whBand{position:absolute;left:8px;right:8px;top:50%;height:42px;margin-top:-21px;border-radius:12px;background:color-mix(in srgb,var(--acc) 20%,transparent);border:1.5px solid var(--acc)}
-.whFade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(var(--sf),transparent 38%,transparent 62%,var(--sf))}
-.whTick{position:absolute;right:12px;top:50%;margin-top:-7px;border:7px solid transparent;border-right-color:var(--acc)}
-.whBtns{display:flex;justify-content:space-between;gap:8px;margin-top:6px}
 #czDlg .czI{display:flex;align-items:center;gap:6px;padding:4px 6px;background:var(--sf2);border-radius:10px;margin:4px 0}.czA{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}
 .czS{width:30px;height:30px;border-radius:50%;border:0;padding:0}.czS.on{outline:2px solid #fff;outline-offset:2px}.czS .tl{color:#fff;font-size:12px}
 @media(max-width:520px){.tbR{justify-content:space-between;gap:3px}#tools.tbNew .tool{min-width:36px;padding:2px 1px}#tools.tbNew .tl{font-size:8.5px}#tools.tbNew{padding-left:4px;padding-right:4px}.tbG{padding:2px 1px}}
@@ -70,17 +58,6 @@ body.light #tlDlg{background:#fff;color:var(--gray-0a);border-color:var(--gray-d
 #tools.tbNew .tbR.fR{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
 #tools.tbNew .tbR.fL{-webkit-mask-image:linear-gradient(90deg,transparent,#000 28px);mask-image:linear-gradient(90deg,transparent,#000 28px)}
 #tools.tbNew .tbR.fL.fR{-webkit-mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent)}
-/* bpm-v103: floating borderless wheel (no card, no backdrop, no frame); labels carry a halo for readability over plans and UI */
-.whOv{background:transparent!important;display:block!important}.whOv[hidden]{display:none!important}
-.whBox{position:fixed;margin:0!important;background:none!important;box-shadow:none!important;border:0!important;padding:0!important;border-radius:0!important;transform:scale(.92);transition:transform .15s ease-out}
-.whOv.in .whBox{transform:none}
-.whT,.whBand,.whFade,.whTick,.whBtns{display:none!important}
-.whI{color:#fff;font-weight:600;text-shadow:0 0 2px #000,0 0 4px #000,0 0 8px #000c,0 1px 2px #000;white-space:nowrap;cursor:pointer}
-.whI .whIc{filter:drop-shadow(0 0 2px #000) drop-shadow(0 0 4px #000a)}
-.whI.cen{font-weight:800;color:#fff}
-body.light .whI{color:var(--gray-0a);text-shadow:0 0 2px #fff,0 0 4px #fff,0 0 8px #fffc,0 1px 2px #fff}
-body.light .whI .whIc{filter:drop-shadow(0 0 2px #fff) drop-shadow(0 0 4px #fffa)}
-body.light .whI.cen{color:#000}
 
 /* bpm-v105: Undo/Redo in the top bar */
 #top #undo:disabled,#top #redo:disabled{opacity:.38;filter:grayscale(1);cursor:default}
@@ -88,20 +65,6 @@ body.light .whI.cen{color:#000}
 
 /* bpm-v105: Freehand is a direct button on wide screens (it stays in the Lines wheel everywhere) */
 #tools .tbFree{display:none!important}@media(min-width:800px){#tools .tbFree{display:inline-flex!important}}
-/* bpm-v106: curved drum band wheel. One continuous band cut into the same 24° slices as the words (bends, foreshortens and scrolls with them);
-   rounded at the first/last item, dark translucent + 9px backdrop blur, 14px soft side edges; blue center slice with light-blue lines. */
-.whWin{perspective:520px;overflow:visible!important}
-.whDrum{transform-style:preserve-3d;top:0}
-.whS{position:absolute;left:0;right:0;height:51px;margin-top:-25.5px;backface-visibility:hidden;-webkit-backdrop-filter:blur(9px) saturate(1.2);backdrop-filter:blur(9px) saturate(1.2);
- -webkit-mask-image:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 14px),transparent);mask-image:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 14px),transparent);pointer-events:none}
-.whS.f{border-radius:16px 16px 0 0}.whS.l{border-radius:0 0 16px 16px}.whS.f.l{border-radius:16px}
-.whS.cen{background:linear-gradient(#4a4a4ae6,#606060e6)!important;box-shadow:inset 0 1.5px 0 var(--gray-c0),inset 0 -1.5px 0 var(--gray-c0)}
-.whI{color:var(--gray-e7);font-weight:600;text-shadow:none!important;gap:8px;padding:0 12px;overflow:hidden;text-overflow:ellipsis}
-.whI.cen{color:#fff!important;font-weight:800}.whI .whIc{filter:none!important}
-body.light .whI{color:var(--gray-e7);text-shadow:none}body.light .whI.cen{color:#fff}
-.whPtr{position:absolute;width:0;height:0;border:8px solid transparent;z-index:2;pointer-events:none}.whPtr[hidden]{display:none}
-.whPtr.left{border-left-color:var(--gray-a2);border-right-width:0}.whPtr.right{border-right-color:var(--gray-a2);border-left-width:0}
-.whPtr.above{border-top-color:var(--gray-a2);border-bottom-width:0}.whPtr.below{border-bottom-color:var(--gray-a2);border-top-width:0}
 .whPressed{outline:2px solid var(--gray-a2)!important;outline-offset:1px}
 /* bpm-v112: LEFT task rail (tab row on phone) + one left slot (page strip OR one rail panel) + resize grips + pin card */
 #rail{position:fixed;left:0;width:74px;z-index:7;display:flex;flex-direction:column;gap:4px;padding:6px;background:var(--sf);border-right:1px solid #ffffff14;overflow-y:auto;overscroll-behavior:contain}
@@ -184,10 +147,6 @@ body.light #tb2Crumb{color:var(--gray-3a)}body.light #tb2Crumb b{color:var(--gra
 .legChip{white-space:normal;max-width:calc(100% - var(--frR,0px) - 12px)}.legChip #legRev{min-width:0;flex:0 1 auto;text-align:center;line-height:1.2}.legChip #legX{flex:none;align-self:center}
 .legChip #legRev{white-space:normal!important;height:auto!important;max-height:none;overflow:visible;text-overflow:clip;word-break:normal;overflow-wrap:anywhere;border-radius:14px}.legChip{border-radius:18px;align-items:center}
 /* bpm-v114: drum rows left-aligned (icon column + label), never clipped */
-.whI{justify-content:flex-start!important;gap:8px!important;padding:0 12px!important;text-overflow:clip!important}
-.whI .whIc{flex:0 0 22px;width:22px;min-width:22px;justify-content:center}.whI .whIc.none{display:none}
-.whI .whL{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-align:left}
-.whBox.wr .whI .whL{white-space:normal;line-height:1.1;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 body.light .legChip .btn,body.light .legChip .btn .tl{color:var(--gray-f4)}
 /* bpm-v115: walk-test bar lives in the free plan-bottom area on every viewport: between the side panels (the plan's margins already exclude them on
    wide screens; --frR excludes the overlaying right panel on phone), above the phone Pages strip; it follows both on the panel slide clock */
@@ -197,8 +156,6 @@ body.rl.walking #panel{padding-bottom:5px!important}body.rl.walking #panel>*:las
 @container (max-width:210px){#walk .wb4,#walk .wb{grid-template-columns:1fr!important}#walk .wh{gap:4px}}
 #walk .wMore summary{min-height:40px;min-width:44px;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box}
 /* bpm-v115: press-and-slide highlight */
-.whS.hov:not(.cen){background:var(--gray-26)!important;box-shadow:inset 0 0 0 2px var(--acc)}
-.whOv{touch-action:none}
 /* bpm-v115: bigger selected-pin card: header 17px, body 15px, controls >=44px */
 body.pcOn #pinDlg{font-size:15px;line-height:1.35;padding:12px 14px}
 body.pcOn #pinDlg h3{font-size:17.5px!important;margin:2px 0 8px!important}
@@ -250,13 +207,6 @@ body.light #lyrP .lpC{color:var(--gray-3a)}
 body.pcOn .pcDel,#pinDlg .pcDel{min-height:44px}
 /* bpm-v121: iPhone-style picker: destructive confirm hint + highlighted (pending) row; drag cursor */
 /* bpm-v125: the confirm pill sits above the wheel, and below it when above would cover the top bar or the floating Delete button */
-.whCf{position:absolute;left:8px;right:8px;top:auto;bottom:calc(100% + 6px);display:flex;justify-content:center;pointer-events:none;z-index:3}
-.whCf.below{bottom:auto;top:calc(100% + 6px)}
-.whCf::before{content:'';display:none}
-.whCf{font:700 13px/1.2 system-ui,sans-serif;color:#fff;background:#b91c1c;border-radius:12px;padding:5px 10px;box-shadow:0 4px 12px #0008;width:max-content;max-width:calc(100% - 16px);margin:0 auto}
-.whCf[hidden]{display:none!important}
-.whS.hov{background:#7f1d1d!important;box-shadow:inset 0 0 0 2px #f87171}
-.whWin:active{cursor:grabbing}
 /* bpm-v128: Save and Close sit at the top of the pin card (title row) and stay visible while the card scrolls, on every screen size */
 #pinDlg[open],body.pcOn #pinDlg[open]{padding-top:0;padding-left:14px;padding-right:14px}
 #pinDlg .pcTop{position:sticky;top:0;z-index:4;background:var(--gray-16);margin:0 -14px 8px;padding:10px 14px 8px;border-bottom:1px solid #a2a2a233;border-radius:inherit;border-bottom-left-radius:0;border-bottom-right-radius:0}
