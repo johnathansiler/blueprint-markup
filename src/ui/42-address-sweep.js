@@ -41,7 +41,7 @@
   SW.n=Math.max(0,SW.n-1);SW.next=h.a;SW.last=SW.hist.length?SW.hist[SW.hist.length-1].id:null;save();draw();render();toast('Undone. Next: '+h.a,true)}
  window.sweepStart=start;window.sweepStop=stop;
  // a tap on a pin on the plan gives it the next address instead of opening its card (cards from the Pins list still open)
- document.addEventListener('pointerup',e=>{if(SW.on&&typeof cv!=='undefined'&&e.target===cv)SW.tapT=Date.now()},true);
+ document.addEventListener('pointerup',e=>{if(SW.on&&typeof cv!=='undefined'&&(e.target===cv||e.target===stage))SW.tapT=Date.now()},true);
  const fromTap=()=>SW.on&&!walk&&Date.now()-SW.tapT<1500;
  const _op=openPin;openPin=function(p,...r){if(fromTap()&&p&&p.id){SW.tapT=0;assign(p);return}return _op.call(this,p,...r)};
  const _pd=window.pdTap;if(_pd)window.pdTap=p=>_pd(fromTap()?null:p);
