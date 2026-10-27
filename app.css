@@ -872,6 +872,8 @@ body.rlPh.v138NoT #walk{transition:none!important}
 /* bpm-v138 */
 /* 8) Open card on each Pins list row */
 #pinList li .pOpen{flex:none;min-height:36px;padding:2px 10px;font-size:13px;margin-left:6px}
+/* bpm-v140: in a narrow Pins panel (Fold open: 124 px beside the Pages strip) the row wraps, so Open card moves to its own line instead of off the screen */
+body.rl:not(.rlPh) #pinList li.pRow{flex-wrap:wrap}body.rl:not(.rlPh) #pinList li.pRow .pOpen{margin-left:auto}
 /* ===== src/css/63-empty-screen.css ===== */
 /* bpm-v138 */
 /* 14) empty first screen */
