@@ -2318,7 +2318,7 @@ try{
   for(const s of ['#tools','#walk','#swBar']){const e=document.querySelector(s);if(vis(e)&&R(e).top>innerHeight/2)bot=Math.min(bot,R(e).top)}
   const th=document.getElementById('thumbs');if(vis(th)){const r=R(th);if(r.width>r.height){if(r.top>innerHeight/2)bot=Math.min(bot,r.top)}else if(r.left<innerWidth/2)left=Math.max(left,r.right);else right=Math.min(right,r.left)}
   for(const s of ['#panel','#lyrP']){const e=document.querySelector(s);if(vis(e)&&!e.classList.contains('rlOut')){const r=R(e);if(r.height>innerHeight/3){if(r.left>innerWidth/2)right=Math.min(right,r.left);else left=Math.max(left,r.right)}else if(r.top>innerHeight/2)bot=Math.min(bot,r.top)}}
-  for(const s of ['#fhBar','#penBar','#shpChip','#stBar','#selBar','#updBar']){const e=document.querySelector(s);if(vis(e)&&R(e).top>innerHeight/2)bot=Math.min(bot,R(e).top)}
+  for(const s of ['#fhBar','#penBar','#shpChip','#stBar','#selBar','#updBar','#toast']){const e=document.querySelector(s);if(vis(e)&&R(e).top>innerHeight/2)bot=Math.min(bot,R(e).top)}
   if(right-left<240){left=0;right=innerWidth}/* narrow: never squeeze a list into a sliver */
   return{top,bot,left,right}}
  const CHAIN=['navDraw','widBar','wbOp'];
@@ -2340,6 +2340,13 @@ try{
   for(const q of ['#fhBar','#penBar','#shpChip','#stBar','#selBar','#updBar']){const e=document.querySelector(q);if(!e)continue;
    const was=e.dataset.stk;e.style.transition='none';e.style.bottom='';delete e.dataset.stk;if(!vis(e)){e.style.transition='';continue}const r=R(e);const hit=W.find(w=>r.bottom>w.top&&r.top<w.bottom);
    if(hit){e.style.bottom=Math.round(sr.bottom-hit.top+M)+'px';e.dataset.stk=1}else if(!was)e.style.transition=''}
+  // top of the plan: the legend chip keeps clear of an open pin card / side panel, a notice sits below the legend chip
+  const LG=document.getElementById('legChip');if(LG){if(LG.dataset.stk){LG.style.left='';LG.style.maxWidth='';LG.style.transform='';delete LG.dataset.stk}
+   if(vis(LG)){const l=R(LG);for(const q of ['#pinDlg[open]','#panel','#lyrP']){const P=document.querySelector(q);if(!vis(P)||P.classList.contains('rlOut'))continue;const p=R(P);
+    if(l.right>p.left&&l.left<p.right&&l.bottom>p.top&&l.top<p.bottom){const L0=Math.max(sr.left,p.left>innerWidth/2?sr.left:p.right),R0=p.left>innerWidth/2?p.left:sr.right;
+     LG.style.transform='none';LG.style.maxWidth=Math.max(120,R0-L0-2*M)+'px';const w=LG.offsetWidth;LG.style.left=Math.round((L0+R0)/2-w/2-sr.left)+'px';LG.dataset.stk=1;break}}}}
+  const TO=document.getElementById('toast');if(TO){if(TO.dataset.stk){TO.style.top='';delete TO.dataset.stk}
+   if(vis(TO)&&vis(LG)){const t=R(TO),l=R(LG);if(t.bottom>l.top&&t.top<l.bottom&&t.right>l.left&&t.left<l.right){TO.style.top=Math.round(l.bottom-sr.top+M)+'px';TO.dataset.stk=1}}}
   const D=document.getElementById('pinDelF');if(vis(D)){for(const q of ['#panel','#lyrP']){const P=document.querySelector(q);if(!vis(P)||P.classList.contains('rlOut'))continue;const p=R(P),d=R(D);
    if(d.right>p.left&&d.left<p.right&&d.bottom>p.top&&d.top<p.bottom){const dx=p.left>innerWidth/2?p.left-M-d.right:p.right+M-d.left;D.style.left=Math.round(parseFloat(D.style.left||0)+dx)+'px'}}}}
  function place(){stageFloats();const A=area();
@@ -2358,7 +2365,7 @@ try{
  let raf=0;const kick=()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;try{place()}catch(e){}})};
  window.stackPlace=place;
  // react to anything opening, closing or moving; our own style writes are filtered out by the signature check
- let sig='';const tick=()=>{const k=['navDraw','widBar','wbOp','mnuSheet','thumbs','panel','lyrP','walk','swBar','tools','top','fhBar','penBar','shpChip','selBar','pinDelF','legChip'].map(id=>{const e=document.getElementById(id);if(!e)return'-';const r=e.getBoundingClientRect();return (e.hidden?'h':'v')+(r.top|0)+','+(r.height|0)+','+(r.left|0)+','+(r.width|0)}).join('|')+(document.getElementById('mnuSheet')?.innerHTML.length||0)+innerWidth+'x'+innerHeight;if(k!==sig){sig=k;place();sig=k}requestAnimationFrame(tick)};
+ let sig='';const tick=()=>{const k=['navDraw','widBar','wbOp','mnuSheet','thumbs','panel','lyrP','walk','swBar','tools','top','fhBar','penBar','shpChip','selBar','pinDelF','legChip','toast','pinDlg'].map(id=>{const e=document.getElementById(id);if(!e)return'-';const r=e.getBoundingClientRect();return (e.hidden?'h':'v')+(r.top|0)+','+(r.height|0)+','+(r.left|0)+','+(r.width|0)}).join('|')+(document.getElementById('mnuSheet')?.innerHTML.length||0)+innerWidth+'x'+innerHeight;if(k!==sig){sig=k;place();sig=k}requestAnimationFrame(tick)};
  requestAnimationFrame(tick);addEventListener('resize',kick);
 })();
 }catch(e){console.error('45-stack.js',e);setTimeout(()=>{throw e})}
