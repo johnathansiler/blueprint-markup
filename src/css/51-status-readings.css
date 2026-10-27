@@ -1,0 +1,14 @@
+/* bpm-v135 */
+/* item 7: corrected status */
+.st-corrected{color:#22d3ee}body.light .st-corrected{color:#0e7490}
+#defList li.defCorr{opacity:.85}
+#corrBox{margin:6px 0;padding:6px;border:1px solid #0891b2;border-radius:8px}
+.wSt.fix{color:#22d3ee}
+
+/* item 6: measured readings */
+#rdBox{margin:6px 0}#rdBox .rdRow{display:flex;flex-wrap:wrap;gap:8px}#rdBox label{display:flex;flex-direction:column;flex:1 1 140px;font-size:14px}#rdBox label[hidden]{display:none}#rdBox input{min-height:40px;font-size:16px}#rdHint{color:#fbbf24}
+#itmBox .row{flex-wrap:wrap;align-items:flex-end;gap:8px}#itmBox .row label{flex:1 1 120px}
+#prevInfo{display:block;color:#a5b4fc;margin:2px 0}body.light #prevInfo{color:#4338ca}
+/* item 8: hands-free voice */
+#vChip{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 112px);z-index:60;min-height:44px;padding:6px 14px;font-size:15px;box-shadow:0 6px 18px #0008}
+#vGuide .vgKeep{font-size:14px;margin:6px 0;color:#a5f3fc}body.light #vGuide .vgKeep{color:#0e7490}

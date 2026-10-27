@@ -2,7 +2,13 @@
 const REASONS=['No alarm','Trouble','Damaged','Missing','Obstructed','Dirty/needs cleaning','Other'];
 function walkSet(){return pins.filter(p=>tVis(p)&&(!walk.type||p.type===walk.type)&&(!walk.types||walk.types.includes(p.type)))}
 function walkLeft(){return walkSet().filter(p=>untested(p)&&!walk.skip.has(p.id))}
-function nearestFrom(L,from){if(!L.length)return null;if(!from)return L.slice().sort((a,b)=>a.page-b.page)[0];return L.slice().sort((a,b)=>(a.page===from.page?0:1)-(b.page===from.page?0:1)||Math.abs(a.page-from.page)-Math.abs(b.page-from.page)||Math.hypot(a.x-from.x,a.y-from.y)-Math.hypot(b.x-from.x,b.y-from.y))[0]}
+// bpm-v138 (folded in bpm-v139): walk order "page by page in address order" (Walk dialog choice, window.WALK_ORDER); otherwise nearest first.
+const walkNat=(a,b)=>String(a||'\uffff').localeCompare(String(b||'\uffff'),undefined,{numeric:true});
+const walkAddrCmp=(a,b)=>a.page-b.page||walkNat(a.address,b.address)||a.y-b.y||a.x-b.x;
+function nearestFrom(L,from){if(!walk||window.WALK_ORDER!=='addr'||!L.length)return nearestFromBase(L,from);const S=L.slice().sort(walkAddrCmp);
+ if(!from)return S[0];if(from.id==null){const same=S.filter(p=>p.page===from.page);return same[0]||S[0]}
+ return S.find(p=>walkAddrCmp(p,from)>0)||S[0]}
+function nearestFromBase(L,from){if(!L.length)return null;if(!from)return L.slice().sort((a,b)=>a.page-b.page)[0];return L.slice().sort((a,b)=>(a.page===from.page?0:1)-(b.page===from.page?0:1)||Math.abs(a.page-from.page)-Math.abs(b.page-from.page)||Math.hypot(a.x-from.x,a.y-from.y)-Math.hypot(b.x-from.x,b.y-from.y))[0]}
 $('#walkBtn').onclick=()=>walk?exitWalk():walkPick();
 function startWalk(type=''){if(!plan)return uiAlert('Open a plan first.');if(!pins.length)return uiAlert('This plan has no pins yet. Place pins or use 🔍 Detect devices first.');
  walk={type,types:arguments[1]||null,skip:new Set(),p:null,fail:false};msel=[];sel=null;renderSelBar();renderGhostBar();$('#walkBtn').classList.add('pri');

@@ -11,7 +11,6 @@
  window.typeColor={get:k=>TYPES[k]?.c,def:k=>DEF[k],group:grpOf,
   set(k,c){const g=grpOf(k);for(const x of g.ks){if(!DEF[x])continue;if(c&&c.toLowerCase()!==DEF[x].toLowerCase())O[x]=c;else delete O[x]}localStorage.setItem(KEY,JSON.stringify(O));apply();refresh()},
   reset(k){this.set(k,null)},resetAll(){O={};localStorage.removeItem(KEY);apply();refresh()},changed:()=>Object.keys(O)};
- const ce=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
  const PAL=['#e11d48','#dc2626','#991b1b','#f97316','#f59e0b','#facc15','#84cc16','#16a34a','#0d9488','#2dd4bf','#06b6d4','#0ea5e9','#2563eb','#4f46e5','#7c3aed','#c026d3','#db2777','#78350f','#64748b','#000000'];
  // one type (or group): palette + Custom… + Reset to default
  function pick(k,back){const g=grpOf(k),cur=(TYPES[k].c||'').toLowerCase(),df=DEF[k];let d=$('#tcDlg');if(!d){d=ce('dialog');d.id='tcDlg';document.body.append(d)}

@@ -1,9 +1,16 @@
 // bpm-v139: built from src/ui by tools/build.js. Do not edit here.
+// ===== src/ui/00-helpers.js =====
+// @shared-globals: small DOM helpers shared by every file in src/ui (bpm-v139). They are script-level constants, not window properties.
+// by(id): element by id · ce(tag, className, html): new element · ceA(tag, props, html): new element with properties copied in
+const by=id=>document.getElementById(id);
+const ce=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+const ceA=(t,a={},h='')=>{const e=document.createElement(t);Object.assign(e,a);if(h)e.innerHTML=h;return e};
+;
 // ===== src/ui/10-field-ux.js =====
 // @shared-globals: this file declares top-level names other files use, so tools/build.js joins it unwrapped.
 // bpm-v86: field UX (compact walk, quick-place, bulk pass, pre-send check, export menu, detect ordering) + two-tech split/merge.
 // Loaded after app.js; shares its globals (classic scripts).
-(()=>{const ce=(t,a={},h='')=>{const e=document.createElement(t);Object.assign(e,a);if(h)e.innerHTML=h;return e};
+(()=>{const ce=ceA;
 const relayout=()=>{requestAnimationFrame(()=>{dispatchEvent(new Event('resize'))})};
 
 // ---------- 1) compact walk mode ----------
@@ -464,7 +471,7 @@ function mergeMarkups(local,remote,pm,splitIds){const L=new Map(local.map(m=>[m.
    if(HS.has(pm[r.planId]+'|'+mkHash(r))){out.again++;continue}out.added.push({...r,planId:pm[r.planId]})}}
  if(splitIds)for(const id of splitIds)if(!seen.has(id)&&L.has(id))out.gone++;return out}
 window.mergeMarkups=mergeMarkups;window.mkHash=mkHash;
-(()=>{const ce=(t,a={},h='')=>{const e=document.createElement(t);Object.assign(e,a);if(h)e.innerHTML=h;return e};
+(()=>{const ce=ceA;
  const DEV=localStorage.getItem('bpm-dev')||(()=>{const d='d'+Math.random().toString(36).slice(2,10);localStorage.setItem('bpm-dev',d);return d})();window.DEVICE_ID=DEV;
  async function stamp(b,a){if(a&&b&&editKey(a)!==editKey(b)){a.editAt=Date.now();a.editDev=DEV}if(!a||resKey(a)===resKey(b))return;a.updatedAt=Date.now();a.dev=DEV;a.by=(tester===null?await get('meta','tester'):tester)||'';
   if(project){const k='chlog:'+project.id,l=(await get('meta',k))||[];l.push({pin:a.srcPin||a.id,at:a.updatedAt,dev:DEV,by:a.by,st:a.status||''});await put('meta',l.slice(-5000),k)}}
@@ -630,7 +637,7 @@ $('#dQrBtn').before($('#dDsBtn'));
 try{
 // bpm-v89: grouped, labeled toolbar (2 rows on phone) + 3D wheel pickers + Customize (order, accent, theme, density).
 // Original controls are MOVED (not cloned) so every existing handler keeps working.
-(()=>{const T=$('#tools'),q=s=>T.querySelector(s)||document.querySelector(s),ce=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+(()=>{const T=$('#tools'),q=s=>T.querySelector(s)||document.querySelector(s);
  const UI=Object.assign({order:['draw','style','edit','pins','review','ref'],acc:'#7e7e7e',theme:'dark',dens:'normal',last:{}},JSON.parse(localStorage.getItem('bpm-ui')||'{}'));
  // bpm-v137: grey theme; the old default blue accent becomes the new grey default (a chosen non-default accent is kept)
  if(UI.acc==='#3b82f6'&&!UI.accSet)UI.acc='#7e7e7e';
@@ -866,7 +873,7 @@ try{
 // ===== src/ui/16-guides.js =====
 try{
 // bpm-v90: offline Guides panel. Every figure below carries its source link; no other numbers are stated.
-(()=>{const ce=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+(()=>{
 const S={
  iec:['IEC 60062 (resistor colour code)','https://webstore.iec.ch/publication/24233'],
  xtri:['Siemens XTRI-S/D/R Installation Instructions A6V101055479','https://sid.siemens.com/r/A6V101055479/32659825931___en-US_32659819403'],
@@ -966,7 +973,7 @@ try{
 // bpm-v90: master symbol legend (IndexedDB meta 'symMaster'), legend scan on plan open, tap-to-teach,
 // and template matchers for Detect. Matches are returned as ordinary detector items (existing det type for the
 // chosen device group), so they flow through the unchanged bpm-v50 items → ghosts → accept path (geometry, outset, de-overlap).
-(()=>{const ce=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+(()=>{
  let M=null;/* bpm-v136: the master legend no longer ships seeded symbol images (they were cut from project plans). It starts empty and is filled
     by legend scans and tap-to-teach on this device; anything already on this device is kept. */
  const seedIn=async L=>L;
@@ -1296,7 +1303,7 @@ window.panelPass=async(pages,groups,pl)=>{const G=panelPass.gen=(panelPass.gen||
 // ===== src/ui/19-pins-panel.js =====
 try{
 // bpm-v102: decluttered Pins panel. Regroups the EXISTING controls (same ids and handlers), so every function stays reachable.
-(()=>{const P=$('#panel');if(!P)return;const ph=P.querySelector('.ph'),by=id=>document.getElementById(id);
+(()=>{const P=$('#panel');if(!P)return;const ph=P.querySelector('.ph');
  const dd=(id,label,title,ids)=>{const d=document.createElement('details');d.className='pDd';d.id=id;d.innerHTML=`<summary class="btn" title="${title}">${label} ▾</summary><div class="pDm"></div>`;const m=d.querySelector('.pDm');for(const i of ids){const e=by(i);if(e){e.classList.add('pDi');m.append(e)}}
   m.addEventListener('click',e=>{if(e.target.closest('button'))setTimeout(()=>d.open=false,0)});return d};
  // (b) labels inside menus
@@ -1323,7 +1330,7 @@ try{
 // bpm-v106 (option C): compact Pins panel. Top: Pins | Deficiencies segmented bar with counts, full-width search, labeled filter buttons (Type, Status, Page; Loop removed in v118)
 // that open the floating wheel. Middle: one progress/counts line, then the scrolling list. Bottom bar pinned inside the panel (wheels open upward):
 // Export, Split, Tester, Clear (Deficiencies tab: Deficiencies spreadsheet, Deficiencies PDF, Tester). Reuses the existing controls (same ids and handlers).
-(()=>{const P=$('#panel');if(!P||!window.wheelOpen)return;const by=id=>document.getElementById(id),mk=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+(()=>{const P=$('#panel');if(!P||!window.wheelOpen)return;const mk=ce;
  P.classList.add('pC');const ph=P.querySelector('.ph');
  // segmented Pins | Deficiencies (bpm-v133: spelled out)
  const seg=mk('div','pSeg');by('modePins').innerHTML='Pins <b id="pinCount"></b>';by('modeDefs').innerHTML='⚠ Deficiencies <b id="defCount" class="r"></b>';seg.append(by('modePins'),by('modeDefs'));ph.prepend(seg);
@@ -1372,7 +1379,7 @@ try{
 // My stamps = saved + recent, IndexedDB). Each tap on the plan places one stamp centered at the tap until another tool is chosen.
 // A placed stamp is a normal closed (or open) path markup with m.stamp={k,sz,rot,fill,dx,dy}: select/Edit/Copy/Multi/Box/Undo/Layers/export all
 // work like any markup; Properties can change color, opacity, size and rotation. Pins are never touched.
-(()=>{const ce=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+(()=>{
  const K=.5523,P=(pts)=>({N:pts.map(([x,y])=>({x,y,ix:0,iy:0,ox:0,oy:0,k:'c'})),closed:true});
  const circ=(rx,ry,cy=0)=>({N:[[0,-ry],[rx,0],[0,ry],[-rx,0]].map(([x,y],i)=>{const h=i%2?[0,ry*K]:[rx*K,0];const s=i===0||i===3?1:-1;return{x,y:y+cy,ix:-h[0]*(i===0?1:i===2?-1:0),iy:-h[1]*(i===1?1:i===3?-1:0),ox:h[0]*(i===0?1:i===2?-1:0),oy:h[1]*(i===1?1:i===3?-1:0),k:'s'}}),closed:true});
  const reg=(n,r,r2,rot=-Math.PI/2)=>{const p=[];const m=r2?2*n:n;for(let i=0;i<m;i++){const a=rot+i*2*Math.PI/m,rr=r2&&i%2?r2:r;p.push([rr*Math.cos(a),rr*Math.sin(a)])}return p};
@@ -1524,7 +1531,7 @@ try{
 try{
 // bpm-v102: top bar "Option B" — breadcrumb line + ONE row of uniform icon-over-label buttons (two rows on phone).
 // Original controls are kept (hidden or moved), so every existing handler keeps working. Dropdowns use the wheel picker.
-(()=>{const P=$('#proj'),T=$('#top');if(!P||!T||!window.wheelOpen)return;const by=id=>document.getElementById(id);
+(()=>{const P=$('#proj'),T=$('#top');if(!P||!T||!window.wheelOpen)return;
  const H=document.createElement('div');H.id='tb2Hidden';H.hidden=true;document.body.append(H);
  const mk=(id,ic,lab,run,title)=>{const b=document.createElement('button');b.type='button';b.className='btn tb2';b.id=id;b.innerHTML=`<span class="tb2i">${ic}</span><span class="tl">${lab}</span>`;b.title=title||lab.replace(' ▾','');if(run)b.onclick=run;return b};
  const relabel=(el,ic,lab)=>{el.classList.add('tb2');el.innerHTML=`<span class="tb2i">${ic}</span><span class="tl">${lab}</span>`;return el};
@@ -1643,7 +1650,6 @@ try{
  window.typeColor={get:k=>TYPES[k]?.c,def:k=>DEF[k],group:grpOf,
   set(k,c){const g=grpOf(k);for(const x of g.ks){if(!DEF[x])continue;if(c&&c.toLowerCase()!==DEF[x].toLowerCase())O[x]=c;else delete O[x]}localStorage.setItem(KEY,JSON.stringify(O));apply();refresh()},
   reset(k){this.set(k,null)},resetAll(){O={};localStorage.removeItem(KEY);apply();refresh()},changed:()=>Object.keys(O)};
- const ce=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
  const PAL=['#e11d48','#dc2626','#991b1b','#f97316','#f59e0b','#facc15','#84cc16','#16a34a','#0d9488','#2dd4bf','#06b6d4','#0ea5e9','#2563eb','#4f46e5','#7c3aed','#c026d3','#db2777','#78350f','#64748b','#000000'];
  // one type (or group): palette + Custom… + Reset to default
  function pick(k,back){const g=grpOf(k),cur=(TYPES[k].c||'').toLowerCase(),df=DEF[k];let d=$('#tcDlg');if(!d){d=ce('dialog');d.id='tcDlg';document.body.append(d)}
@@ -1681,7 +1687,7 @@ try{
 // right slot = Pins OR Layers (same default width as Layers). Panels span exactly the plan's vertical extent (never over the bottom bars),
 // never overlap each other, and the plan's margins track the panels' VISIBLE edges every frame, so the plan resizes with each slide.
 // Drag handles on inner edges (no Expand button), clamped by the neighbour's minimum, width remembered per panel. Slides use the Layers motion.
-(()=>{const by=id=>document.getElementById(id),ce=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+(()=>{
  const B=document.body,ST=by('stage'),TH=by('thumbs'),THB=by('thBtn');if(!ST||!TH||!THB)return;
  const PH=()=>innerWidth<600,RM=matchMedia('(prefers-reduced-motion: reduce)'),PLANMIN=()=>PH()?0:160;
  THB.setAttribute('aria-label','Pages: show or hide the page preview');
@@ -1927,7 +1933,7 @@ try{
 // Top row: Menu ▾, Prev, Page ▾, Next, Undo, Pages, Pins (wide screens add Layers, Teach, QR).
 // Bottom row: Detect and Sheets (double width, coloured), Place ▾, Walk test, Draw ▾ (phone) or the drawing tools laid out (wide), More ▾.
 // Every original button is MOVED or reached through Menu ▾ / More ▾ / Draw ▾, so all existing handlers keep working. Walk-test bar unchanged.
-(()=>{const X=window.TBX,T=$('#tools'),TOP=$('#top');if(!X||!T||!TOP||!window.wheelOpen)return;const by=id=>document.getElementById(id);
+(()=>{const X=window.TBX,T=$('#tools'),TOP=$('#top');if(!X||!T||!TOP||!window.wheelOpen)return;
  const HOLD=document.createElement('div');HOLD.id='navHold';HOLD.hidden=true;document.body.append(HOLD);
  const W=k=>T.querySelector(`[data-w="${k}"]`)||document.querySelector(`#navHold [data-w="${k}"],#navDraw [data-w="${k}"]`);
  const wide=()=>innerWidth>=760;
@@ -1995,10 +2001,11 @@ try{
  const hidePB=()=>['pbExp','pbSplit'].forEach(id=>{const e=by(id);if(e&&!e.hidden){e.hidden=true;e.classList.add('navGone')}});hidePB();new MutationObserver(hidePB).observe(document.body,{childList:true,subtree:true});
 })();
 }catch(e){console.error('30-task-bar.js',e);setTimeout(()=>{throw e})}
-// ===== src/ui/90-v135-tmp.js =====
+// ===== src/ui/31-backup-reminder.js =====
 try{
-// bpm-v135: new features. Classic script: uses the app's shared globals (project, plan, pins, change, get/put, toast, uiConfirm …).
-(()=>{const by=id=>document.getElementById(id),ce=(t,a={},h='')=>{const e=document.createElement(t);Object.assign(e,a);if(h)e.innerHTML=h;return e};
+// bpm-v135: Menu and More extra items registry (window.menuExtra / moreExtra, V135.MX / V135.MO), persistent storage, daily backup reminder.
+// Classic script: uses the app's shared globals (project, plan, pins, change, get/put, toast, uiConfirm …). DOM helpers by/ce/ceA: src/ui/00-helpers.js.
+(()=>{const ce=ceA;
  const MX=[],MO=[];window.menuExtra=(a,sub)=>MX.flatMap(f=>f(a,sub)||[]);window.moreExtra=a=>MO.flatMap(f=>f(a)||[]);window.V135={MX,MO,by,ce};
  // ---------- 1. Persistent storage + daily backup reminder ----------
  // Ask the browser to keep this site's data (IndexedDB plans, pins, photos) instead of clearing it when the phone runs low on space.
@@ -2024,6 +2031,10 @@ try{
    const msg=`Daily backup reminder is ${i.off?'off':'on'}. Last backup project file for this project: ${fmtD(i.last)}.\n\nPhone storage protection: ${ST.granted?'on (the browser keeps this app’s data)':ST.granted===false?'not granted (the browser may clear this app’s data when space runs low, so save backups)':'not supported in this browser'}.`;
    if(await uiConfirm(msg,{ok:i.off?'Turn reminder on':'Turn reminder off',cancel:'Close'})){await put('meta',!i.off,'bkOff');toast('Backup reminder '+(i.off?'on':'off'));bkCheck()}if(!ST.granted)askPersist()}}]);
 })();
+}catch(e){console.error('31-backup-reminder.js',e);setTimeout(()=>{throw e})}
+// ===== src/ui/32-visit-times.js =====
+try{
+// bpm-v135/v136: Inspection and Testing Record visit times (Start now / End now buttons); old signature data dropped on project load.
 // ---------- 3. Inspection and Testing Record: visit times (bpm-v136: on-screen signatures removed) ----------
 (()=>{const {by}=window.V135;
  /* bpm-v136: signatures are gone. Old projects may still hold signature data from version 135; drop it quietly on load. */
@@ -2032,6 +2043,10 @@ try{
  const now=()=>{const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
  const f=by('jobForm');if(f){by('itmStartNow').onclick=()=>{f.elements.startTime.value=now()};by('itmEndNow').onclick=()=>{f.elements.finishTime.value=now()}}
 })();
+}catch(e){console.error('32-visit-times.js',e);setTimeout(()=>{throw e})}
+// ===== src/ui/33-next-inspection.js =====
+try{
+// bpm-v135/v136/v138: Start next inspection (Save backup and start), Last visit record (window.prevTxt, window.lastVisitPhotos).
 // ---------- 5. Start next inspection (keep last results for comparison) ----------
 (()=>{const {by,ce,MX}=window.V135;const K=()=>project&&project.id;
  const RESET=['testedAt','tester','reason','reasonText','severity','codes','correctedAt','correctedBy','corrNote','rdSens','rdCd','rdDb'];
@@ -2073,10 +2088,13 @@ try{
   const d=ce('dialog',{id:'lvDlg'},`<form method="dialog"><h3 style="margin:4px 0">📷 Last visit photos</h3><small style="color:#a2a2a2">${esc(TYPES[p.type]?.n||p.type)} ${esc(p.address||'')}: photos from the last visit. They are kept for comparison and are not part of this visit.</small><div class="lvG"></div><div class="row"><span class="sp"></span><button class="btn">✕ Close</button></div></form>`);
   const us=[];for(const m of ms){const u=URL.createObjectURL(m.blob);us.push(u);const im=ce('img');im.src=u;im.alt='Last visit photo';d.querySelector('.lvG').append(im)}document.body.append(d);d.addEventListener('close',()=>{us.forEach(URL.revokeObjectURL);d.remove()});d.showModal()}
  window.lastVisitPhotos=lastPhotos;
- const _op=openPin;openPin=async function(p,...r){let e=by('prevInfo');if(!e){const t=by('testedInfo');if(t){e=ce('div',{id:'prevInfo'},'<b class="lvL">Last visit</b> <span class="lvT"></span> <button type="button" class="btn lvB" id="lvPhotos"></button>');t.after(e)}}
-  if(e){const s=prevTxt(p);e.querySelector('.lvT').textContent=s.replace(/^Last visit/,'');e.hidden=!s;const b=e.querySelector('#lvPhotos'),n=p&&p.prev&&p.prev.photos||0;b.hidden=!n;b.textContent=`📷 View last visit photos (${n})`;b.onclick=()=>lastPhotos(p)}return _op.call(this,p,...r)};
+ // the pin card's Last visit row is filled by openPin (src/app/03-card.js) with prevTxt and lastVisitPhotos
  MX.push(()=>[{i:'🔁',l:'Start next inspection…',run:nextInsp}]);
 })();
+}catch(e){console.error('33-next-inspection.js',e);setTimeout(()=>{throw e})}
+// ===== src/ui/34-photos-sheets.js =====
+try{
+// bpm-v135: smaller saved photos (window.shrinkPhoto, Menu > Make saved photos smaller) and this job's install sheets offline.
 // ---------- 9. Smaller saved photos + save this job's install sheets for offline use ----------
 (()=>{const {MX}=window.V135;const K=()=>project&&project.id;
  const MAXD=2048,Q=.82,MINB=700*1024;
@@ -2085,7 +2103,7 @@ try{
    if(s===1&&blob.size<=MINB){bm.close?.();return blob}const cv=document.createElement('canvas');cv.width=Math.round(w*s);cv.height=Math.round(h*s);const g=cv.getContext('2d');g.drawImage(bm,0,0,cv.width,cv.height);bm.close?.();
    const out=await new Promise(r=>cv.toBlob(r,'image/jpeg',Q));if(!out||out.size>=blob.size)return blob;out.origSize=blob.size;return out}catch(e){return blob}}
  window.shrinkPhoto=shrink;
- const _am=addMedia;addMedia=async function(kind,blob,name){if(kind==='photo'){const b=await shrink(blob);if(b!==blob&&name)name=String(name).replace(/\.(png|heic|heif|webp)$/i,'.jpg');return _am.call(this,kind,b,name)}return _am.call(this,kind,blob,name)};
+ // addMedia (src/app/03-card.js) stores photos through shrinkPhoto
  async function shrinkAll(){if(!K())return uiAlert('Open a project first.');const D=await projData(),ids=new Set(D.flatMap(d=>d.pins.map(p=>p.id))),M=(await all('media')).filter(m=>ids.has(m.pinId)&&m.kind==='photo'&&m.blob);
   if(!M.length)return uiAlert('This project has no saved photos.');const tot=M.reduce((a,m)=>a+(m.blob.size||0),0);
   if(!await uiConfirm(`Make the ${M.length} saved photos in this project smaller?\n\nThey use ${(tot/1048576).toFixed(1)} MB now. Each photo is kept at up to ${MAXD} pixels on its long side, sharp enough to read labels. Drawings on photos are kept.`,{ok:'Make photos smaller',cancel:'Cancel'}))return;
@@ -2102,7 +2120,12 @@ try{
   const msg=`${fs.length-bad} of ${fs.length} install sheets for this job are saved for offline use (${ok} new, ${had} already saved).${bad?` ${bad} could not be downloaded: try again when online.`:''}${none.length?`\n\nNo stored sheet for: ${none.join(', ')}.`:''}`;uiAlert(msg);return{n:fs.length,ok,had,bad,none}}
  window.saveJobSheets=saveJobSheets;window.jobSheets=jobSheets;
  MX.push(()=>[{i:'📄',l:'Save this job’s install sheets offline',run:saveJobSheets},{i:'🗜',l:'Make saved photos smaller…',run:shrinkAll}]);
-
+})();
+}catch(e){console.error('34-photos-sheets.js',e);setTimeout(()=>{throw e})}
+// ===== src/ui/35-screen-zoom.js =====
+try{
+// ---------- bpm-v135 item 11: app-screen pinch zoom + Menu > Reset screen zoom ----------
+(()=>{const {MX}=window.V135;
  // ---- item 11: app-screen pinch zoom (bpm-v135). The page may now be pinch-zoomed (small text, photos, dialogs);
  // the plan keeps its own pinch zoom: #stage is touch-action:none, and iOS page gestures that start on the plan are cancelled.
  const stg=document.getElementById('stage');if(stg)for(const ev of['gesturestart','gesturechange'])stg.addEventListener(ev,e=>e.preventDefault(),{passive:false});
@@ -2113,17 +2136,12 @@ try{
  window.resetScreenZoom=resetZoom;
  MX.push(()=>[{i:'🔍',l:'Reset screen zoom',run:resetZoom}]);
 })();
-}catch(e){console.error('90-v135-tmp.js',e);setTimeout(()=>{throw e})}
-// ===== src/ui/91-v138-tmp.js =====
+}catch(e){console.error('35-screen-zoom.js',e);setTimeout(()=>{throw e})}
+// ===== src/ui/36-detect-one-tap.js =====
 try{
-// bpm-v138: flow improvements (fewer taps, fewer surprises). Loaded last; shares the app's globals (classic scripts).
-// 1 one-tap Detect · 2 walk test starts with testable devices · 3 quick fail reasons on the walk bar · 6 Menu as a grouped list ·
-// 7 tester name asked at project creation (app.js) · 8 Open card on each Pins list row · 9 no Delete on the pin card during a walk ·
-// 10 legend banner folds into More; Pages strip hidden during a walk · 11 Accept all with Undo (app.js) · 12 Save backup and start (v135.js) ·
-// 13 walk order choice · 14 Open plan / New project buttons on the empty screen
-(()=>{const by=id=>document.getElementById(id);const ce=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
- const MO=window.V135&&V135.MO;
-
+// bpm-v138: one-tap Detect (the Detect button reruns the last types and pages; window.detectSettings opens the dialog). More > Detect types and pages.
+// Classic script; shares the app's globals. by/ce: src/ui/00-helpers.js.
+(()=>{const MO=window.V135&&V135.MO;
  // ---------- 1) one-tap Detect ----------
  // After Detect has been run once from the dialog, the Detect button runs again straight away with the same device types and pages.
  // The first time, the dialog opens with every type ticked and "All pages" chosen (Detect still reads only main floor plan pages and never pins gray devices).
@@ -2135,12 +2153,17 @@ try{
  if(detB&&openDet){detB.onclick=async function(){if(!plan||!pdf||det)return openDet.call(this);const s=await get('meta','detectSel'),one=await get('meta','detectOneTap');
    if(one&&s&&Array.isArray(s.groups)&&s.groups.length){const ok=new Set(Object.keys(DG));const g=s.groups.filter(k=>ok.has(k));if(g.length)return runDetect(g,!!s.all)}return detDlgOpen()};
   by('detForm')&&by('detForm').addEventListener('submit',e=>{if(e.submitter?.value==='go')put('meta',1,'detectOneTap')},true)}
- const _rd=runDetect;runDetect=async function(groups,all,...a){window.foldLegend&&foldLegend();const r=await _rd.call(this,groups,all,...a);
-  try{if(all&&plan&&ghosts.length&&!ghosts.some(g=>g.page===page)&&!walk){const n=Math.min(...ghosts.map(g=>g.page));await gotoPage(n);renderGhostBar();toast(`Went to page ${n}: the first page with suggestions`)}}catch(e){console.warn(e)}return r};
- const _rgb=renderGhostBar;renderGhostBar=function(...a){const r=_rgb.apply(this,a);const b=by('ghBar');if(b&&!b.hidden&&!by('ghSet')){const bb=b.querySelector('.ghBB')||b;
-  const x=ce('button','btn','<span aria-hidden="true">⚙</span> <span class="tl">Detect types and pages</span>');x.type='button';x.id='ghSet';x.title='Change the device types and pages Detect uses';x.setAttribute('aria-label','Detect types and pages');x.onclick=()=>detDlgOpen();bb.append(x)}return r};
+ // runDetect (src/app/04-detect.js) folds the legend banner and goes to the first page with suggestions
+ // renderGhostBar (src/app/04-detect.js) adds the "Detect types and pages" button that calls detectSettings
  if(MO)MO.push(()=>[{i:'🔍',l:'Detect types and pages…',run:()=>plan?detDlgOpen():uiAlert('Open a plan first.')}]);
-
+})();
+}catch(e){console.error('36-detect-one-tap.js',e);setTimeout(()=>{throw e})}
+// ===== src/ui/37-walk-flow.js =====
+try{
+// bpm-v138: walk flow. Walk dialog type ticks and order choice, quick fail reasons on the walk bar, Pages strip tucked away during a walk,
+// legend banner folding (window.foldLegend; More > Review legend symbols).
+// Classic script; shares the app's globals. by/ce: src/ui/00-helpers.js.
+(()=>{const MO=window.V135&&V135.MO;
  // ---------- 2) walk test starts with the devices you actually test ----------
  // Until a walk has been started in this version, the picker ticks every type except panels, cabinets, junction boxes, EOL resistors, surge protectors,
  // pull boxes and backflow preventers (they stay in the list to tick). After that, the last choice is remembered as before.
@@ -2155,11 +2178,7 @@ try{
  document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#wkGo'))put('meta',1,'walkTypesV138')},true);
 
  // ---------- 13) walk order: nearest first, or page by page in address order ----------
- const nat=(a,b)=>String(a||'\uffff').localeCompare(String(b||'\uffff'),undefined,{numeric:true});
- const addrCmp=(a,b)=>a.page-b.page||nat(a.address,b.address)||a.y-b.y||a.x-b.x;
- const _nf=nearestFrom;nearestFrom=function(L,from){if(!walk||WALK_ORDER!=='addr'||!L.length)return _nf.call(this,L,from);const S=L.slice().sort(addrCmp);
-  if(!from)return S[0];if(from.id==null){const same=S.filter(p=>p.page===from.page);return same[0]||S[0]}
-  return S.find(p=>addrCmp(p,from)>0)||S[0]};
+ // the address order itself is in nearestFrom (src/app/05-walk.js)
 
  // ---------- 3) quick fail reasons on the walk bar ----------
  // Fail shows the reasons that fit this device type (from its checklist) as buttons; one tap saves the fail and moves on. Open full card is one tap away.
@@ -2185,13 +2204,25 @@ try{
  // legend banner: shown once when a plan is first opened; it folds into More ("Review legend symbols") when Detect runs, a walk starts or a pin card opens
  let LEG=null;function foldLegend(){const lg=by('legChip');if(!lg||lg.hidden)return;const rb=lg.querySelector('#legRev');if(rb&&rb.onclick)LEG={run:rb.onclick,t:rb.textContent.replace(/·\s*Review/,'').replace(/^\W+/,'').trim(),pl:plan&&plan.id};lg.hidden=true}
  window.foldLegend=foldLegend;
- const _op=openPin;openPin=async function(...a){window.foldLegend&&foldLegend();return _op.apply(this,a)};
+ // openPin (src/app/03-card.js) folds the legend banner when a pin card opens
  if(MO)MO.push(()=>LEG&&plan&&LEG.pl===plan.id?[{i:'🔣',l:'Review legend symbols ('+LEG.t+')',run:()=>{const f=LEG.run;LEG=null;f()}}]:[]);
-
+})();
+}catch(e){console.error('37-walk-flow.js',e);setTimeout(()=>{throw e})}
+// ===== src/ui/38-pins-open-card.js =====
+try{
+// bpm-v138: Pins list rows get an Open card button (wraps renderList; the search and filter inputs still call the unwrapped renderList, as in v138).
+// Classic script; shares the app's globals. by/ce: src/ui/00-helpers.js.
+(()=>{
  // ---------- 8) Pins list: each row has Open card ----------
  const _rl=renderList;renderList=function(...a){const r=_rl.apply(this,a);const L=by('pinList');if(L)L.querySelectorAll('li[data-id]').forEach(li=>{if(li.querySelector('.pOpen'))return;
   const b=ce('button','btn pOpen','Open card');b.type='button';b.title='Open this pin’s card';b.onclick=async e=>{e.stopPropagation();const id=li.dataset.id;await jumpTo(plan.id,id);const p=pins.find(x=>x.id===id);if(p)openPin(p)};li.append(b)});return r};
-
+})();
+}catch(e){console.error('38-pins-open-card.js',e);setTimeout(()=>{throw e})}
+// ===== src/ui/39-menu-list.js =====
+try{
+// bpm-v138: Menu as a grouped list (Job, Plan, Files, Settings) instead of the wheel; Export, Share and Switch lists too. window.menuListClose.
+// Classic script; shares the app's globals. by/ce: src/ui/00-helpers.js.
+(()=>{
  // ---------- 6) Menu: a plain grouped list (Job, Plan, Files, Settings), one tap per row ----------
  // The Menu button's items (and its Export / Share / Switch lists) show as a list instead of the wheel. Every item and handler is the same as before.
  const GR=[['Job',/^(New project|Open project file|Switch project|Rename project|Delete project|Start next inspection)/],['Plan',/^(Open plan|Switch plan|Rename page|Delete plan)/],
@@ -2211,8 +2242,14 @@ try{
   const f=SH.querySelector('.mnuI');f&&f.focus({preventScroll:true})}
  const _wo=window.wheelOpen;window.wheelOpen=function(title,items,cur,cb){const m=by('navMenu');
   if(m&&lastA===m&&(title==='Menu'||(SUBS.has(title)&&Date.now()-menuT<2000))){lastA=null;return menuList(title,items,cb)}return _wo.apply(this,arguments)};
-
+})();
+}catch(e){console.error('39-menu-list.js',e);setTimeout(()=>{throw e})}
+// ===== src/ui/40-empty-screen.js =====
+try{
+// bpm-v138: empty first screen buttons (Open plan, New project).
+// Classic script; shares the app's globals. by/ce: src/ui/00-helpers.js.
+(()=>{
  // ---------- 14) empty first screen: real Open plan and New project buttons ----------
  const eo=by('emOpen'),en=by('emNew');if(eo)eo.onclick=()=>by('file').click();if(en)en.onclick=()=>by('projNew').click();
 })();
-}catch(e){console.error('91-v138-tmp.js',e);setTimeout(()=>{throw e})}
+}catch(e){console.error('40-empty-screen.js',e);setTimeout(()=>{throw e})}

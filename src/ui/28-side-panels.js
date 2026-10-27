@@ -2,7 +2,7 @@
 // right slot = Pins OR Layers (same default width as Layers). Panels span exactly the plan's vertical extent (never over the bottom bars),
 // never overlap each other, and the plan's margins track the panels' VISIBLE edges every frame, so the plan resizes with each slide.
 // Drag handles on inner edges (no Expand button), clamped by the neighbour's minimum, width remembered per panel. Slides use the Layers motion.
-(()=>{const by=id=>document.getElementById(id),ce=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+(()=>{
  const B=document.body,ST=by('stage'),TH=by('thumbs'),THB=by('thBtn');if(!ST||!TH||!THB)return;
  const PH=()=>innerWidth<600,RM=matchMedia('(prefers-reduced-motion: reduce)'),PLANMIN=()=>PH()?0:160;
  THB.setAttribute('aria-label','Pages: show or hide the page preview');

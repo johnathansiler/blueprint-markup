@@ -43,7 +43,7 @@ function mergeMarkups(local,remote,pm,splitIds){const L=new Map(local.map(m=>[m.
    if(HS.has(pm[r.planId]+'|'+mkHash(r))){out.again++;continue}out.added.push({...r,planId:pm[r.planId]})}}
  if(splitIds)for(const id of splitIds)if(!seen.has(id)&&L.has(id))out.gone++;return out}
 window.mergeMarkups=mergeMarkups;window.mkHash=mkHash;
-(()=>{const ce=(t,a={},h='')=>{const e=document.createElement(t);Object.assign(e,a);if(h)e.innerHTML=h;return e};
+(()=>{const ce=ceA;
  const DEV=localStorage.getItem('bpm-dev')||(()=>{const d='d'+Math.random().toString(36).slice(2,10);localStorage.setItem('bpm-dev',d);return d})();window.DEVICE_ID=DEV;
  async function stamp(b,a){if(a&&b&&editKey(a)!==editKey(b)){a.editAt=Date.now();a.editDev=DEV}if(!a||resKey(a)===resKey(b))return;a.updatedAt=Date.now();a.dev=DEV;a.by=(tester===null?await get('meta','tester'):tester)||'';
   if(project){const k='chlog:'+project.id,l=(await get('meta',k))||[];l.push({pin:a.srcPin||a.id,at:a.updatedAt,dev:DEV,by:a.by,st:a.status||''});await put('meta',l.slice(-5000),k)}}

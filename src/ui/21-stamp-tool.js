@@ -2,7 +2,7 @@
 // My stamps = saved + recent, IndexedDB). Each tap on the plan places one stamp centered at the tap until another tool is chosen.
 // A placed stamp is a normal closed (or open) path markup with m.stamp={k,sz,rot,fill,dx,dy}: select/Edit/Copy/Multi/Box/Undo/Layers/export all
 // work like any markup; Properties can change color, opacity, size and rotation. Pins are never touched.
-(()=>{const ce=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+(()=>{
  const K=.5523,P=(pts)=>({N:pts.map(([x,y])=>({x,y,ix:0,iy:0,ox:0,oy:0,k:'c'})),closed:true});
  const circ=(rx,ry,cy=0)=>({N:[[0,-ry],[rx,0],[0,ry],[-rx,0]].map(([x,y],i)=>{const h=i%2?[0,ry*K]:[rx*K,0];const s=i===0||i===3?1:-1;return{x,y:y+cy,ix:-h[0]*(i===0?1:i===2?-1:0),iy:-h[1]*(i===1?1:i===3?-1:0),ox:h[0]*(i===0?1:i===2?-1:0),oy:h[1]*(i===1?1:i===3?-1:0),k:'s'}}),closed:true});
  const reg=(n,r,r2,rot=-Math.PI/2)=>{const p=[];const m=r2?2*n:n;for(let i=0;i<m;i++){const a=rot+i*2*Math.PI/m,rr=r2&&i%2?r2:r;p.push([rr*Math.cos(a),rr*Math.sin(a)])}return p};

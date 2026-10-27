@@ -1,0 +1,8 @@
+/* bpm-v135: backup reminder bar; merge dialog (new pins) */
+#bkBar{position:absolute;top:8px;left:calc((100% - var(--frR,0px))/2);transform:translateX(-50%);z-index:7;background:#78350f;color:#fff;border:1px solid #f59e0b;border-radius:10px;padding:6px 8px 6px 12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;max-width:calc(100% - var(--frR,0px) - 12px);font-size:14px;box-shadow:0 6px 18px #0008}
+#bkBar[hidden]{display:none}
+#bkBar .btn{min-height:40px;padding:4px 12px}
+#updBar:not([hidden])~#bkBar,#updBar:not([hidden])+#bkBar{top:64px}
+body.light #bkBar{background:#fef3c7;color:#451a03;border-color:#d97706}
+#mrgDlg .mNew{background:#16a34a;color:#fff;border-radius:6px;padding:0 6px;font-size:12px}
+#mrgSum ul{margin:4px 0 10px 18px;padding:0}#mrgSum li{margin:2px 0}

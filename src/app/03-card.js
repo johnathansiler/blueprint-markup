@@ -6,7 +6,13 @@ const PK=['type','address','model','location','status','notes','reason','reasonT
 const RD={rdSens:{n:'Sensitivity (% per ft)',s:'Sensitivity',u:'%/ft',t:['smoke','duct'],lo:0.5,hi:4.0},rdCd:{n:'Candela setting',s:'Candela',u:'cd',t:['horn','spkstrobe','strobe']},rdDb:{n:'Sound level',s:'Sound level',u:'dBA',t:['horn','spkstrobe','linearray']}};
 const rdKeys=t=>Object.keys(RD).filter(k=>RD[k].t.includes(t)),rdTxt=p=>rdKeys(p.type).filter(k=>p[k]).map(k=>`${RD[k].s} ${p[k]} ${RD[k].u}`).join(', ');
 function rdUI(){const t=form.elements.type.value,ks=rdKeys(t);$('#rdBox').hidden=!ks.length;for(const l of document.querySelectorAll('#rdBox [data-rd]'))l.hidden=!ks.includes(l.dataset.rd);const v=parseFloat(form.elements.rdSens.value),R=RD.rdSens;$('#rdHint').textContent=ks.includes('rdSens')&&!isNaN(v)&&(v<R.lo||v>R.hi)?`Sensitivity ${v} is outside the usual ${R.lo.toFixed(1)}–${R.hi.toFixed(1)} % per ft range. Check the device listing.`:''}
-let ckl=[];async function openPin(p){cur=p;modelOpts(p.type);if(!Array.isArray(cur.codes))cur.codes=[];for(const k of PK)form.elements[k].value=p[k]||(k==='severity'?'Non-critical':'');if(p.reasonText)form.elements.reasonText.value=failReasonText(p.reasonText);autoR=false;ckl=structuredClone(p.checks||checkItems(p.type));renderChecks();failUI();rdUI();rtUpd();renderCodes();$('#testedInfo').textContent=testedTxt(p);await showMedia();dlg.showModal()}
+let ckl=[];
+// bpm-v138 + bpm-v135 (folded in bpm-v139): opening a card folds the legend banner, then fills the "Last visit" row (prevTxt / lastVisitPhotos, src/ui/33-next-inspection.js).
+async function openPin(p,...r){window.foldLegend&&foldLegend();
+ let e=document.getElementById('prevInfo');if(!e){const t=document.getElementById('testedInfo');if(t){e=document.createElement('div');e.id='prevInfo';e.innerHTML='<b class="lvL">Last visit</b> <span class="lvT"></span> <button type="button" class="btn lvB" id="lvPhotos"></button>';t.after(e)}}
+ if(e){const s=prevTxt(p);e.querySelector('.lvT').textContent=s.replace(/^Last visit/,'');e.hidden=!s;const b=e.querySelector('#lvPhotos'),n=p&&p.prev&&p.prev.photos||0;b.hidden=!n;b.textContent=`📷 View last visit photos (${n})`;b.onclick=()=>lastVisitPhotos(p)}
+ return openPinBase.call(this,p,...r)}
+async function openPinBase(p){cur=p;modelOpts(p.type);if(!Array.isArray(cur.codes))cur.codes=[];for(const k of PK)form.elements[k].value=p[k]||(k==='severity'?'Non-critical':'');if(p.reasonText)form.elements.reasonText.value=failReasonText(p.reasonText);autoR=false;ckl=structuredClone(p.checks||checkItems(p.type));renderChecks();failUI();rdUI();rtUpd();renderCodes();$('#testedInfo').textContent=testedTxt(p);await showMedia();dlg.showModal()}
 const fmtShort=t=>{const d=new Date(t);return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})};
 const fmtT=t=>{const d=new Date(t),z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`};
 const testedTxt=p=>p.testedAt?`${p.status} ${fmtT(p.testedAt)}${p.tester?' by '+p.tester:''}`:'';
@@ -19,7 +25,9 @@ async function showMedia(){urls.forEach(URL.revokeObjectURL);urls=[];const ms=aw
    d.append(bar)}else d.innerHTML=m.kind==='video'?`<video src="${u}" controls playsinline></video>`:`<audio src="${u}" controls></audio>`;
   const x=document.createElement('button');x.type='button';x.className='btn';x.textContent='✕';x.onclick=async()=>{await del('media',m.id);showMedia()};d.append(x);$('#media').append(d)}}
 const photoBlob=m=>m.annot||m.blob;
-async function addMedia(kind,blob,name){await put('media',{id:uid(),pinId:cur.id,kind,blob,name,created:Date.now()});showMedia()}
+// bpm-v135 (folded in bpm-v139): photos are stored smaller (shrinkPhoto, src/ui/34-photos-sheets.js).
+async function addMedia(kind,blob,name){if(kind==='photo'){const b=await shrinkPhoto(blob);if(b!==blob&&name)name=String(name).replace(/\.(png|heic|heif|webp)$/i,'.jpg');return addMediaBase(kind,b,name)}return addMediaBase(kind,blob,name)}
+async function addMediaBase(kind,blob,name){await put('media',{id:uid(),pinId:cur.id,kind,blob,name,created:Date.now()});showMedia()}
 $('#addPhoto').onchange=e=>{for(const f of e.target.files)addMedia('photo',f,f.name);e.target.value=''};
 $('#addVideo').onchange=e=>{for(const f of e.target.files)addMedia('video',f,f.name);e.target.value=''};
 let rec=null;$('#rec').onclick=async()=>{const b=$('#rec');if(rec){rec.stop();return}

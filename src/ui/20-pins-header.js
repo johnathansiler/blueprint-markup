@@ -1,7 +1,7 @@
 // bpm-v106 (option C): compact Pins panel. Top: Pins | Deficiencies segmented bar with counts, full-width search, labeled filter buttons (Type, Status, Page; Loop removed in v118)
 // that open the floating wheel. Middle: one progress/counts line, then the scrolling list. Bottom bar pinned inside the panel (wheels open upward):
 // Export, Split, Tester, Clear (Deficiencies tab: Deficiencies spreadsheet, Deficiencies PDF, Tester). Reuses the existing controls (same ids and handlers).
-(()=>{const P=$('#panel');if(!P||!window.wheelOpen)return;const by=id=>document.getElementById(id),mk=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+(()=>{const P=$('#panel');if(!P||!window.wheelOpen)return;const mk=ce;
  P.classList.add('pC');const ph=P.querySelector('.ph');
  // segmented Pins | Deficiencies (bpm-v133: spelled out)
  const seg=mk('div','pSeg');by('modePins').innerHTML='Pins <b id="pinCount"></b>';by('modeDefs').innerHTML='⚠ Deficiencies <b id="defCount" class="r"></b>';seg.append(by('modePins'),by('modeDefs'));ph.prepend(seg);

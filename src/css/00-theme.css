@@ -1,0 +1,11 @@
+/* bpm-v139: theme in one place.
+   Theme variables (dark is the default; body.light switches to the light theme, set from Customize > Theme):
+     --acc  accent (Customize > Accent overrides it on the page)   --sf / --sf2  panel and button surfaces
+     --tx   main text   --mu2  muted text   --shd  floating shadow
+   Gray palette of the near-black theme. Rules use var(--gray-XX) instead of repeating the hex value, so a shade can be changed here once.
+     0a near-black page background · 16 bars and panels · 1d raised surface · 26 dark borders · 3a/4a stronger borders · 60/63/7e mid grays
+     a2 muted text · c0/d4 light borders and light-theme text · e7 main text (dark theme) · f1/f4 light-theme surfaces
+   Other colors (status reds, greens, ambers, blues) stay written where they are used. */
+:root{--acc:#7e7e7e;--sf:#161616;--sf2:#1d1d1d;--tx:#e7e7e7;--mu2:#a2a2a2;--shd:0 4px 14px #0007}
+body.light{--sf:#ffffff;--sf2:#ededed;--tx:#0a0a0a;--mu2:#636363;--shd:0 4px 14px #0a0a0a22}
+:root{--gray-0a:#0a0a0a;--gray-16:#161616;--gray-1d:#1d1d1d;--gray-26:#262626;--gray-3a:#3a3a3a;--gray-4a:#4a4a4a;--gray-60:#606060;--gray-63:#636363;--gray-7e:#7e7e7e;--gray-a2:#a2a2a2;--gray-c0:#c0c0c0;--gray-d4:#d4d4d4;--gray-e7:#e7e7e7;--gray-f1:#f1f1f1;--gray-f4:#f4f4f4}

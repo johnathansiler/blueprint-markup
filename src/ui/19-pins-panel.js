@@ -1,5 +1,5 @@
 // bpm-v102: decluttered Pins panel. Regroups the EXISTING controls (same ids and handlers), so every function stays reachable.
-(()=>{const P=$('#panel');if(!P)return;const ph=P.querySelector('.ph'),by=id=>document.getElementById(id);
+(()=>{const P=$('#panel');if(!P)return;const ph=P.querySelector('.ph');
  const dd=(id,label,title,ids)=>{const d=document.createElement('details');d.className='pDd';d.id=id;d.innerHTML=`<summary class="btn" title="${title}">${label} ▾</summary><div class="pDm"></div>`;const m=d.querySelector('.pDm');for(const i of ids){const e=by(i);if(e){e.classList.add('pDi');m.append(e)}}
   m.addEventListener('click',e=>{if(e.target.closest('button'))setTimeout(()=>d.open=false,0)});return d};
  // (b) labels inside menus
