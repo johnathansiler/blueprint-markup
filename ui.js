@@ -229,7 +229,11 @@ function penBar(){let b=$('#penBar');if(!b){b=ce('div');b.id='penBar';b.setAttri
  toastLift();const a=b.querySelector('.on');if(a&&b.scrollWidth>b.clientWidth&&(a.offsetLeft<b.scrollLeft||a.offsetLeft+a.offsetWidth>b.scrollLeft+b.clientWidth))b.scrollLeft=Math.max(0,a.offsetLeft-40)}
 window.penBar=penBar;
 // keep toasts above the floating tool bars so they never cover a button
-function toastLift(){const t=$('#toast');if(!t)return;const S=stage.getBoundingClientRect();let top=null;for(const id of['#penBar','#shpChip','#fhBar']){const e=$(id);if(e&&!e.hidden){const r=e.getBoundingClientRect();if(r.height)top=Math.min(top??1e9,r.top)}}t.style.bottom=top!=null?Math.round(S.bottom-top+6)+'px':''}window.toastLift=toastLift;
+function toastLift(){const t=$('#toast');if(!t)return;const S=stage.getBoundingClientRect();let top=null;for(const id of['#penBar','#shpChip','#fhBar']){const e=$(id);if(e&&!e.hidden){const r=e.getBoundingClientRect();if(r.height)top=Math.min(top??1e9,r.top)}}
+ /* bpm-v140: also clear the Detect suggestions bar (a long notice used to cover Review, By type, Check and Reject all); not in a walk, where the notice sits at the top */
+ const g=$('#ghBar');if(g&&!g.hidden&&!t.hidden&&!walk){const r=g.getBoundingClientRect(),q=t.getBoundingClientRect();if(r.height&&r.left<q.right&&q.left<r.right)top=Math.min(top??1e9,r.top)}
+ t.style.bottom=top!=null?Math.round(S.bottom-top+6)+'px':''}window.toastLift=toastLift;
+{const _t=toast;toast=function(...a){const r=_t.apply(this,a);try{toastLift()}catch(e){}return r};const _g=renderGhostBar;renderGhostBar=function(...a){const r=_g.apply(this,a);try{toastLift()}catch(e){}return r}}
 function penOp(op){if(!PD)return;const N=PD.N,i=PD.sel??-1;if(op==='del'){if(i<0)return;N.splice(i,1);PD.sel=-1;if(!N.length)PD=null}else if(op==='smooth'){if(i<0)return;convert(N,false,i)}penBar();requestDraw(false)}
 async function penDone(closed){const P=PD;PD=null;PM='add';if(!P||P.N.length<2){penBar();requestDraw(false);return}
  const m={id:uid(),planId:plan.id,page,type:'path',color:$('#color').value,w:SZ[$('#size').value]||3,opacity:toolOp(false)};writeNodes(m,P.N,closed,false);m.type='path';await change('markups',null,m);
