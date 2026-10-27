@@ -457,7 +457,7 @@ async function deletePin(p){await change('pins',p,null,await byIdx('media','pinI
 /* bpm-v111: one side panel at a time — Pins and Layers share the right-side slot; opening one closes the other, its own button closes it */
 window.pinsPanel=on=>{const P=$('#panel');if(P.hidden===!on)return;P.hidden=!on;if(WIDE_MQ.matches)PANEL_CLOSED=!on;if(on){try{window.layPanel&&document.body.classList.contains('lpOn')&&layPanel(false)}catch{}renderList()}panelBtnSync();try{resize()}catch{}};
 $('#listBtn').onclick=()=>pinsPanel($('#panel').hidden);$('#closeList').onclick=()=>{$('#panel').hidden=true;if(WIDE_MQ.matches)PANEL_CLOSED=true;panelBtnSync()};
-['#q','#fType','#fStat','#allPages'].forEach(s=>$(s).oninput=renderList);/* bpm-v131: loops removed from the app */
+['#q','#fType','#fStat','#allPages'].forEach(s=>$(s).oninput=()=>renderList());/* bpm-v131: loops removed from the app */
 function renderList(){if($('#panel').hidden)return;const q=$('#q').value.toLowerCase(),ft=$('#fType').value,fs=$('#fStat').value,fl=''/* bpm-v118: Loop filter removed; any saved value ignored */,ap=$('#allPages').checked;
 
  renderSummary();renderCounts();if($('#panel').classList.contains('defmode'))renderDefs();
