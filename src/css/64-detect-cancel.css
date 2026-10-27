@@ -1,0 +1,2 @@
+/* bpm-v141: Detect pop-up title row with Cancel stays at the top while the list scrolls */
+#detDlg .detTopRow{position:sticky;top:-1px;z-index:2;background:var(--sf,var(--gray-16));margin:0 0 4px;padding:2px 0}
