@@ -1052,7 +1052,12 @@ try{
    // bpm-v100: sit below the selection bar so the chip never covers Multi/Box/Deselect
    const sb=document.getElementById('selBar');if(sb){const pos=()=>{h.style.top=(sb.hidden||!sb.offsetHeight?8:sb.offsetTop+sb.offsetHeight+6)+'px'};new ResizeObserver(pos).observe(sb);new MutationObserver(pos).observe(sb,{attributes:true,attributeFilter:['hidden'],childList:true});pos()}}
   h.innerHTML=`<button type="button" class="btn" id="legRev">🔣 ${c.length} new legend symbol${c.length>1?'s':''} · <b>Review</b></button><button type="button" class="btn" id="legX" title="Dismiss" aria-label="Dismiss">✕</button>`;h.hidden=false;
-  h.querySelector('#legRev').onclick=()=>{h.hidden=true;if(plan===pl)review(c,`Legend found: ${c.length} new symbol${c.length>1?'s':''}`)};h.querySelector('#legX').onclick=()=>h.hidden=true}
+  h.querySelector('#legRev').onclick=()=>{h.hidden=true;if(plan===pl)review(c,`Legend found: ${c.length} new symbol${c.length>1?'s':''}`)};h.querySelector('#legX').onclick=()=>h.hidden=true;busyClear()}
+ // bpm-v140: on a phone the chip sat on top of the busy notice (its text and progress were hidden, only Stop showed); the notice moves just below the chip while both show
+ function busyClear(){const b=document.getElementById('busy'),h=document.getElementById('legChip');if(!b)return;b.style.top='';if(b.hidden||!h||h.hidden)return;
+  if(!h._bzObs){h._bzObs=1;new MutationObserver(busyClear).observe(h,{attributes:true,attributeFilter:['hidden','style']})}
+  const a=b.getBoundingClientRect(),q=h.getBoundingClientRect();if(a.left<q.right&&q.left<a.right&&a.top<q.bottom&&q.top<a.bottom)b.style.top=(h.offsetTop+h.offsetHeight+6)+'px'}
+ {const _bz=busy;busy=function(...a){const r=_bz.apply(this,a);busyClear();return r}}
  window.legendChip=legendChip;
  // auto-scan new plans once
  const _op=openPlan;openPlan=async function(id,...a){const lc=document.getElementById('legChip');if(lc)lc.hidden=true;const r=await _op.call(this,id,...a);try{if(pdf&&plan&&!(await get('meta','legendScan:'+plan.id))){await put('meta',Date.now(),'legendScan:'+plan.id);const pl=plan;const c=await scanLegend(pdf,Array.from({length:Math.min(pl.pages,40)},(_,i)=>i+1));if(plan===pl&&c.length)legendChip(c,pl)}}catch(e){console.warn('legend scan',e)}return r};
