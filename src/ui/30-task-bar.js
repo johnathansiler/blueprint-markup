@@ -38,7 +38,7 @@
  const drawB=mkTool('navDrawB','✏️','Draw ▾',()=>{DR.hidden=!DR.hidden;drawB.classList.toggle('on',!DR.hidden);if(!DR.hidden)placeDR()});
  function placeDR(){const r=T.getBoundingClientRect();DR.style.bottom=Math.round(innerHeight-r.top+6)+'px'}
  DR.addEventListener('click',e=>{const b=e.target.closest('button,label');if(!b)return;/* a tool was picked: close the panel (wheel / width bar open from the button first) */if(b.dataset.w==='width'||b.classList.contains('tbCol'))return;setTimeout(()=>{DR.hidden=true;drawB.classList.remove('on')},250)});
- document.addEventListener('pointerdown',e=>{if(!DR.hidden&&!DR.contains(e.target)&&!drawB.contains(e.target)&&!e.target.closest('.whOv,.wbBar,#colDlg,.wbO')){DR.hidden=true;drawB.classList.remove('on')}},true);
+ document.addEventListener('pointerdown',e=>{if(!DR.hidden&&!DR.contains(e.target)&&!drawB.contains(e.target)&&!e.target.closest('#mnuSheet,.wbBar,#colDlg,.wbO')){DR.hidden=true;drawB.classList.remove('on')}},true);
  // ---------- top-row extras on wide screens (proxies of the real buttons) ----------
  const teachT=mkTop('navTeach','🎓','Teach',click('teachBtn'),'Teach a symbol');const qrT=mkTop('navQr','📷','QR code',click('qrTool'),'Scan an install-sheet QR code');
  const layT=by('tb2Lay');
