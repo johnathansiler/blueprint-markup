@@ -9,7 +9,7 @@ const _start=startWalk,_exit=exitWalk;
 startWalk=function(...a){if(plan&&!pins.length)return walkHint();const r=_start.apply(this,a);if(walk){document.body.classList.add('walking');relayout()}return r};
 exitWalk=function(...a){document.body.classList.remove('walking');const r=_exit.apply(this,a);relayout();return r};
 const _pick=walkPick;walkPick=async function(...a){if(plan&&!pins.length)return walkHint();return _pick.apply(this,a)};
-function walkHint(){const w=$('#walk');w.hidden=false;w.innerHTML=`<div class="wh"><b>🚶 Walk</b><span class="sp"></span><button type="button" class="btn" id="wHx">✕</button></div><div class="wtx">This plan has no pins yet. Place pins with 📍, or let Detect find the devices on the plan.</div><div class="row"><button type="button" class="btn pri" id="wHdet">🔍 Detect devices</button></div>`;
+function walkHint(){const w=$('#walk');w.hidden=false;w.innerHTML=`<div class="wh"><b>🚶 Walk</b><span class="sp"></span><button type="button" class="btn" id="wHx">✕</button></div><div class="wtx">This plan has no pins yet. Add markers with 📍, or let Detect find the devices on the plan.</div><div class="row"><button type="button" class="btn pri" id="wHdet">🔍 Detect devices</button></div>`;
  w.querySelector('#wHx').onclick=()=>{w.hidden=true};w.querySelector('#wHdet').onclick=()=>{w.hidden=true;$('#detBtn').click()}}
 // bpm-v100: compact walk info: each fact once, date+time without the year, no tester name (still stored on the pin), capped scrollable area
 const wDate=t=>{const d=new Date(t);return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})};
