@@ -99,7 +99,7 @@ dialog input,dialog select,dialog textarea{font-size:16px;min-height:42px}
 #walk .reasons{display:flex;flex-wrap:wrap;gap:4px}#walk .reasons .btn{min-height:40px}#walk select{min-height:36px;max-width:150px;padding:3px 6px}.ok{background:#15803d}
 #toast{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;z-index:6;background:#0a0a0af2;border:1px solid var(--gray-3a);border-radius:10px;padding:6px 8px 6px 12px;display:flex;align-items:center;gap:8px;max-width:calc(100% - 16px);font-size:14px}#toast .btn{padding:3px 8px;min-height:32px}
 #updBar{position:absolute;top:8px;z-index:7;transform:translateX(-50%);background:#282828;color:#fff;border:1px solid var(--gray-a2);border-radius:10px;padding:6px 8px 6px 12px;display:flex;align-items:center;gap:8px;max-width:calc(100% - 16px);font-size:14px;box-shadow:0 6px 18px #0008}#updBar .btn{min-height:40px;padding:4px 12px}body.light #updBar{background:var(--gray-4a);color:#fff;border-color:#282828}
-#walk:not([hidden])~#toast{bottom:auto;top:8px}
+#walk:not([hidden])~#toast{bottom:auto;top:8px;z-index:8}/* bpm-v140: above the backup reminder, so a walk test Undo is never hidden under it */
 
 /* v10 */
 #proj .lbl{display:none}@media(min-width:600px){#proj .lbl{display:inline}}
