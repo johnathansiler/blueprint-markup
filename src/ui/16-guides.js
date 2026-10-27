@@ -1,5 +1,5 @@
 // bpm-v90: offline Guides panel. Every figure below carries its source link; no other numbers are stated.
-(()=>{const ce=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+(()=>{
 const S={
  iec:['IEC 60062 (resistor colour code)','https://webstore.iec.ch/publication/24233'],
  xtri:['Siemens XTRI-S/D/R Installation Instructions A6V101055479','https://sid.siemens.com/r/A6V101055479/32659825931___en-US_32659819403'],

@@ -1,6 +1,6 @@
 // bpm-v89: grouped, labeled toolbar (2 rows on phone) + 3D wheel pickers + Customize (order, accent, theme, density).
 // Original controls are MOVED (not cloned) so every existing handler keeps working.
-(()=>{const T=$('#tools'),q=s=>T.querySelector(s)||document.querySelector(s),ce=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+(()=>{const T=$('#tools'),q=s=>T.querySelector(s)||document.querySelector(s);
  const UI=Object.assign({order:['draw','style','edit','pins','review','ref'],acc:'#7e7e7e',theme:'dark',dens:'normal',last:{}},JSON.parse(localStorage.getItem('bpm-ui')||'{}'));
  // bpm-v137: grey theme; the old default blue accent becomes the new grey default (a chosen non-default accent is kept)
  if(UI.acc==='#3b82f6'&&!UI.accSet)UI.acc='#7e7e7e';

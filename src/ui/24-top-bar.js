@@ -1,6 +1,6 @@
 // bpm-v102: top bar "Option B" — breadcrumb line + ONE row of uniform icon-over-label buttons (two rows on phone).
 // Original controls are kept (hidden or moved), so every existing handler keeps working. Dropdowns use the wheel picker.
-(()=>{const P=$('#proj'),T=$('#top');if(!P||!T||!window.wheelOpen)return;const by=id=>document.getElementById(id);
+(()=>{const P=$('#proj'),T=$('#top');if(!P||!T||!window.wheelOpen)return;
  const H=document.createElement('div');H.id='tb2Hidden';H.hidden=true;document.body.append(H);
  const mk=(id,ic,lab,run,title)=>{const b=document.createElement('button');b.type='button';b.className='btn tb2';b.id=id;b.innerHTML=`<span class="tb2i">${ic}</span><span class="tl">${lab}</span>`;b.title=title||lab.replace(' ▾','');if(run)b.onclick=run;return b};
  const relabel=(el,ic,lab)=>{el.classList.add('tb2');el.innerHTML=`<span class="tb2i">${ic}</span><span class="tl">${lab}</span>`;return el};

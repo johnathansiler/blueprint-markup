@@ -1,7 +1,7 @@
 // bpm-v90: master symbol legend (IndexedDB meta 'symMaster'), legend scan on plan open, tap-to-teach,
 // and template matchers for Detect. Matches are returned as ordinary detector items (existing det type for the
 // chosen device group), so they flow through the unchanged bpm-v50 items → ghosts → accept path (geometry, outset, de-overlap).
-(()=>{const ce=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+(()=>{
  let M=null;/* bpm-v136: the master legend no longer ships seeded symbol images (they were cut from project plans). It starts empty and is filled
     by legend scans and tap-to-teach on this device; anything already on this device is kept. */
  const seedIn=async L=>L;

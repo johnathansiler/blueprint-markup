@@ -2,7 +2,7 @@
 // Top row: Menu ▾, Prev, Page ▾, Next, Undo, Pages, Pins (wide screens add Layers, Teach, QR).
 // Bottom row: Detect and Sheets (double width, coloured), Place ▾, Walk test, Draw ▾ (phone) or the drawing tools laid out (wide), More ▾.
 // Every original button is MOVED or reached through Menu ▾ / More ▾ / Draw ▾, so all existing handlers keep working. Walk-test bar unchanged.
-(()=>{const X=window.TBX,T=$('#tools'),TOP=$('#top');if(!X||!T||!TOP||!window.wheelOpen)return;const by=id=>document.getElementById(id);
+(()=>{const X=window.TBX,T=$('#tools'),TOP=$('#top');if(!X||!T||!TOP||!window.wheelOpen)return;
  const HOLD=document.createElement('div');HOLD.id='navHold';HOLD.hidden=true;document.body.append(HOLD);
  const W=k=>T.querySelector(`[data-w="${k}"]`)||document.querySelector(`#navHold [data-w="${k}"],#navDraw [data-w="${k}"]`);
  const wide=()=>innerWidth>=760;

@@ -1,0 +1,17 @@
+/* bpm-v138: Menu as a grouped list */
+.mnuOv{position:fixed;inset:0;z-index:62;background:#0008;display:flex;align-items:flex-end;justify-content:center}
+.mnuOv[hidden]{display:none}
+.mnuP{width:min(720px,100%);max-height:min(92vh,100%);display:flex;flex-direction:column;background:var(--sf,var(--gray-16));color:var(--tx,var(--gray-e7));border:1px solid var(--gray-26);border-bottom:0;border-radius:16px 16px 0 0;box-shadow:0 -10px 30px #000a}
+.mnuH{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--gray-26)}.mnuH .mnuT{font-size:17px}
+.mnuB{overflow:auto;padding:4px 12px 14px;display:grid;grid-template-columns:1fr;gap:4px 14px}
+@media (min-width:700px){.mnuB{grid-template-columns:1fr 1fr}.mnuOv{align-items:center}.mnuP{border-radius:16px;border-bottom:1px solid var(--gray-26)}}
+.mnuG h4{margin:10px 2px 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-a2)}
+.mnuL{display:flex;flex-direction:column;gap:4px}
+.mnuI{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;text-align:left;justify-content:flex-start;background:var(--sf2,var(--gray-1d));border:1px solid var(--gray-26);border-radius:10px;padding:6px 12px;font-size:15px}
+.mnuI .mnuIc{width:22px;text-align:center;flex:none}.mnuI .tl{white-space:normal}
+body.light .mnuP,body.light .mnuH,body.light .mnuI{border-color:var(--gray-d4)}body.light .mnuOv{background:#0004}
+/* Menu list rows: icon on the left, full-size label beside it (the shared .btn / .tl styles stack a tiny label under the icon) */
+#mnuSheet .mnuI{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;text-align:left!important;gap:12px;padding:8px 14px;font-size:15px}
+#mnuSheet .mnuI .mnuIc{font-size:18px;line-height:1;width:24px}
+#mnuSheet .mnuI .tl{display:inline;font-size:15px;line-height:1.25;margin:0;color:inherit;font-weight:500;text-align:left;white-space:normal}
+#mnuSheet .mnuG:only-child{grid-column:1/-1}

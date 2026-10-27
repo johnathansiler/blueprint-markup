@@ -1,0 +1,2 @@
+/* bpm-v135 item 11: pinch zoom of the app screen allowed; no double-tap zoom on controls (plan stage keeps touch-action:none) */
+html{touch-action:manipulation}

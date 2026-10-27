@@ -1,0 +1,12 @@
+/* bpm-v138: walk flow */
+/* 3) quick fail reasons */
+#walk .qfCard .qfR{display:flex;flex-wrap:wrap;gap:6px}#walk .qfCard .qfR .btn{flex:1 1 auto;min-height:44px}
+#walk .qfCard .qfB{display:flex;align-items:center;gap:6px;flex-wrap:wrap}#walk .qfCard .qfB .wfCritL{display:inline-flex;align-items:center;gap:6px}
+#walk .qfCard .qfB .wfCritL input{width:20px;height:20px;min-height:20px}
+/* 9) no Delete on the pin card during a walk */
+body.walking #pinDlg .pcDel{display:none!important}
+/* 13) walk order */
+#walkDlg .wkOrd{flex-wrap:wrap;gap:6px 14px;align-items:center;margin-top:6px}#walkDlg .wkOrd label{display:inline-flex;align-items:center;gap:6px}#walkDlg .wkOrd input{width:20px;height:20px;min-height:20px}
+/* walk start/exit: side panel height changes at once (no slide) so it never overlaps the walk bar */
+body.rlPh #panel.v138NoH,body.rlPh #lyrP.v138NoH,#panel.v138NoH,#lyrP.v138NoH{transition:width .18s ease-out!important}
+body.rlPh.v138NoT #walk{transition:none!important}
