@@ -679,7 +679,11 @@ try{
    if(DESTR(title)){if(pend!==b){MS.querySelectorAll('.mnuI.pend').forEach(e=>e.classList.remove('pend'));pend=b;b.classList.add('pend');cf.hidden=false;b.after(cf);return}}
    close();pickT=Date.now();STK=[...STK.filter(s=>s!==me),me].slice(-4);cb(x,i)});
   const f=MS.querySelector('.mnuI.on')||MS.querySelector('.mnuI');f&&f.focus({preventScroll:false})}
- MS.addEventListener('pointerdown',e=>{if(e.target===MS){close();STK=[]}});
+ // bpm-v145: opening or closing a bar (Pages toggle, Pages bar Close) never closes an open list: the tap goes through to that button, the list stays and re-stacks.
+ window.barToggleAt=t=>!!(t&&t.closest&&t.closest('#thX,#thBtn'));
+ MS.addEventListener('pointerdown',e=>{if(e.target!==MS)return;if(MS.classList.contains('mnuAnc')){const u=document.elementsFromPoint(e.clientX,e.clientY).find(x=>!MS.contains(x));if(window.barToggleAt(u)){e.preventDefault();u.closest('#thX,#thBtn').click();passT=Date.now();return}}close();STK=[]});
+ /* the list re-stacks into the freed space at once: swallow the click that ends this same tap so it can't land on a list row */
+ let passT=0;addEventListener('click',e=>{if(passT&&Date.now()-passT<1000){passT=0;e.preventDefault();e.stopPropagation()}},true);
  addEventListener('keydown',e=>{if(MS.hidden)return;if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();STK=[]}else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const B=[...MS.querySelectorAll('.mnuI')],i=B.indexOf(document.activeElement),n=e.key==='ArrowDown'?Math.min(B.length-1,i+1):Math.max(0,i-1);B[n]&&B[n].focus()}},true);
  window.wheelOpen=wheelOpen;window.listOpen=wheelOpen;window.listIsOpen=()=>!MS.hidden;
  // ---- grouped wheel buttons (tap = last pick; tap again or ▾ = wheel) ----
@@ -723,7 +727,7 @@ try{
    wbRender();wbPlace(WBO,WB)}}
  function widBar(btn,show){WBS=show;WBA=btn;if(WB&&!WB.hidden){wbClose();return}
   if(!WB){WB=ce('div','widBar');WB.id='widBar';WB.setAttribute('role','toolbar');WB.setAttribute('aria-label','Line options');document.body.append(WB);
-   document.addEventListener('pointerdown',e=>{if(!WB||WB.hidden)return;const t=e.target;if(WB.contains(t)||(WBO&&WBO.contains(t))||(WBA&&WBA.contains(t))||t.closest&&t.closest('#mnuSheet'))return;wbClose()},true);
+   document.addEventListener('pointerdown',e=>{if(!WB||WB.hidden)return;const t=e.target;if(WB.contains(t)||(WBO&&WBO.contains(t))||(WBA&&WBA.contains(t))||t.closest&&t.closest('#mnuSheet')||window.barToggleAt&&barToggleAt(t))return;wbClose()},true);
    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&WB&&!WB.hidden&&document.querySelector('#mnuSheet')?.hidden!==false)wbClose()});addEventListener('resize',()=>{if(WB&&!WB.hidden&&WBA){wbPlace(WB,WBA);if(WBO&&!WBO.hidden)wbPlace(WBO,WB)}})}
   if(WBO)WBO.hidden=true;wbRender();WB.hidden=false;btn.classList.add('on');wbPlace(WB,btn)}
  window.widthSheet=()=>widBar(B.width,B.width._show);document.addEventListener('pointerup',()=>setTimeout(()=>B.width&&B.width._show(),0),true);
@@ -1898,7 +1902,7 @@ try{
  const drawB=mkTool('navDrawB','✏️','Draw ▾',()=>{DR.hidden=!DR.hidden;drawB.classList.toggle('on',!DR.hidden);if(!DR.hidden)placeDR()});
  function placeDR(){const r=T.getBoundingClientRect();DR.style.bottom=Math.round(innerHeight-r.top+6)+'px'}
  DR.addEventListener('click',e=>{const b=e.target.closest('button,label');if(!b)return;/* a tool was picked: close the panel (wheel / width bar open from the button first) */if(b.dataset.w==='width'||b.classList.contains('tbCol'))return;/* v143: a list opened from Shapes / Lines keeps the panel (and its button) showing until the list closes */const shut=()=>{const M=document.getElementById('mnuSheet');if(M&&!M.hidden){setTimeout(shut,150);return}DR.hidden=true;drawB.classList.remove('on')};setTimeout(shut,250)});
- document.addEventListener('pointerdown',e=>{if(!DR.hidden&&!DR.contains(e.target)&&!drawB.contains(e.target)&&!e.target.closest('#mnuSheet,.wbBar,#colDlg,.wbO,#widBar,#wbOp')){DR.hidden=true;drawB.classList.remove('on')}},true);
+ document.addEventListener('pointerdown',e=>{if(!DR.hidden&&!DR.contains(e.target)&&!drawB.contains(e.target)&&!e.target.closest('#mnuSheet,.wbBar,#colDlg,.wbO,#widBar,#wbOp,#thX,#thBtn')){DR.hidden=true;drawB.classList.remove('on')}},true);
  // ---------- top-row extras on wide screens (proxies of the real buttons) ----------
  const teachT=mkTop('navTeach','🎓','Teach',click('teachBtn'),'Teach a symbol');const qrT=mkTop('navQr','📷','QR code',click('qrTool'),'Scan an install-sheet QR code');
  const layT=by('tb2Lay');
