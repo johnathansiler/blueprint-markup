@@ -2340,11 +2340,13 @@ try{
   if(a&&a.isConnected&&!inTop(a))f=Math.min(f,R(a).top);return f}
  function fit(el,a,id,A,wantW){// natural size first, then shrink to the space
   el.style.maxHeight='none';const ex=el._stackScroll||el;ex.style.maxHeight='';ex.style.overflowY='';
-  const tb=a&&a.isConnected?Math.max(R(a).bottom,findB()):0;const space=Math.max(80,(inTop(a)?A.bot-M-(tb+M):floorFor(id,a,A)-M-(A.top+M)));
-  let h=el.offsetHeight;if(h>space){const over=h-space;const inner=el._stackScroll;if(inner){inner.style.maxHeight=Math.max(40,inner.clientHeight-over)+'px';inner.style.overflowY='auto'}else{el.style.maxHeight=space+'px';el.style.overflowY='auto'}h=el.offsetHeight}
+  const tb=a&&a.isConnected?Math.max(R(a).bottom,findB()):0;
+  const start=Math.max(A.top+M,inTop(a)?tb+M:A.top+M),fl=floorFor(id,a,A);
+  const space=Math.max(80,(inTop(a)?A.bot:fl)-M-start);/* bpm-v150: height uses the same top the list is placed at, so a legend chip (or other top chrome) below the button cannot push the list over the bottom row */
+  let h=el.offsetHeight;if(h>space){const over=h-space;const inner=el._stackScroll;if(inner){inner.style.maxHeight=Math.max(40,inner.clientHeight-over)+'px';inner.style.overflowY='auto'}else el.style.overflowY='auto';el.style.maxHeight=space+'px';h=el.offsetHeight}
   const w=el.offsetWidth,ar=a&&a.isConnected?R(a):null,cx=ar?ar.left+ar.width/2:(A.left+A.right)/2;
   const left=Math.round(Math.max(A.left+M,Math.min(A.right-M-w,cx-w/2)));
-  const top=Math.round(inTop(a)&&ar?tb+M:floorFor(id,a,A)-M-h);
+  const top=Math.round(inTop(a)&&ar?start:fl-M-h);
   return{left,top:Math.max(A.top+M,top)}}
  function stageFloats(){// bars that live on the plan area: lift them above the walk / sweep bar, keep the pin Delete chip out of side panels
   const W=['#walk','#swBar'].map(q=>document.querySelector(q)).filter(vis).map(R);const st=document.getElementById('stage');if(!st)return;const sr=R(st);
