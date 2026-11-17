@@ -695,7 +695,9 @@ try{
  const tool1=(t,i,l)=>({k:t,i,l,run:()=>tb(t).click(),on:()=>tool===t});
  const pill=(k,n,els)=>{const g=ce('div','tbG');g.dataset.g=k;g.append(ce('i','tbN',n),...els.filter(Boolean));return g};
  const zig=tb('zig').querySelector('svg').outerHTML;
- const SH=[tool1('rect','▢','Box'),tool1('rrect','<span class="rrI">▢</span>','Rounded box'),tool1('ellipse','◯','Ellipse'),tool1('arc','◠','Arc'),tool1('tri','△','Triangle'),tool1('poly','⬡','Polygon'),tool1('star','☆','Star'),tool1('cloud','☁','Revision cloud'),tool1('check','✔','Check mark')];
+ /* bpm-v148: Box and Rounded box are drawn pictures (the old Rounded box icon shrank to a dot in lists, and the ▢ character already has rounded corners on some phones) */
+ const shSv=r=>`<svg class="shSv" width="1em" height="1em" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="${r}" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>`;
+ const SH=[tool1('rect',shSv(0),'Box'),tool1('rrect',shSv(3.6),'Rounded box'),tool1('ellipse','◯','Ellipse'),tool1('arc','◠','Arc'),tool1('tri','△','Triangle'),tool1('poly','⬡','Polygon'),tool1('star','☆','Star'),tool1('cloud','☁','Revision cloud'),tool1('check','✔','Check mark')];
  const LN=[tool1('line','╱','Line'),tool1('arrow','↗','Arrow'),tool1('pen','✒','Pen (curves)'),tool1('free','✍','Freehand'),tool1('zig',zig,'Zigzag'),tool1('measure','📏','Measure')];
  const SEL=[tool1('select','➤','Select'),tool1('pan','✋','Pan')];
  const sizes=()=>[...['S','M','L','XL'].map((s,i)=>({k:'s'+i,i:'≡',l:'Size '+s,run:()=>{$('#size').value=i;$('#size').dispatchEvent(new Event('change',{bubbles:true}))}})),...[25,50,75,100].map(o=>({k:'o'+o,i:'◐',l:'Opacity '+o+'%',run:()=>{$('#opac').value=o;$('#opac').dispatchEvent(new Event('input',{bubbles:true}));$('#opac').dispatchEvent(new Event('change',{bubbles:true}))}})),
@@ -1921,7 +1923,7 @@ try{
   const r=document.createElement('div');r.className='tbR navR';
   const fillB=window.fillBtn||null;const draw=[B.shapes,B.lines,X.textB,X.stampB,X.colW,fillB,B.width].filter(Boolean);
   /* bpm-v147: Walk test moves left of Marker so Marker sits right next to Draw (phone) or the Shapes tool (wide); Fill joins the drawing tools */
-  r.append(det,ds,walk,B.place);if(w){r.append(...draw);HOLD.append(drawB);DR.hidden=true}else{r.append(drawB);DR.replaceChildren(...[B.shapes,B.lines,X.freeB,X.stampB,X.textB,by('cSnap'),X.colW,fillB,B.width].filter(Boolean))}
+  r.append(det,ds,walk,B.place);if(w){r.append(...draw);HOLD.append(drawB);DR.hidden=true}else{/* bpm-v148: Shapes sits right next to Marker in the phone row (one tap opens the shape list); Draw keeps the other drawing tools */r.append(B.shapes,drawB);DR.replaceChildren(...[B.lines,X.freeB,X.stampB,X.textB,by('cSnap'),X.colW,fillB,B.width].filter(Boolean))}
   r.append(moreB);
   if(w)HOLD.append(X.freeB,by('cSnap'));
   [pass,B.share,B.select,B.more,by('qrTool'),by('teachBtn'),by('guidesBtn')].forEach(e=>e&&HOLD.append(e));
@@ -1932,6 +1934,8 @@ try{
   const top=w?[menuB,by('prev'),by('tb2Page'),by('next'),by('undo'),by('redo'),by('thBtn'),by('listBtn'),layT,teachT,qrT]:[menuB,by('prev'),by('next'),by('rotBtn'),by('undo'),by('redo'),by('thBtn'),layT,by('listBtn')];
   const keep=new Set(top);[...TOP.children].forEach(e=>{if(!keep.has(e))HOLD.append(e)});TOP.replaceChildren(...top);TOP.classList.add('navTop');
   window.tlayMark&&tlayMark();if(!DR.hidden)placeDR()}
+ // bpm-v148: on the phone row one tap on Shapes opens the shape list (same list as before), anchored to its own button; wide screens keep tap = last shape, ▾ = list
+ {const sb=X.B.shapes,o=sb&&sb.onclick;if(sb&&o)sb.onclick=function(e){if(wide())return o.call(this,e);const r=this.getBoundingClientRect();try{wheelAnchor&&wheelAnchor(this)}catch{}return o.call(this,{clientY:r.bottom,clientX:r.left+r.width/2})}}
  window.navLayout=layout;layout();addEventListener('resize',()=>{clearTimeout(layout._t);layout._t=setTimeout(layout,100)});
  // Pins panel: Export and Split now live only in Menu ▾ (one place each)
  const hidePB=()=>['pbExp','pbSplit'].forEach(id=>{const e=by(id);if(e&&!e.hidden){e.hidden=true;e.classList.add('navGone')}});hidePB();new MutationObserver(hidePB).observe(document.body,{childList:true,subtree:true});
