@@ -929,3 +929,21 @@ body.rlPh #thumbs .thh .btn{min-height:40px!important;min-width:56px;height:100%
 .mnuOv.mnuAnc .mnuB{grid-template-columns:1fr}
 /* bpm-v143: during a walk test a notice sits at the top of the plan at its own height (an older phone rule also pinned its bottom and stretched it) */
 body #walk:not([hidden])~#toast{bottom:auto!important}
+/* ===== src/css/68-v147.css ===== */
+/* bpm-v147: real device shapes in lists and buttons (pinIcon), shape Fill row */
+.pinIc{display:inline-block;flex:none;vertical-align:middle}
+#pinList .pinIc,#wkTypes .pinIc{margin-right:2px}
+.mnuIc .pinIc{width:22px;height:22px}
+.tlSw.shp-rect,#lyrP .tlSw.shp-rect{border-radius:3px}
+.tlSw.shp-hex,#lyrP .tlSw.shp-hex{border-radius:0;clip-path:polygon(0 50%,25% 0,75% 0,100% 50%,75% 100%,25% 100%)}
+.tlSw.shp-dia,#lyrP .tlSw.shp-dia{border-radius:0;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.fillBar{flex-direction:column;align-items:stretch}
+.fillBar .fbRow{display:flex;gap:4px}
+.fillBar .fbOp{display:flex;align-items:center;gap:10px;font-size:15px;padding:2px 6px}
+.fillBar .fbOp .wbOL{font-weight:600;white-space:nowrap}
+.fillBar .fbOp b{min-width:44px;text-align:right}
+.fillBar .fbOp input[type=range]{width:min(160px,40vw);height:36px;accent-color:var(--acc,var(--gray-7e))}
+.tbFill .fPv{display:block;margin:0 auto}
+/* bpm-v147: drag a marker by its body inside the handles box (covers only the marker; the corner squares and top knob still resize / rotate) */
+#ptx .pxM{position:absolute;inset:0;min-width:16px;min-height:16px;pointer-events:auto;touch-action:none;cursor:move;z-index:3}
+body.pinDragging #stage{cursor:grabbing}

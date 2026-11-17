@@ -5,7 +5,7 @@
  const save=()=>{if(pid)localStorage.setItem(K(),JSON.stringify([...HT]));mark();window.lpRender&&lpRender();try{sel=null;msel=msel.filter(tVis)}catch{}draw();renderList();if(walk&&walk.p&&!tVis(walk.p))walkNext()};
  const mark=()=>{const on=HT.size>0;document.querySelectorAll('[data-tlay],#tools .tbFlat').forEach(b=>{if(b.dataset.tlay!=null||b._x?.k==='tlay')b.classList.toggle('tlHid',on)});const m=document.querySelector('#tools [data-w=more]');if(m)m.classList.toggle('tlHid',on)};
  window.tlayMark=mark;setInterval(load,700);
- const sw=t=>`<i class="tlSw${t.sq?' sq':''}" style="background:${t.c}">${esc(t.l||'')}</i>`;
+ const sw=t=>`<i class="tlSw${t.sq?' sq':''}${pinShpCls(Object.keys(TYPES).find(k=>TYPES[k]===t)||'other')}" style="background:${t.c}">${esc(t.l||'')}</i>`;
  async function counts(){const n={};try{for(const pl of(await all('plans')).filter(p=>p.projectId===project.id))for(const p of await byIdx('pins','planId',pl.id))n[p.type]=(n[p.type]||0)+1}catch{for(const p of pins)n[p.type]=(n[p.type]||0)+1}return n}
  async function open(){if(!project)return uiAlert('Open a project first.');load();const n=await counts();let d=$('#tlDlg');if(!d){d=document.createElement('dialog');d.id='tlDlg';document.body.append(d)}
   const ks=Object.keys(n).filter(k=>TYPES[k]).sort((a,b)=>TYPES[a].n.localeCompare(TYPES[b].n));

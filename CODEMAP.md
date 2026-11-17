@@ -65,6 +65,9 @@ Files in each `src` folder are joined in file-name order; the number in front se
 | 38-pins-open-card.js | Open card button on Pins list rows |
 | 39-menu-list.js | Menu as a grouped list (`menuListClose`) |
 | 40-empty-screen.js | empty first screen buttons |
+| 41–46 | Detect Cancel at the top, address sweep, finish inspection, pin card Delete, stacking (`45-stack.js`), Load plan choice (`46-load-sheets.js`) |
+| 47-shape-fill.js | bpm-v147: Fill ▾ for shapes (No fill / Fill, Fill opacity), Fill on the Shape added chip and selection bar (`m.fill`) |
+| 48-pin-move.js | bpm-v147: drag to move a marker (hold then drag, Marker-mode drag, drag by the body inside its handles) |
 
 Functions changed by more than one file (read all of them before changing one): `change` / `changeMulti` (11, 12, 31), `startWalk` / `exitWalk` / `renderWalk` / `walkPick` (10, 37), `loadProject` (31, 32), `renderList` (38), `wheelOpen` / `wheelAnchor` (15, 39).
 
@@ -84,6 +87,7 @@ Functions changed by more than one file (read all of them before changing one): 
 | 61-walk-flow.css | quick fail reasons, no Delete during a walk, walk order, side panel during walk start / exit |
 | 62-pins-open-card.css | Open card button |
 | 63-empty-screen.css | empty first screen |
+| 68-v147.css | device shape pictures (`pinIcon`, Layers shapes), Fill row, marker drag grip |
 
 The light theme is `body.light` (set from Customize > Theme or the system setting). Most light-theme rules sit beside the dark rule they change. Later rules win over earlier ones of the same strength, so keep the file order.
 

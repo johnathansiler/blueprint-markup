@@ -16,7 +16,7 @@ const DEF_SEL=Object.keys(DG).filter(k=>k!=='jbox');
 const gT=g=>TYPES[DG[g.g].t]||TYPES.other;
 for(const[k,g]of Object.entries(DG))$('#ghType').add(new Option(g.n,k));
 const DGRP=[['Initiating devices',['smoke','heat','pull']],['Notification devices',['horn','spkw','spkc','strobe','la']],['Supervisory devices',['tamper','flow','duct']],['Control',['module','relay','dh']]];
-const detLbl=k=>{const g=DG[k];return`<label${g.x?' title="No auto-detect yet – place by hand"':''}><input type="checkbox" value="${k}"${g.x?' disabled data-man="1"':''}><span class="sw" style="background:${TYPES[g.t].c}"></span>${esc(g.n)}${g.x?' <i class="dim">(manual)</i>':''}</label>`};
+const detLbl=k=>{const g=DG[k];return`<label${g.x?' title="No auto-detect yet – place by hand"':''}><input type="checkbox" value="${k}"${g.x?' disabled data-man="1"':''}>${pinIcon(g.t,14)}${esc(g.n)}${g.x?' <i class="dim">(manual)</i>':''}</label>`};
 const inGrp=new Set(DGRP.flatMap(g=>g[1]));
 $('#detTypes').innerHTML=DGRP.map(([n,ks],i)=>`<div class="detGrp"><label class="detGh"><input type="checkbox" data-grp="${i}"><b>${esc(n)}</b></label>${ks.map(detLbl).join('')}</div>`).join('')+`<div class="detGrp"><div class="detGh"><b>Other (not grouped)</b></div>${Object.keys(DG).filter(k=>!DG[k].x&&!inGrp.has(k)).map(detLbl).join('')}</div>`;
 const grpSync=()=>document.querySelectorAll('#detTypes [data-grp]').forEach(h=>{const bs=[...h.closest('.detGrp').querySelectorAll('input[value]:not([disabled])')],n=bs.filter(b=>b.checked).length;h.checked=n&&n===bs.length;h.indeterminate=n>0&&n<bs.length});

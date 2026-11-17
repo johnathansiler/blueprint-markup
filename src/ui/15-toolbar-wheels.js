@@ -90,7 +90,7 @@
    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&WB&&!WB.hidden&&document.querySelector('#mnuSheet')?.hidden!==false)wbClose()});addEventListener('resize',()=>{if(WB&&!WB.hidden&&WBA){wbPlace(WB,WBA);if(WBO&&!WBO.hidden)wbPlace(WBO,WB)}})}
   if(WBO)WBO.hidden=true;wbRender();WB.hidden=false;btn.classList.add('on');wbPlace(WB,btn)}
  window.widthSheet=()=>widBar(B.width,B.width._show);document.addEventListener('pointerup',()=>setTimeout(()=>B.width&&B.width._show(),0),true);
- const pinT=()=>Object.entries(TYPES).map(([k,v])=>({k,i:`<span class="tbDot" style="background:${v.c}"></span>`,l:v.n,run:()=>{$('#pinType').value=k;$('#pinType').dispatchEvent(new Event('change',{bubbles:true}));tb('pin').click()}}));
+ const pinT=()=>Object.entries(TYPES).map(([k,v])=>({k,i:pinIcon(k,20),l:v.n,run:()=>{$('#pinType').value=k;$('#pinType').dispatchEvent(new Event('change',{bubbles:true}));tb('pin').click()}}));
  const more=()=>[{k:'fit',i:'⤢',l:'Fit to screen',run:()=>$('#fit').click()},{k:'del',i:'🗑',l:'Delete selected',run:()=>$('#del').click()},{k:'mag',i:'🧲',l:'Magnet snap '+($('#mkSnap').classList.contains('on')?'(on)':'(off)'),run:()=>$('#mkSnap').click()},{k:'cz',i:'⚙',l:'Customize toolbar',run:()=>openCz()}];
  const share=()=>[{k:'split',i:'⇆',l:'Split for second technician',run:()=>$('#splitBtn').click()},{k:'merge',i:'⇄',l:'Merge returned file',run:()=>$('#mergeBtn').click()}];
  // move originals out of the way

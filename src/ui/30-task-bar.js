@@ -28,7 +28,7 @@
   L.push({i:'➤',l:'Select',run:()=>{const t=document.querySelector('[data-t="select"]');t&&t.click()}},{i:'✋',l:'Pan',run:()=>{const t=document.querySelector('[data-t="pan"]');t&&t.click()}},
    {i:'⤢',l:'Fit to screen',run:click('fit')});if(w)L.push({i:'⟳',l:'Rotate view'+(typeof VR!=="undefined"&&VR?` (now ${VR}°)`:""),run:click('rotBtn')});
   const mic=by('micBtn');if(mic&&!mic.hidden)L.push({i:'🎤',l:'Voice',run:()=>mic.click()});
-  L.push({i:'📘',l:'Guides',run:click('guidesBtn')},...(w?[{i:'↷',l:'Redo',run:click('redo')}]:[]),{i:'🗑',l:'Delete selected',run:click('del')},{i:'🧲',l:'Magnet snap '+(by('mkSnap')?.classList.contains('on')?'(on)':'(off)'),run:click('mkSnap')});
+  L.push({i:'📘',l:'Guides',run:click('guidesBtn')},/* bpm-v147: Redo sits beside Undo in the top row on every screen size */{i:'🗑',l:'Delete selected',run:click('del')},{i:'🧲',l:'Magnet snap '+(by('mkSnap')?.classList.contains('on')?'(on)':'(off)'),run:click('mkSnap')});
   if(w)L.push({i:'📐',l:'Angle snap (15°)',run:click('cSnap')},{i:'✍',l:'Freehand',run:()=>X.freeB.click()});
   L.push({i:'👁',l:'Filters (markups, labels, status)',run:click('layBtn')});
   if(window.moreExtra)L.push(...moreExtra(a));
@@ -37,8 +37,8 @@
  const DR=document.createElement('div');DR.id='navDraw';DR.hidden=true;DR.setAttribute('role','dialog');DR.setAttribute('aria-label','Drawing tools');document.body.append(DR);
  const drawB=mkTool('navDrawB','✏️','Draw ▾',()=>{DR.hidden=!DR.hidden;drawB.classList.toggle('on',!DR.hidden);if(!DR.hidden)placeDR()});
  function placeDR(){const r=T.getBoundingClientRect();DR.style.bottom=Math.round(innerHeight-r.top+6)+'px'}
- DR.addEventListener('click',e=>{const b=e.target.closest('button,label');if(!b)return;/* a tool was picked: close the panel (wheel / width bar open from the button first) */if(b.dataset.w==='width'||b.classList.contains('tbCol'))return;/* v143: a list opened from Shapes / Lines keeps the panel (and its button) showing until the list closes */const shut=()=>{const M=document.getElementById('mnuSheet');if(M&&!M.hidden){setTimeout(shut,150);return}DR.hidden=true;drawB.classList.remove('on')};setTimeout(shut,250)});
- document.addEventListener('pointerdown',e=>{if(!DR.hidden&&!DR.contains(e.target)&&!drawB.contains(e.target)&&!e.target.closest('#mnuSheet,.wbBar,#colDlg,.wbO,#widBar,#wbOp,#thX,#thBtn')){DR.hidden=true;drawB.classList.remove('on')}},true);
+ DR.addEventListener('click',e=>{const b=e.target.closest('button,label');if(!b)return;/* a tool was picked: close the panel (wheel / width bar open from the button first) */if(b.dataset.w==='width'||b.dataset.w==='fill'||b.classList.contains('tbCol'))return;/* v143: a list opened from Shapes / Lines keeps the panel (and its button) showing until the list closes */const shut=()=>{const M=document.getElementById('mnuSheet');if(M&&!M.hidden){setTimeout(shut,150);return}DR.hidden=true;drawB.classList.remove('on')};setTimeout(shut,250)});
+ document.addEventListener('pointerdown',e=>{if(!DR.hidden&&!DR.contains(e.target)&&!drawB.contains(e.target)&&!e.target.closest('#mnuSheet,.wbBar,#colDlg,.wbO,#widBar,#wbOp,#fillBar,#thX,#thBtn')){DR.hidden=true;drawB.classList.remove('on')}},true);
  // ---------- top-row extras on wide screens (proxies of the real buttons) ----------
  const teachT=mkTop('navTeach','🎓','Teach',click('teachBtn'),'Teach a symbol');const qrT=mkTop('navQr','📷','QR code',click('qrTool'),'Scan an install-sheet QR code');
  const layT=by('tb2Lay');
@@ -54,8 +54,9 @@
   ['shapes','lines','select','share','more','place','width'].forEach(k=>B[k]&&(B[k].hidden=false));T.classList.remove('tbWide');T.querySelectorAll('.tbFlat').forEach(f=>f.hidden=true);
   // bottom row
   const r=document.createElement('div');r.className='tbR navR';
-  const draw=[B.shapes,B.lines,X.textB,X.stampB,X.colW,B.width];
-  r.append(det,ds,B.place,walk);if(w){r.append(...draw);HOLD.append(drawB);DR.hidden=true}else{r.append(drawB);DR.replaceChildren(B.shapes,B.lines,X.freeB,X.stampB,X.textB,by('cSnap'),X.colW,B.width)}
+  const fillB=window.fillBtn||null;const draw=[B.shapes,B.lines,X.textB,X.stampB,X.colW,fillB,B.width].filter(Boolean);
+  /* bpm-v147: Walk test moves left of Marker so Marker sits right next to Draw (phone) or the Shapes tool (wide); Fill joins the drawing tools */
+  r.append(det,ds,walk,B.place);if(w){r.append(...draw);HOLD.append(drawB);DR.hidden=true}else{r.append(drawB);DR.replaceChildren(...[B.shapes,B.lines,X.freeB,X.stampB,X.textB,by('cSnap'),X.colW,fillB,B.width].filter(Boolean))}
   r.append(moreB);
   if(w)HOLD.append(X.freeB,by('cSnap'));
   [pass,B.share,B.select,B.more,by('qrTool'),by('teachBtn'),by('guidesBtn')].forEach(e=>e&&HOLD.append(e));
@@ -63,7 +64,7 @@
   T.replaceChildren(r);T.classList.add('navT');T.classList.toggle('navWide',w);
   // top row
   /* bpm-v143: phone order Menu, Previous, Next, Rotate, Undo, Redo, Pages, Layers, Pins (Page ▾ leaves the row: the title line shows the page, the Pages bar jumps to one) */
-  const top=w?[menuB,by('prev'),by('tb2Page'),by('next'),by('undo'),by('thBtn'),by('listBtn'),layT,teachT,qrT]:[menuB,by('prev'),by('next'),by('rotBtn'),by('undo'),by('redo'),by('thBtn'),layT,by('listBtn')];
+  const top=w?[menuB,by('prev'),by('tb2Page'),by('next'),by('undo'),by('redo'),by('thBtn'),by('listBtn'),layT,teachT,qrT]:[menuB,by('prev'),by('next'),by('rotBtn'),by('undo'),by('redo'),by('thBtn'),layT,by('listBtn')];
   const keep=new Set(top);[...TOP.children].forEach(e=>{if(!keep.has(e))HOLD.append(e)});TOP.replaceChildren(...top);TOP.classList.add('navTop');
   window.tlayMark&&tlayMark();if(!DR.hidden)placeDR()}
  window.navLayout=layout;layout();addEventListener('resize',()=>{clearTimeout(layout._t);layout._t=setTimeout(layout,100)});

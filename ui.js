@@ -28,10 +28,10 @@ function wInfo(p){const f=[];if(p.location)f.push(esc(p.location));if(p.page!==p
 renderWalk=function(){const w=$('#walk');if(!walk){w.hidden=true;return}const S=walkSet(),N=S.length,done=S.filter(p=>!untested(p)).length,p=walk.p&&pins.find(x=>x.id===walk.p.id)||walk.p;
  /* bpm-v129: the ⋯ Types list shows only the device types this walk was started with (remembered on the first render of a new walk) */if(!walk.t0)walk.t0=walk.types?[...walk.types]:[...new Set(pins.map(x=>x.type))];const types=walk.t0.filter(t=>pins.some(x=>x.type===t)),nm=p?`${esc(TYPES[p.type]?.n||p.type)} ${p.address?esc(p.address):'<small>(no address)</small>'}`:'';
  const more=`<details class="wMore"><summary title="More">⋯</summary><div class="row"><select id="wType" title="Types: test only one of the types this walk started with" aria-label="Types"><option value="">Types</option>${types.map(t=>`<option value="${t}"${walk.type===t?' selected':''}>${esc(TYPES[t]?.n||t)}</option>`).join('')}</select>${SR?`<button type="button" class="btn" id="wMic" aria-pressed="${srec?'true':'false'}">${srec?'🎤 Voice on: tap to stop':'🎤 Voice off: tap to start'}</button>`:''}<button type="button" class="btn" id="wGoto">📍 Go to…</button>${p?'<button type="button" class="btn" id="wOpen">📋 Checklist</button>':''}</div></details>`;
- const head=`<div class="wh"><span class="wDot" style="background:${p?(TYPES[p.type]||TYPES.other).c:'#64748b'}"></span><span class="wName">${p?nm:`${done} of ${N} tested`}</span><small class="wCnt">${p?`${Math.min(done+1,N)}/${N}`:''}</small>${more}<button type="button" class="btn" id="wExit" title="Exit walk">✕ Exit</button></div>`;
+ const head=`<div class="wh">${p?pinIcon(p,14):'<span class="wDot" style="background:#64748b"></span>'}<span class="wName">${p?nm:`${done} of ${N} tested`}</span><small class="wCnt">${p?`${Math.min(done+1,N)}/${N}`:''}</small>${more}<button type="button" class="btn" id="wExit" title="Exit walk">✕ Exit</button></div>`;
  if(!p)w.innerHTML=head+`<div class="wtx">${walk.skip.size?`No untested devices left (${walk.skip.size} skipped).`:'All devices in this set are tested. 🎉'}</div><div class="row">${walk.hist?.length?'<button type="button" class="btn" id="wPrev">⏮ Back</button>':''}${walk.skip.size?'<button type="button" class="btn" id="wRe">Revisit skipped</button>':''}</div>`;
  else if(walk.fail){/* bpm-v111: after the reason is picked on the Fail wheel: compact card with an optional note, Skip / Save */walk.fr??=[];const R0=walk.fr[0]||'Other';
-  w.innerHTML=`<div class="wfCard" role="group" aria-label="Fail note"><div class="wfH"><span class="wDot" style="background:${(TYPES[p.type]||TYPES.other).c}"></span><div class="wfT"><b>${nm}</b><small>✖ Fail · ${esc(R0)}</small></div></div>
+  w.innerHTML=`<div class="wfCard" role="group" aria-label="Fail note"><div class="wfH">${pinIcon(p,14)}<div class="wfT"><b>${nm}</b><small>✖ Fail · ${esc(R0)}</small></div></div>
   <input id="wfNote" class="wfN" type="text" placeholder="Note (optional)" aria-label="Note (optional)" value="${esc(walk.fnote||'')}" enterkeyhint="done">
   <div class="wfB2"><label class="wfCritL" title="Mark as a critical deficiency"><input type="checkbox" id="wCrit"${walk.fcrit?' checked':''}><span>⚠ Critical</span></label><button type="button" class="pB" id="wSkipN" title="Save the fail without a note" aria-label="Skip note"><i>⏭</i><small>Skip</small></button><button type="button" class="pB pri" id="wSave" title="Save the fail with this note" aria-label="Save"><i>✔</i><small>Save</small></button></div></div>`}
  else w.innerHTML=head+wInfo(p)+`<div id="wHeard" class="wHeard"${walk.heard?'':' hidden'}>🎤 “${esc(walk.heard||'')}”</div><div class="wb4"><button type="button" class="btn" id="wPrev"${walk.hist?.length?'':' disabled'}>⏮ Back</button><button type="button" class="btn ok" id="wPass" title="Pass = every checklist item passes">✔ Pass</button><button type="button" class="btn danger" id="wFail">✖ Fail</button><button type="button" class="btn" id="wSkip">⏭ Skip</button></div>`;
@@ -157,6 +157,7 @@ function shapePts(m){const x=Math.min(m.x1,m.x2),y=Math.min(m.y1,m.y2),w=Math.ab
  if(m.type==='tri')return[[cx,y],[x+w,y+h],[x,y+h]];
  if(m.type==='poly'){const n=m.n||6;for(let i=0;i<n;i++){const a=-Math.PI/2+i*2*Math.PI/n;P.push([cx+w/2*Math.cos(a),cy+h/2*Math.sin(a)])}return P}
  if(m.type==='star'){const n=m.n||5;for(let i=0;i<2*n;i++){const a=-Math.PI/2+i*Math.PI/n,r=i%2?.45:1;P.push([cx+w/2*r*Math.cos(a),cy+h/2*r*Math.sin(a)])}return P}return P}
+window.penShapePts=shapePts;window.penPathTo=(c,m)=>{const{N,closed}=nodesOf(m);pathTo(c,N,closed)};/* bpm-v147: used by the shape Fill (47-shape-fill.js) */
 const _dm=drawMarkup;
 drawMarkup=function(c,m,s){
  if(m.type==='text')return drawText(c,m);
@@ -731,7 +732,7 @@ try{
    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&WB&&!WB.hidden&&document.querySelector('#mnuSheet')?.hidden!==false)wbClose()});addEventListener('resize',()=>{if(WB&&!WB.hidden&&WBA){wbPlace(WB,WBA);if(WBO&&!WBO.hidden)wbPlace(WBO,WB)}})}
   if(WBO)WBO.hidden=true;wbRender();WB.hidden=false;btn.classList.add('on');wbPlace(WB,btn)}
  window.widthSheet=()=>widBar(B.width,B.width._show);document.addEventListener('pointerup',()=>setTimeout(()=>B.width&&B.width._show(),0),true);
- const pinT=()=>Object.entries(TYPES).map(([k,v])=>({k,i:`<span class="tbDot" style="background:${v.c}"></span>`,l:v.n,run:()=>{$('#pinType').value=k;$('#pinType').dispatchEvent(new Event('change',{bubbles:true}));tb('pin').click()}}));
+ const pinT=()=>Object.entries(TYPES).map(([k,v])=>({k,i:pinIcon(k,20),l:v.n,run:()=>{$('#pinType').value=k;$('#pinType').dispatchEvent(new Event('change',{bubbles:true}));tb('pin').click()}}));
  const more=()=>[{k:'fit',i:'⤢',l:'Fit to screen',run:()=>$('#fit').click()},{k:'del',i:'🗑',l:'Delete selected',run:()=>$('#del').click()},{k:'mag',i:'🧲',l:'Magnet snap '+($('#mkSnap').classList.contains('on')?'(on)':'(off)'),run:()=>$('#mkSnap').click()},{k:'cz',i:'⚙',l:'Customize toolbar',run:()=>openCz()}];
  const share=()=>[{k:'split',i:'⇆',l:'Split for second technician',run:()=>$('#splitBtn').click()},{k:'merge',i:'⇄',l:'Merge returned file',run:()=>$('#mergeBtn').click()}];
  // move originals out of the way
@@ -1444,7 +1445,7 @@ try{
  const save=()=>{if(pid)localStorage.setItem(K(),JSON.stringify([...HT]));mark();window.lpRender&&lpRender();try{sel=null;msel=msel.filter(tVis)}catch{}draw();renderList();if(walk&&walk.p&&!tVis(walk.p))walkNext()};
  const mark=()=>{const on=HT.size>0;document.querySelectorAll('[data-tlay],#tools .tbFlat').forEach(b=>{if(b.dataset.tlay!=null||b._x?.k==='tlay')b.classList.toggle('tlHid',on)});const m=document.querySelector('#tools [data-w=more]');if(m)m.classList.toggle('tlHid',on)};
  window.tlayMark=mark;setInterval(load,700);
- const sw=t=>`<i class="tlSw${t.sq?' sq':''}" style="background:${t.c}">${esc(t.l||'')}</i>`;
+ const sw=t=>`<i class="tlSw${t.sq?' sq':''}${pinShpCls(Object.keys(TYPES).find(k=>TYPES[k]===t)||'other')}" style="background:${t.c}">${esc(t.l||'')}</i>`;
  async function counts(){const n={};try{for(const pl of(await all('plans')).filter(p=>p.projectId===project.id))for(const p of await byIdx('pins','planId',pl.id))n[p.type]=(n[p.type]||0)+1}catch{for(const p of pins)n[p.type]=(n[p.type]||0)+1}return n}
  async function open(){if(!project)return uiAlert('Open a project first.');load();const n=await counts();let d=$('#tlDlg');if(!d){d=document.createElement('dialog');d.id='tlDlg';document.body.append(d)}
   const ks=Object.keys(n).filter(k=>TYPES[k]).sort((a,b)=>TYPES[a].n.localeCompare(TYPES[b].n));
@@ -1514,7 +1515,7 @@ try{
    <div class="lpAN"><button type="button" class="btn" id="lpAll" title="Show every layer">👁<span class="tl">Show all</span></button><button type="button" class="btn" id="lpNone" title="Hide every layer">🚫<span class="tl">Hide all</span></button></div>
    <small class="lpInfo">${!project?'Open a project':hid?hid+' hidden':'All shown'}</small>
    <div class="lpList">${row('__mk',mkOn(),'<i class="tlSw lpMk">✎</i>','Markups',nm,'Markups (shapes, clouds, text) on this plan')}
-   ${ks.length?ks.map(k=>row(k,!H.has(k),`<i class="tlSw${TYPES[k].sq?' sq':''}" style="background:${TYPES[k].c}">${esc(TYPES[k].l||'')}</i>`,TYPES[k].n.replace(/ – .*/,''),N[k],TYPES[k].n+' – '+N[k]+' in this project')).join(''):'<p class="lpE">No pins yet</p>'}</div>
+   ${ks.length?ks.map(k=>row(k,!H.has(k),`<i class="tlSw${TYPES[k].sq?' sq':''}${pinShpCls(k)}" style="background:${TYPES[k].c}">${esc(TYPES[k].l||'')}</i>`,TYPES[k].n.replace(/ – .*/,''),N[k],TYPES[k].n+' – '+N[k]+' in this project')).join(''):'<p class="lpE">No pins yet</p>'}</div>
    <button type="button" class="btn lpMore" id="lpMore" title="More view options (labels, status, suggestions)">⚙<span class="tl">Filters…</span></button>`;
   P.querySelector('#lpX').onclick=()=>set(false);P.querySelector('#lpMore').onclick=()=>{if(!WMQ.matches)set(false);$('#layBtn').click()};
   P.querySelectorAll('.lpRow').forEach(b=>b.onclick=()=>{const k=b.dataset.k;if(k==='__mk')return setMk(!mkOn()),render();const H=window.HT;if(!H)return;H.has(k)?H.delete(k):H.add(k);tlaySave()});
@@ -1892,7 +1893,7 @@ try{
   L.push({i:'➤',l:'Select',run:()=>{const t=document.querySelector('[data-t="select"]');t&&t.click()}},{i:'✋',l:'Pan',run:()=>{const t=document.querySelector('[data-t="pan"]');t&&t.click()}},
    {i:'⤢',l:'Fit to screen',run:click('fit')});if(w)L.push({i:'⟳',l:'Rotate view'+(typeof VR!=="undefined"&&VR?` (now ${VR}°)`:""),run:click('rotBtn')});
   const mic=by('micBtn');if(mic&&!mic.hidden)L.push({i:'🎤',l:'Voice',run:()=>mic.click()});
-  L.push({i:'📘',l:'Guides',run:click('guidesBtn')},...(w?[{i:'↷',l:'Redo',run:click('redo')}]:[]),{i:'🗑',l:'Delete selected',run:click('del')},{i:'🧲',l:'Magnet snap '+(by('mkSnap')?.classList.contains('on')?'(on)':'(off)'),run:click('mkSnap')});
+  L.push({i:'📘',l:'Guides',run:click('guidesBtn')},/* bpm-v147: Redo sits beside Undo in the top row on every screen size */{i:'🗑',l:'Delete selected',run:click('del')},{i:'🧲',l:'Magnet snap '+(by('mkSnap')?.classList.contains('on')?'(on)':'(off)'),run:click('mkSnap')});
   if(w)L.push({i:'📐',l:'Angle snap (15°)',run:click('cSnap')},{i:'✍',l:'Freehand',run:()=>X.freeB.click()});
   L.push({i:'👁',l:'Filters (markups, labels, status)',run:click('layBtn')});
   if(window.moreExtra)L.push(...moreExtra(a));
@@ -1901,8 +1902,8 @@ try{
  const DR=document.createElement('div');DR.id='navDraw';DR.hidden=true;DR.setAttribute('role','dialog');DR.setAttribute('aria-label','Drawing tools');document.body.append(DR);
  const drawB=mkTool('navDrawB','✏️','Draw ▾',()=>{DR.hidden=!DR.hidden;drawB.classList.toggle('on',!DR.hidden);if(!DR.hidden)placeDR()});
  function placeDR(){const r=T.getBoundingClientRect();DR.style.bottom=Math.round(innerHeight-r.top+6)+'px'}
- DR.addEventListener('click',e=>{const b=e.target.closest('button,label');if(!b)return;/* a tool was picked: close the panel (wheel / width bar open from the button first) */if(b.dataset.w==='width'||b.classList.contains('tbCol'))return;/* v143: a list opened from Shapes / Lines keeps the panel (and its button) showing until the list closes */const shut=()=>{const M=document.getElementById('mnuSheet');if(M&&!M.hidden){setTimeout(shut,150);return}DR.hidden=true;drawB.classList.remove('on')};setTimeout(shut,250)});
- document.addEventListener('pointerdown',e=>{if(!DR.hidden&&!DR.contains(e.target)&&!drawB.contains(e.target)&&!e.target.closest('#mnuSheet,.wbBar,#colDlg,.wbO,#widBar,#wbOp,#thX,#thBtn')){DR.hidden=true;drawB.classList.remove('on')}},true);
+ DR.addEventListener('click',e=>{const b=e.target.closest('button,label');if(!b)return;/* a tool was picked: close the panel (wheel / width bar open from the button first) */if(b.dataset.w==='width'||b.dataset.w==='fill'||b.classList.contains('tbCol'))return;/* v143: a list opened from Shapes / Lines keeps the panel (and its button) showing until the list closes */const shut=()=>{const M=document.getElementById('mnuSheet');if(M&&!M.hidden){setTimeout(shut,150);return}DR.hidden=true;drawB.classList.remove('on')};setTimeout(shut,250)});
+ document.addEventListener('pointerdown',e=>{if(!DR.hidden&&!DR.contains(e.target)&&!drawB.contains(e.target)&&!e.target.closest('#mnuSheet,.wbBar,#colDlg,.wbO,#widBar,#wbOp,#fillBar,#thX,#thBtn')){DR.hidden=true;drawB.classList.remove('on')}},true);
  // ---------- top-row extras on wide screens (proxies of the real buttons) ----------
  const teachT=mkTop('navTeach','🎓','Teach',click('teachBtn'),'Teach a symbol');const qrT=mkTop('navQr','📷','QR code',click('qrTool'),'Scan an install-sheet QR code');
  const layT=by('tb2Lay');
@@ -1918,8 +1919,9 @@ try{
   ['shapes','lines','select','share','more','place','width'].forEach(k=>B[k]&&(B[k].hidden=false));T.classList.remove('tbWide');T.querySelectorAll('.tbFlat').forEach(f=>f.hidden=true);
   // bottom row
   const r=document.createElement('div');r.className='tbR navR';
-  const draw=[B.shapes,B.lines,X.textB,X.stampB,X.colW,B.width];
-  r.append(det,ds,B.place,walk);if(w){r.append(...draw);HOLD.append(drawB);DR.hidden=true}else{r.append(drawB);DR.replaceChildren(B.shapes,B.lines,X.freeB,X.stampB,X.textB,by('cSnap'),X.colW,B.width)}
+  const fillB=window.fillBtn||null;const draw=[B.shapes,B.lines,X.textB,X.stampB,X.colW,fillB,B.width].filter(Boolean);
+  /* bpm-v147: Walk test moves left of Marker so Marker sits right next to Draw (phone) or the Shapes tool (wide); Fill joins the drawing tools */
+  r.append(det,ds,walk,B.place);if(w){r.append(...draw);HOLD.append(drawB);DR.hidden=true}else{r.append(drawB);DR.replaceChildren(...[B.shapes,B.lines,X.freeB,X.stampB,X.textB,by('cSnap'),X.colW,fillB,B.width].filter(Boolean))}
   r.append(moreB);
   if(w)HOLD.append(X.freeB,by('cSnap'));
   [pass,B.share,B.select,B.more,by('qrTool'),by('teachBtn'),by('guidesBtn')].forEach(e=>e&&HOLD.append(e));
@@ -1927,7 +1929,7 @@ try{
   T.replaceChildren(r);T.classList.add('navT');T.classList.toggle('navWide',w);
   // top row
   /* bpm-v143: phone order Menu, Previous, Next, Rotate, Undo, Redo, Pages, Layers, Pins (Page ▾ leaves the row: the title line shows the page, the Pages bar jumps to one) */
-  const top=w?[menuB,by('prev'),by('tb2Page'),by('next'),by('undo'),by('thBtn'),by('listBtn'),layT,teachT,qrT]:[menuB,by('prev'),by('next'),by('rotBtn'),by('undo'),by('redo'),by('thBtn'),layT,by('listBtn')];
+  const top=w?[menuB,by('prev'),by('tb2Page'),by('next'),by('undo'),by('redo'),by('thBtn'),by('listBtn'),layT,teachT,qrT]:[menuB,by('prev'),by('next'),by('rotBtn'),by('undo'),by('redo'),by('thBtn'),layT,by('listBtn')];
   const keep=new Set(top);[...TOP.children].forEach(e=>{if(!keep.has(e))HOLD.append(e)});TOP.replaceChildren(...top);TOP.classList.add('navTop');
   window.tlayMark&&tlayMark();if(!DR.hidden)placeDR()}
  window.navLayout=layout;layout();addEventListener('resize',()=>{clearTimeout(layout._t);layout._t=setTimeout(layout,100)});
@@ -2120,7 +2122,7 @@ try{
  function quickFail(){const w=by('walk');if(!walk||!walk.p||!w||w.hidden)return;const p=pins.find(x=>x.id===walk.p.id)||walk.p;
   if(walk.qf!==p.id){const f=w.querySelector('#wFail');if(f)f.onclick=()=>{walk.qf=p.id;walk.qcrit=false;renderWalk()};return}
   const R=[...(window.failReasonsFor?failReasonsFor(p.type):REASONS.filter(x=>x!=='Other')),'Other'],T=TYPES[p.type]||TYPES.other;
-  w.innerHTML=`<div class="wfCard qfCard" role="group" aria-label="Fail reason"><div class="wfH"><span class="wDot" style="background:${T.c}"></span><div class="wfT"><b>${esc(T.n||p.type)} ${p.address?esc(p.address):'<small>(no address)</small>'}</b><small>✖ Fail: tap the reason</small></div></div>
+  w.innerHTML=`<div class="wfCard qfCard" role="group" aria-label="Fail reason"><div class="wfH">${pinIcon(p,14)}<div class="wfT"><b>${esc(T.n||p.type)} ${p.address?esc(p.address):'<small>(no address)</small>'}</b><small>✖ Fail: tap the reason</small></div></div>
   <div class="qfR">${R.map(x=>`<button type="button" class="btn danger" data-qr="${esc(x)}">${esc(x)}</button>`).join('')}</div>
   <div class="qfB"><label class="wfCritL" title="Mark as a critical deficiency"><input type="checkbox" id="qfCrit"${walk.qcrit?' checked':''}><span>⚠ Critical</span></label><span class="sp"></span><button type="button" class="btn" id="qfCard">📋 Open full card</button><button type="button" class="btn" id="qfX">Cancel</button></div></div>`;
   const q=s=>w.querySelector(s);q('#qfCrit').onchange=e=>{walk.qcrit=e.target.checked};
@@ -2325,7 +2327,7 @@ try{
   for(const s of ['#fhBar','#penBar','#shpChip','#stBar','#selBar','#updBar','#toast']){const e=document.querySelector(s);if(vis(e)&&R(e).top>innerHeight/2)bot=Math.min(bot,R(e).top)}
   if(right-left<240){left=0;right=innerWidth}/* narrow: never squeeze a list into a sliver */
   return{top,bot,left,right}}
- const CHAIN=['navDraw','widBar','wbOp'];
+ const CHAIN=['navDraw','widBar','wbOp','fillBar'];
  const inTop=a=>!!(a&&a.closest&&a.closest('#top,#proj'));
  // floor for a piece: the lowest-chain pieces already showing, its button, the free area
  function floorFor(id,a,A){let f=A.bot;const i=CHAIN.indexOf(id),lim=i<0?CHAIN.length:i;
@@ -2361,6 +2363,8 @@ try{
   const WB=document.getElementById('widBar'),WA=document.querySelector('[data-w=width].on')||document.querySelector('[data-w=width]');
   if(vis(WB)){const p=fit(WB,WA,'widBar',A);WB.style.left=p.left+'px';WB.style.top=p.top+'px'}
   const WO=document.getElementById('wbOp');if(vis(WO)){const p=fit(WO,WB,'wbOp',A);WO.style.left=p.left+'px';WO.style.top=p.top+'px'}
+  // bpm-v147: Fill row: right above its button (Draw panel / bottom row)
+  const FB=document.getElementById('fillBar'),FA=document.querySelector('[data-w=fill]');if(vis(FB)){const p=fit(FB,FA,'fillBar',A);FB.style.left=p.left+'px';FB.style.top=p.top+'px'}
   // lists: next to their button, natural size, scroll only when too tall
   const MS=document.getElementById('mnuSheet');const P=MS&&!MS.hidden&&MS.querySelector('.mnuP');
   if(P){const a=document.querySelector('.whPressed');if(a&&a.isConnected){MS.classList.add('mnuAnc');P._stackScroll=P.querySelector('.mnuB');
@@ -2369,7 +2373,7 @@ try{
  let raf=0;const kick=()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;try{place()}catch(e){}})};
  window.stackPlace=place;
  // react to anything opening, closing or moving; our own style writes are filtered out by the signature check
- let sig='';const tick=()=>{const k=['navDraw','widBar','wbOp','mnuSheet','thumbs','panel','lyrP','walk','swBar','tools','top','fhBar','penBar','shpChip','selBar','pinDelF','legChip','toast','pinDlg'].map(id=>{const e=document.getElementById(id);if(!e)return'-';const r=e.getBoundingClientRect();return (e.hidden?'h':'v')+(r.top|0)+','+(r.height|0)+','+(r.left|0)+','+(r.width|0)}).join('|')+(document.getElementById('mnuSheet')?.innerHTML.length||0)+innerWidth+'x'+innerHeight;if(k!==sig){sig=k;try{place()}catch(e){}}requestAnimationFrame(tick)};
+ let sig='';const tick=()=>{const k=['navDraw','widBar','wbOp','fillBar','mnuSheet','thumbs','panel','lyrP','walk','swBar','tools','top','fhBar','penBar','shpChip','selBar','pinDelF','legChip','toast','pinDlg'].map(id=>{const e=document.getElementById(id);if(!e)return'-';const r=e.getBoundingClientRect();return (e.hidden?'h':'v')+(r.top|0)+','+(r.height|0)+','+(r.left|0)+','+(r.width|0)}).join('|')+(document.getElementById('mnuSheet')?.innerHTML.length||0)+innerWidth+'x'+innerHeight;if(k!==sig){sig=k;try{place()}catch(e){}}requestAnimationFrame(tick)};
  requestAnimationFrame(tick);addEventListener('resize',kick);
 })();
 }catch(e){console.error('45-stack.js',e);setTimeout(()=>{throw e})}
@@ -2398,6 +2402,109 @@ try{
     toast(`Loaded ${keep.length} of ${s.total} sheets: ${s.L.length} legend, ${s.R.length} renovation, ${s.N.length} new-work`)}catch(err){busy(0);showErr('Could not keep only those sheets: '+(err.message||err))}})};
 })();
 }catch(e){console.error('46-load-sheets.js',e);setTimeout(()=>{throw e})}
+// ===== src/ui/47-shape-fill.js =====
+try{
+// bpm-v147: Fill for shapes (user: "whenever you make a shape, you need to be able to make a fill, so you could easily fill in a shape").
+// A filled shape is painted inside with its own line color at the Fill opacity (m.fill = 0.1..1), under its outline. Lines, arrows, arcs, check marks and text never fill.
+// Fill ▾ (Draw panel on the phone, drawing tools on wide screens) opens a small row: No fill / Fill, plus a Fill opacity slider (no wheels).
+// The setting applies to new shapes and to a shape that is selected right now. The "Shape added" chip and the selection bar also get a Fill button.
+// Markups only: pins and pin geometry are never touched. Every change goes through change()/changeMulti(), so it undoes, redoes, saves and exports.
+(()=>{const T=window.TBX;if(typeof drawMarkup!=='function')return;
+ const KEY='bpmFill';let F={on:false,a:.4};try{const v=JSON.parse(localStorage.getItem(KEY)||'null');if(v&&typeof v==='object')F={on:!!v.on,a:Math.max(.1,Math.min(1,+v.a||.4))}}catch{}
+ const saveF=()=>{try{localStorage.setItem(KEY,JSON.stringify(F))}catch{}};
+ const FT=new Set(['rect','rrect','ellipse','tri','poly','star','cloud']);
+ const canFill=m=>!!(m&&!('planId'in m&&'status'in m)&&(FT.has(m.type)||(m.type==='path'&&m.closed)));
+ window.canFill=canFill;
+ // ---------- drawing ----------
+ function fillPath(c,m){const x=Math.min(m.x1,m.x2),y=Math.min(m.y1,m.y2),w=Math.abs(m.x2-m.x1),h=Math.abs(m.y2-m.y1);c.beginPath();
+  if(m.type==='rect'||m.type==='cloud')c.rect(x,y,w,h);
+  else if(m.type==='rrect'){const r=Math.min(w,h)*.22;c.roundRect?c.roundRect(x,y,w,h,r):c.rect(x,y,w,h)}
+  else if(m.type==='ellipse')c.ellipse(x+w/2,y+h/2,w/2||.1,h/2||.1,0,0,7);
+  else if(m.type==='path'){if(window.penPathTo)penPathTo(c,m)}
+  else if(window.penShapePts){const P=penShapePts(m);P.forEach(([px,py],i)=>i?c.lineTo(px,py):c.moveTo(px,py));c.closePath()}}
+ const fillOf=m=>m.fill!=null?+m.fill:(m===draft&&F.on&&canFill(m)?F.a:0);
+ const _dm=drawMarkup;drawMarkup=function(c,m,s){const fa=canFill(m)?fillOf(m):0;
+  if(fa>0){c.save();c.setLineDash([]);c.globalAlpha=opOf(m,false)*Math.max(.1,Math.min(1,fa));c.fillStyle=m.color||'#e11d48';fillPath(c,m);c.fill();c.restore()}
+  return _dm.apply(this,arguments)};
+ // ---------- saving ----------
+ const refresh=()=>{msel=msel.map(o=>markups.find(x=>x.id===o.id)||pins.find(x=>x.id===o.id)||o);draw();try{renderSelBar()}catch{}};
+ async function setFill(list,v){const L=list.filter(canFill).map(m=>{const before=structuredClone(m),after=structuredClone(m);if(v>0)after.fill=+v.toFixed(2);else delete after.fill;return{store:'markups',id:m.id,before,after}}).filter(x=>JSON.stringify(x.before.fill)!==JSON.stringify(x.after.fill));
+  if(!L.length)return 0;if(L.length===1)await change('markups',L[0].before,L[0].after);else await changeMulti(L);refresh();return L.length}
+ window.setShapeFill=setFill;
+ const selShapes=()=>{try{return selItems().filter(canFill)}catch{return[]}};
+ // new shapes take the Fill setting (only shapes drawn with the tool, not pasted or merged ones)
+ {const _c=change;change=async function(s,b,a,me){if(s==='markups'&&!b&&a&&canFill(a)&&a.fill==null&&F.on&&tool===a.type)a.fill=F.a;const r=await _c.apply(this,arguments);
+   if(s==='markups'&&!b&&a&&canFill(a)&&tool===a.type)chipFill(a.id);return r}}
+ // "Shape added" chip: Fill / No fill for the shape just drawn
+ function chipFill(id){const c=document.getElementById('shpChip');if(!c||c.hidden)return;const m=markups.find(x=>x.id===id);if(!m)return;
+  let b=c.querySelector('#scFill');if(!b){b=document.createElement('button');b.type='button';b.className='btn pbB';b.id='scFill';const x=c.querySelector('#scX');x?c.insertBefore(b,x):c.append(b)}
+  const lab=()=>{const o=markups.find(x=>x.id===id),on=o&&o.fill>0;b.innerHTML=`<span class="pbI">${on?'▢':'◼'}</span><span class="pbL">${on?'No fill':'Fill'}</span>`;b.title=on?'Take the fill out of this shape':'Fill this shape with its color';b.setAttribute('aria-label',b.title)};
+  lab();b.onclick=async()=>{const o=markups.find(x=>x.id===id);if(!o)return;clearTimeout(c._t);await setFill([o],o.fill>0?0:F.a);lab();c._t=setTimeout(()=>{c.hidden=true;window.toastLift&&toastLift()},9000)}}
+ // selection bar: Fill / No fill for selected shapes
+ {const _r=renderSelBar;renderSelBar=function(){const r=_r.apply(this,arguments);try{const b=$('#selBar'),L=selShapes();if(b&&!b.hidden&&L.length&&!b.querySelector('#selFill')){const on=L.every(m=>m.fill>0);
+    const x=document.createElement('button');x.type='button';x.className='btn';x.id='selFill';x.innerHTML=on?'▢ No fill':'◼ Fill';x.title=on?'Take the fill out of the selected shapes':'Fill the selected shapes with their color';x.setAttribute('aria-label',x.title);
+    const ref=b.querySelector('#bulkEd')||b.querySelector('#bulkDel');ref?b.insertBefore(x,ref):b.append(x);x.onclick=async()=>{const n=await setFill(selShapes(),on?0:F.a);toast(n?(on?`Fill taken out of ${n} shape${n>1?'s':''}`:`${n} shape${n>1?'s':''} filled`):'Nothing to fill')}}}catch{}return r}}
+ // ---------- Fill ▾ button and its row ----------
+ const btn=document.createElement('button');btn.type='button';btn.className='tool tbw tbFill';btn.id='tbFill';btn.dataset.w='fill';
+ const col=()=>($('#color')&&$('#color').value)||'#e11d48';
+ function show(){const c=col();btn.innerHTML=`<svg class="fPv" width="22" height="18" viewBox="0 0 22 18" aria-hidden="true"><rect x="3" y="2" width="16" height="14" rx="2" fill="${F.on?c:'none'}" fill-opacity="${F.on?F.a:0}" stroke="${c}" stroke-width="2.4"/></svg><span class="tl">Fill ▾</span>`;
+  btn.title=F.on?`Fill shapes: on (${Math.round(F.a*100)}%)`:'Fill shapes: off';btn.setAttribute('aria-label',btn.title);btn.classList.toggle('on',F.on)}
+ show();['input','change'].forEach(k=>$('#color')&&$('#color').addEventListener(k,show));
+ let FB=null;
+ function render(){const pct=Math.round(F.a*100);FB.innerHTML=`<div class="fbRow"><button type="button" class="btn${F.on?'':' on'}" data-fb="off" aria-pressed="${!F.on}" title="New shapes are not filled"><span aria-hidden="true">▢</span><span class="wbL">No fill</span></button>`+
+   `<button type="button" class="btn${F.on?' on':''}" data-fb="on" aria-pressed="${F.on}" title="New shapes are filled with their color"><span aria-hidden="true">◼</span><span class="wbL">Fill</span></button></div>`+
+   `<label class="fbOp"><span class="wbOL">Fill opacity</span><input type="range" id="fbOpR" min="10" max="100" step="5" value="${pct}" aria-label="Fill opacity"><b id="fbOpV">${pct}%</b></label>`;
+  const apply=async()=>{saveF();show();const L=selShapes();if(L.length){const n=await setFill(L,F.on?F.a:0);if(n)toast(F.on?`${n} selected shape${n>1?'s':''} filled`:`Fill taken out of ${n} selected shape${n>1?'s':''}`)}};
+  FB.querySelector('[data-fb=off]').onclick=async()=>{F.on=false;render();await apply()};FB.querySelector('[data-fb=on]').onclick=async()=>{F.on=true;render();await apply()};
+  const r=FB.querySelector('#fbOpR');r.oninput=()=>{F.a=+r.value/100;FB.querySelector('#fbOpV').textContent=r.value+'%';show();if(F.on)requestDraw(false)};r.onchange=async()=>{F.a=+r.value/100;if(!F.on){F.on=true;render()}await apply()}}
+ function close(){if(FB)FB.hidden=true;btn.classList.toggle('on',F.on)}
+ btn.onclick=()=>{if(FB&&!FB.hidden){close();return}
+  if(!FB){FB=document.createElement('div');FB.className='widBar fillBar';FB.id='fillBar';FB.setAttribute('role','group');FB.setAttribute('aria-label','Fill options');document.body.append(FB);
+   document.addEventListener('pointerdown',e=>{if(!FB||FB.hidden)return;const t=e.target;if(FB.contains(t)||btn.contains(t)||window.barToggleAt&&barToggleAt(t))return;close()},true);
+   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&FB&&!FB.hidden)close()})}
+  const wb=document.getElementById('widBar');if(wb&&!wb.hidden){wb.hidden=true;const o=document.getElementById('wbOp');if(o)o.hidden=true;document.querySelectorAll('[data-w=width].on').forEach(x=>x.classList.remove('on'))}
+  render();FB.hidden=false;btn.classList.add('on');window.stackPlace&&stackPlace()};
+ // opening the Width row closes the Fill row (one row at a time)
+ document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('[data-w=width]'))close()},true);
+ window.fillBtn=btn;window.fillSetting=()=>({...F});
+ if(window.navLayout)navLayout();
+})();
+}catch(e){console.error('47-shape-fill.js',e);setTimeout(()=>{throw e})}
+// ===== src/ui/48-pin-move.js =====
+try{
+// bpm-v147: move a marker by dragging it (user: "if I make a marker, I can easily click and move it around").
+//  * Normal view: press and hold a marker for a moment (it buzzes and says "Drag to move"), then drag it. A quick drag still pans, a quick tap still opens the card.
+//  * Marker mode: drag an existing marker straight away (a tap still places a new marker, as before).
+//  * A marker that shows its handles (just placed, or selected with Select): drag the marker itself; corners resize and the top knob rotates, as before.
+// Only the marker's position (x, y) changes, through change(), so Undo puts it back. Pin size, rotation, outset and de-overlap rules are not touched. Off during a walk test.
+(()=>{if(typeof stage==='undefined'||typeof hit!=='function')return;const HOLD=380,SLOP=6;
+ const local=e=>{const r=stage.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}};
+ let D=null;// {id,p,orig,s0,w0,armed,moved,timer,mode}
+ const live=(e)=>{const q=local(e),w=toW(q.x,q.y);D.p.x=D.orig.x+(w.x-D.w0.x);D.p.y=D.orig.y+(w.y-D.w0.y);requestDraw(false)};
+ async function finish(){const d=D;D=null;if(!d)return;clearTimeout(d.timer);document.body.classList.remove('pinDragging');
+  if(d.armed&&d.moved){const after=structuredClone(d.p);Object.assign(d.p,{x:d.orig.x,y:d.orig.y});await change('pins',d.orig,after);draw();toast(`Marker ${after.address?after.address+' ':''}moved`,true);return true}
+  if(d.armed&&d.mode==='hold'){draw();openPin(d.p);return true}return false}
+ function arm(){if(!D||D.armed)return;D.armed=true;gesture=null;/* stops the pan or the new-marker tap that was starting */document.body.classList.add('pinDragging');if(navigator.vibrate)navigator.vibrate(25);
+  if(D.mode==='hold')toast('Drag to move this marker');requestDraw(false)}
+ stage.addEventListener('pointerdown',e=>{if(D||!plan||walk||e.target!==cv||e.button>0)return;if(ptrs&&ptrs.size){if(D){clearTimeout(D.timer);D=null}return}
+  if(tool!=='pan'&&tool!=='pin')return;const q=local(e),w=toW(q.x,q.y),h=hit(w);if(!h||h.kind!=='p')return;
+  D={id:e.pointerId,p:h.o,orig:structuredClone(h.o),s0:q,w0:w,armed:false,moved:false,mode:tool==='pan'?'hold':'drag'};
+  if(D.mode==='hold')D.timer=setTimeout(()=>{if(D&&!D.moved&&ptrs.size===1)arm()},HOLD)},true);
+ stage.addEventListener('pointermove',e=>{if(!D)return;if(e.pointerId!==D.id){/* second finger: pinch wins */if(!D.armed){clearTimeout(D.timer);D=null}return}
+  const q=local(e),far=Math.hypot(q.x-D.s0.x,q.y-D.s0.y)>SLOP;
+  if(!D.armed){if(!far)return;if(D.mode==='hold'){clearTimeout(D.timer);D=null;return}/* Marker mode: dragging a marker moves it */arm()}
+  if(far)D.moved=true;if(D.moved){e.stopImmediatePropagation();live(e)}},true);
+ const up=e=>{if(!D||e.pointerId!==D.id)return;if(!D.armed){clearTimeout(D.timer);D=null;return}if(e.type==='pointercancel'){Object.assign(D.p,{x:D.orig.x,y:D.orig.y});D.moved=false;D.mode='drag'}finish()};
+ stage.addEventListener('pointerup',up,true);stage.addEventListener('pointercancel',up,true);
+ // drag the marker inside its handles box (just placed, or selected)
+ const box=document.getElementById('ptx');if(box){const g=document.createElement('div');g.className='pxM';g.title='Drag to move this marker';g.setAttribute('aria-label','Drag to move this marker');box.append(g);let G=null;
+  g.addEventListener('pointerdown',e=>{e.stopPropagation();e.preventDefault();const p=pins.find(x=>x.id===box.dataset.id);if(!p||walk)return;g.setPointerCapture(e.pointerId);const q=local(e);G={id:e.pointerId,p,orig:structuredClone(p),s0:q,w0:toW(q.x,q.y),moved:false};const ch=document.getElementById('editChip');if(ch)ch.hidden=true});
+  g.addEventListener('pointermove',e=>{if(!G||G.id!==e.pointerId)return;e.stopPropagation();const q=local(e);if(!G.moved&&Math.hypot(q.x-G.s0.x,q.y-G.s0.y)<=SLOP)return;G.moved=true;const w=toW(q.x,q.y);G.p.x=G.orig.x+(w.x-G.w0.x);G.p.y=G.orig.y+(w.y-G.w0.y);requestDraw(false)});
+  const gend=async e=>{if(!G||G.id!==e.pointerId)return;e.stopPropagation();const d=G;G=null;if(e.type==='pointercancel'||!d.moved){Object.assign(d.p,{x:d.orig.x,y:d.orig.y});draw();return}
+   const after=structuredClone(d.p);Object.assign(d.p,{x:d.orig.x,y:d.orig.y});await change('pins',d.orig,after);draw();toast(`Marker ${after.address?after.address+' ':''}moved`,true)};
+  g.addEventListener('pointerup',gend);g.addEventListener('pointercancel',gend);['click','dblclick'].forEach(k=>g.addEventListener(k,e=>e.stopPropagation()))}
+})();
+}catch(e){console.error('48-pin-move.js',e);setTimeout(()=>{throw e})}
 // ===== src/ui/99-ui-ready.js =====
 try{
 // bpm-v141: last file of ui.js. Marks that the screen code started, for the update self-heal in src/app/09-update-heal.js.
