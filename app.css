@@ -948,3 +948,28 @@ body #walk:not([hidden])~#toast{bottom:auto!important}
 #ptx .pxM{position:absolute;inset:0;min-width:16px;min-height:16px;pointer-events:auto;touch-action:none;cursor:move;z-index:3}
 body.pinDragging #stage{cursor:grabbing}
 .shSv{display:inline-block;vertical-align:-.12em;flex:none}
+/* ===== src/css/69-v149.css ===== */
+/* bpm-v149: Find bar (Menu › Plan › Find text). Same plain panel as the Width / Fill rows; full-word buttons in style A; sizes to its content. */
+.findBar{flex-direction:column;align-items:stretch;gap:4px;padding:6px;z-index:59}
+.findBar .fdRow{display:flex;gap:4px;align-items:center}
+.findBar .btn{min-width:0;flex:1 1 auto;white-space:nowrap}
+.findBar [data-fd=close]{flex:0 0 auto}
+.findBar #fdQ{flex:1 1 auto;min-width:0;width:220px;height:44px;font-size:16px;padding:0 10px;border-radius:8px;border:1px solid #555555;background:#222222;color:var(--gray-e7)}
+.findBar #fdQ:focus{outline:2px solid var(--gray-a2);outline-offset:0}
+.findBar .fdCnt{flex:0 0 auto;min-width:78px;text-align:center;font-size:15px;font-weight:700;white-space:nowrap}
+.findBar .btn:disabled{opacity:.45}
+.findBar .fdMsg{font-size:14px;line-height:1.3;color:#b0b0b0;padding:2px 4px;max-width:340px}
+.findBar .fdMsg[hidden],.findBar .fdLst[hidden],.findBar .fdRes[hidden]{display:none}
+.findBar .fdLst{font-size:14px;min-height:40px}
+.findBar .fdRes{overflow-y:auto;display:flex;flex-direction:column;gap:4px;max-width:340px}
+.findBar .fdG h4{margin:6px 2px 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#b0b0b0;font-weight:700}
+.findBar .fdG h4 small{text-transform:none;letter-spacing:0;font-weight:500;margin-left:4px}
+.findBar .fdL{display:flex;flex-direction:column;gap:4px}
+.findBar .mnuI{min-height:40px;padding:6px 10px;font-size:14px;gap:10px;display:flex;align-items:center;text-align:left;background:#3d3d3d;border:1px solid #555555;border-radius:8px;color:inherit}
+.findBar .mnuI .tl{display:inline;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.findBar .mnuI.on{border-color:#ff7a00;font-weight:700}
+.findBar.fdBusy .fdMsg{color:var(--gray-e7)}
+body.light .findBar #fdQ{background:#fff;color:#111;border-color:var(--gray-d4)}
+body.light .findBar .mnuI{background:#f4f4f4;border-color:var(--gray-d4)}
+body.light .findBar .fdMsg,body.light .findBar .fdG h4{color:#555}
+.findBar #fdQ::-webkit-search-cancel-button{display:none}

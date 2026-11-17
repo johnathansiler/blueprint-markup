@@ -7,14 +7,15 @@
 (()=>{const M=6;
  const vis=e=>{if(!e||e.hidden)return false;const s=getComputedStyle(e);if(s.display==='none'||s.visibility==='hidden')return false;const r=e.getBoundingClientRect();return r.width>1&&r.height>1&&r.bottom>0&&r.top<innerHeight};
  const R=e=>e.getBoundingClientRect();
- function area(){let top=0,bot=innerHeight,left=0,right=innerWidth;
-  for(const s of ['#proj','#top','#legChip','#vChip','#ghBar']){const e=document.querySelector(s);if(vis(e)&&R(e).top<innerHeight/2)top=Math.max(top,R(e).bottom)}
+ function area(noFind){let top=0,bot=innerHeight,left=0,right=innerWidth;
+  for(const s of ['#proj','#top','#legChip','#vChip','#ghBar',...(noFind?[]:['#findBar'])]){const e=document.querySelector(s);if(vis(e)&&R(e).top<innerHeight/2)top=Math.max(top,R(e).bottom)}
   for(const s of ['#tools','#walk','#swBar']){const e=document.querySelector(s);if(vis(e)&&R(e).top>innerHeight/2)bot=Math.min(bot,R(e).top)}
   const th=document.getElementById('thumbs');if(vis(th)){const r=R(th);if(r.width>r.height){if(r.top>innerHeight/2)bot=Math.min(bot,r.top)}else if(r.left<innerWidth/2)left=Math.max(left,r.right);else right=Math.min(right,r.left)}
   for(const s of ['#panel','#lyrP']){const e=document.querySelector(s);if(vis(e)&&!e.classList.contains('rlOut')){const r=R(e);if(r.height>innerHeight/3){if(r.left>innerWidth/2)right=Math.min(right,r.left);else left=Math.max(left,r.right)}else if(r.top>innerHeight/2)bot=Math.min(bot,r.top)}}
   for(const s of ['#fhBar','#penBar','#shpChip','#stBar','#selBar','#updBar','#toast']){const e=document.querySelector(s);if(vis(e)&&R(e).top>innerHeight/2)bot=Math.min(bot,R(e).top)}
   if(right-left<240){left=0;right=innerWidth}/* narrow: never squeeze a list into a sliver */
   return{top,bot,left,right}}
+ const findB=()=>{const f=document.getElementById('findBar');return vis(f)?R(f).bottom:0};/* bpm-v149: Find bar */
  const CHAIN=['navDraw','widBar','wbOp','fillBar'];
  const inTop=a=>!!(a&&a.closest&&a.closest('#top,#proj'));
  // floor for a piece: the lowest-chain pieces already showing, its button, the free area
@@ -23,11 +24,11 @@
   if(a&&a.isConnected&&!inTop(a))f=Math.min(f,R(a).top);return f}
  function fit(el,a,id,A,wantW){// natural size first, then shrink to the space
   el.style.maxHeight='none';const ex=el._stackScroll||el;ex.style.maxHeight='';ex.style.overflowY='';
-  const space=Math.max(80,(inTop(a)?A.bot-M-(R(a).bottom+M):floorFor(id,a,A)-M-(A.top+M)));
+  const tb=a&&a.isConnected?Math.max(R(a).bottom,findB()):0;const space=Math.max(80,(inTop(a)?A.bot-M-(tb+M):floorFor(id,a,A)-M-(A.top+M)));
   let h=el.offsetHeight;if(h>space){const over=h-space;const inner=el._stackScroll;if(inner){inner.style.maxHeight=Math.max(40,inner.clientHeight-over)+'px';inner.style.overflowY='auto'}else{el.style.maxHeight=space+'px';el.style.overflowY='auto'}h=el.offsetHeight}
   const w=el.offsetWidth,ar=a&&a.isConnected?R(a):null,cx=ar?ar.left+ar.width/2:(A.left+A.right)/2;
   const left=Math.round(Math.max(A.left+M,Math.min(A.right-M-w,cx-w/2)));
-  const top=Math.round(inTop(a)&&ar?ar.bottom+M:floorFor(id,a,A)-M-h);
+  const top=Math.round(inTop(a)&&ar?tb+M:floorFor(id,a,A)-M-h);
   return{left,top:Math.max(A.top+M,top)}}
  function stageFloats(){// bars that live on the plan area: lift them above the walk / sweep bar, keep the pin Delete chip out of side panels
   const W=['#walk','#swBar'].map(q=>document.querySelector(q)).filter(vis).map(R);const st=document.getElementById('stage');if(!st)return;const sr=R(st);
@@ -39,11 +40,15 @@
    if(vis(LG)){const l=R(LG);for(const q of ['#pinDlg[open]','#panel','#lyrP']){const P=document.querySelector(q);if(!vis(P)||P.classList.contains('rlOut'))continue;const p=R(P);
     if(l.right>p.left&&l.left<p.right&&l.bottom>p.top&&l.top<p.bottom){const rt=(p.left+p.right)/2>innerWidth/2,L0=Math.max(sr.left,rt?sr.left:p.right),R0=rt?p.left:sr.right;
      LG.style.transform='none';LG.style.maxWidth=Math.max(120,R0-L0-2*M)+'px';const w=LG.offsetWidth;LG.style.left=Math.round((L0+R0)/2-w/2-sr.left)+'px';LG.dataset.stk=1;break}}}}
-  const TO=document.getElementById('toast');if(TO){if(TO.dataset.stk){TO.style.top='';delete TO.dataset.stk}
+  const TO=document.getElementById('toast');if(TO){if(TO.dataset.stk){TO.style.top='';TO.style.bottom='';delete TO.dataset.stk}
    if(vis(TO)&&vis(LG)){const t=R(TO),l=R(LG);if(t.bottom>l.top&&t.top<l.bottom&&t.right>l.left&&t.left<l.right){TO.style.top=Math.round(l.bottom-sr.top+M)+'px';TO.dataset.stk=1}}}
+  {const F=document.getElementById('findBar');if(vis(TO)&&vis(F)){const t=R(TO),f=R(F);if(t.bottom>f.top&&t.top<f.bottom&&t.right>f.left&&t.left<f.right){TO.style.top=Math.round(f.bottom-sr.top+M)+'px';TO.style.bottom='auto';TO.dataset.stk=1}}}/* bpm-v149 */
   const D=document.getElementById('pinDelF');if(D&&D.dataset.stk){D.style.left='';delete D.dataset.stk}if(vis(D)){for(const q of ['#panel','#lyrP']){const P=document.querySelector(q);if(!vis(P)||P.classList.contains('rlOut'))continue;const p=R(P),d=R(D);
    if(d.right>p.left&&d.left<p.right&&d.bottom>p.top&&d.top<p.bottom){const dx=(p.left+p.right)/2>innerWidth/2?p.left-M-d.right:p.right+M-d.left;const lim=Math.max(sr.left+M-d.left,Math.min(sr.right-M-d.right,dx));D.style.left=Math.round(lim)+'px';D.dataset.stk=1;break}}}}
- function place(){stageFloats();const A=area();
+ function place(){/* bpm-v149: the Find bar drops below the top bars (it is opened from Menu), left-aligned, sizes to its content; its results list scrolls when too tall */
+  const FD=document.getElementById('findBar');if(FD&&!FD.hidden){const A0=area(true);FD.style.left=Math.round(A0.left+M)+'px';FD.style.top=Math.round(A0.top+M)+'px';FD.style.maxWidth=Math.max(200,A0.right-A0.left-2*M)+'px';
+   const RS=FD.querySelector('.fdRes');if(RS){RS.style.maxHeight='';const room=Math.max(120,(A0.bot-A0.top)*.6);const over=FD.offsetHeight-room;if(over>0)RS.style.maxHeight=Math.max(88,RS.offsetHeight-over)+'px'}}
+  stageFloats();const A=area();
   // Draw panel: above the bottom bar and the Pages bar
   const DR=document.getElementById('navDraw');if(vis(DR)){const f=Math.min(A.bot,innerHeight);DR.style.bottom=Math.round(innerHeight-f+M)+'px';DR.style.top='auto';
    const sp=f-M-(A.top+M);DR.style.maxHeight=sp+'px';DR.style.overflowY=DR.scrollHeight>sp?'auto':''}
@@ -59,8 +64,8 @@
     P.style.maxWidth=Math.max(200,A.right-A.left-2*M)+'px';const p=fit(P,a,'list',A);P.style.left=p.left+'px';P.style.top=p.top+'px'}else MS.classList.remove('mnuAnc')}
  }
  let raf=0;const kick=()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;try{place()}catch(e){}})};
- window.stackPlace=place;
+ window.stackPlace=place;window.stackArea=()=>area();
  // react to anything opening, closing or moving; our own style writes are filtered out by the signature check
- let sig='';const tick=()=>{const k=['navDraw','widBar','wbOp','fillBar','mnuSheet','thumbs','panel','lyrP','walk','swBar','tools','top','fhBar','penBar','shpChip','selBar','pinDelF','legChip','toast','pinDlg'].map(id=>{const e=document.getElementById(id);if(!e)return'-';const r=e.getBoundingClientRect();return (e.hidden?'h':'v')+(r.top|0)+','+(r.height|0)+','+(r.left|0)+','+(r.width|0)}).join('|')+(document.getElementById('mnuSheet')?.innerHTML.length||0)+innerWidth+'x'+innerHeight;if(k!==sig){sig=k;try{place()}catch(e){}}requestAnimationFrame(tick)};
+ let sig='';const tick=()=>{const k=['navDraw','widBar','wbOp','fillBar','mnuSheet','thumbs','panel','lyrP','walk','swBar','tools','top','fhBar','penBar','shpChip','selBar','pinDelF','legChip','toast','pinDlg','findBar'].map(id=>{const e=document.getElementById(id);if(!e)return'-';const r=e.getBoundingClientRect();return (e.hidden?'h':'v')+(r.top|0)+','+(r.height|0)+','+(r.left|0)+','+(r.width|0)}).join('|')+(document.getElementById('mnuSheet')?.innerHTML.length||0)+'f'+(document.getElementById('findBar')?.innerHTML.length||0)+innerWidth+'x'+innerHeight;if(k!==sig){sig=k;try{place()}catch(e){}}requestAnimationFrame(tick)};
  requestAnimationFrame(tick);addEventListener('resize',kick);
 })();

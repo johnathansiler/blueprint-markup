@@ -2,7 +2,7 @@
 
 Written Wed Oct 28, 2026, about 4:45 AM ET (America/New_York, UTC-4) by Grok Bot. It replaces the "Resume here" notes in earlier copies. Older detail (v50–v134 history, architecture notes, the Oct 17 rule list) is in the earlier handoff kept in the private test-data repo and test kit (`handoffs/MARKER-HANDOFF.md`). On the box the previous copy is `/workspace/MARKER-HANDOFF.pre-v145.md`.
 
-> **State at writing (updated Tue Nov 17, 2026, 11:35 AM ET):** **bpm-v148 is live** (PR #26). Nothing is in progress. The kit copy on this computer is rebuilt from the v134 kit: the v135–v146 screen suites are missing (see §5 and §8). A new bot taking over should read §0 first, then "Resume here" at the end.
+> **State at writing (updated Tue Nov 17, 2026, 2:20 PM ET):** **bpm-v149 is live** (PR #27). Nothing is in progress. The kit copy on this computer is rebuilt from the v134 kit: the v135–v146 screen suites are missing (see §5 and §8). A new bot taking over should read §0 first, then "Resume here" at the end.
 
 ## 0. Access for a new bot taking over
 This file contains **no passwords, tokens or keys**. The user grants access directly; never ask for a token in chat.
@@ -45,6 +45,7 @@ This file contains **no passwords, tokens or keys**. The user grants access dire
 - **Button style A, subtle bevel:** dark theme only, 8px corners.
 - **Top row (phone), in this order:** Menu, Previous, Next, Rotate, Undo, Redo, Pages, Layers, Pins. No "Page 2/5" button. Menu is always first. Delete sits inside the pin card.
 - **Bottom row (v148, user's request):** phone and Fold closed: Detect and Sheets (double width), Walk test, Marker, **Shapes**, Draw, More. **Marker sits right next to Shapes**, and one tap on Shapes opens the Shapes list (user: "I don't wanna have to click two buttons to get to shapes"). Draw keeps Lines, Freehand, Stamp, Text, Snap, Color, Fill, Width (no Shapes inside). Wide (Fold open): Walk test, Marker, Shapes, Lines, Text, Stamp, Color, Fill, Width, More; there a tap on Shapes starts the last shape and ▾ opens the list. No visible word "Place" anywhere for the Marker button or its list.
+- **Find text (v149, user's request):** Menu › Plan › **Find text** (also Ctrl+F on a keyboard). The Find bar drops below the top bars (keyboard never covers it), left-aligned, sizes to its content: typing box + Close, This page / All pages, Previous · "3 of 12" · Next. Searches the PDF text layer (pdf.js `getTextContent`, pieces on one line joined so split codes still match) plus pin labels (address / location) and text markups; case-insensitive, partial. This page: every match highlighted (current one orange with a dashed box), Next / Previous zoom and pan to each. All pages: results grouped by page (Show / Hide results list), Next continues across pages and opens the page. Pages without a text layer say "This page has no searchable text" (All pages lists them). Highlights are overlay only and clear on Close; pins / markups / Undo untouched. Lists opened while Find is open stack below it. Why Menu: a 10th top-row button does not fit at 344 without cutting labels. `src/ui/49-find.js`, `src/css/69-v149.css`, placement in `45-stack.js`.
 - **Undo and Redo always side by side** in the top row, on every screen size (wide top row: Menu, Previous, Page, Next, Undo, Redo, Pages, Pins, Layers, Teach, QR code). Redo is not repeated in More.
 - **Device shapes (v147):** every device picture in lists and buttons (Marker list and button, Pins list, walk bar, walk dialog, Detect types, Layers) shows the device's real pin shape (`pinIcon()` / `pinShpCls()` in `src/app/01-core.js`, from `pshOf`). Pins on the plan are unchanged (geometry locked); zoomed out they are tiny because they are real symbol size.
 - **Shape Fill (v147):** Fill ▾ in the Draw tools opens No fill / Fill + a Fill opacity slider (default 40%), uses the shape's line color; applies to new shapes and the selected shape; the Shape added chip and the selection bar have Fill / No fill. Field `m.fill` (0.1–1) on markups. `src/ui/47-shape-fill.js`.
@@ -75,7 +76,7 @@ Run from the kit folder (`/workspace/marker-tester`):
   - `fl130` a test plan 255 pins, 0 phantoms, 0 baseline missed
   - `snapshot` identical to s126 (7 files), v97 pins unchanged
 - **Screen suites:** `tools/test-ui.sh -j 5 /workspace/vNNN` (about 12–15 min). Each must be PASS (PASS* = failed under load, passed on its own rerun).
-  - **On this computer (since v147):** the kit was rebuilt from the pushed v134 kit, so only these 12 run: card120, gap119, walkbar, v113ui, v113anim, v111walk, v132, v133, v134, gray134, v147, v148. `tools/test-ui.sh` was recreated here.
+  - **On this computer (since v147):** the kit was rebuilt from the pushed v134 kit, so only these 13 run: card120, gap119, walkbar, v113ui, v113anim, v111walk, v132, v133, v134, gray134, v147, v148, v149. `tools/test-ui.sh` was recreated here.
   - **Missing (never pushed from the old computer):** lists, v135, v136, v138, v142, v143, v143s, v144, v145, v146. Restore them by pushing the old kit commits (through `e923d0d`) if that copy still exists; then add them back to `tools/test-ui.sh`.
   - **Stale here:** `v132` and `v111walk` fail the same way on live v146 and on v147 (they still expect the v134-era Menu Share row and the old rolling-wheel overlay). Their updated copies were in the missing commits; treat them as known-stale until restored.
   - **Load plan list:** `lib/autoload/sitecustomize.py` (on `PYTHONPATH` from run-all.sh and test-ui.sh) answers the v146 "Load plan" list with All sheets so older suites don't stall. `MARKER_NO_AUTOLOAD=1` turns it off.
@@ -90,9 +91,9 @@ Run from the kit folder (`/workspace/marker-tester`):
 - **Verify the app repo's visibility before every push.**
 - **No force pushes** without the user's explicit approval. Merges and pushes go through approval cards when blocked.
 - **Never push from old pre-purge clones** (folders from before v137, the scrub and dry-run folders). Always build from a fresh clone.
-- **Test kit commits are local and unpushed, pending the user's approval.** On the old computer: everything through `52d86b2`, plus `5ee598c` (v144), `0236407` (v145) and `e923d0d` (v146 suite). On this computer: the v147 kit commit `e54e8bc` and the v148 kit commit `369af97`, made on top of the pushed v134 kit.
+- **Test kit commits are local and unpushed, pending the user's approval.** On the old computer: everything through `52d86b2`, plus `5ee598c` (v144), `0236407` (v145) and `e923d0d` (v146 suite). On this computer: the v147 kit commit `e54e8bc`, the v148 kit commit `369af97` and the v149 kit commit `87edb15`, made on top of the pushed v134 kit.
 
-## 7. Release history v135–v148
+## 7. Release history v135–v149
 | Ver | PR / merge | What changed |
 |---|---|---|
 | v135 | #13 `85ed943` | Daily backup reminder and storage protection; merge brings back edits field by field (newest wins); separate Smoke and Heat model lists; firefighter phone jack type; screen pinch zoom with Reset screen zoom; app code split into `src/app` modules. |
@@ -108,15 +109,16 @@ Run from the kit folder (`/workspace/marker-tester`):
 | v145 | #23 `4e03be6` | Closing or opening the Pages bar no longer closes an open Marker, More or Draw list, the Draw panel or the Width row; the list re-stacks into the space. |
 | v146 | #24 `0cddf83` | Picking a new PDF shows a Load plan choice: All sheets, or Legend, renovation and new-work sheets only (`src/ui/46-load-sheets.js`); keeps the legend plus floor plans Detect would pin (a test plan keeps 15 of 55); exact on all 10 test plans. |
 | v147 | #25 `a4ee891` | Bottom row Walk test, Marker, Draw (Marker beside Draw / Shapes); Redo beside Undo on wide screens too (no longer only in More); shape Fill (Fill ▾: No fill / Fill + Fill opacity); drag to move a marker (hold then drag, or drag in Marker mode / by its body); every device picture in lists and buttons shows its real shape instead of a circle. Kit: `test/v113/v147.py`, `tools/test-ui.sh` rebuilt, Load plan autoload. |
-| v148 | #26 | Phone and Fold closed bottom row: Shapes button right next to Marker (one tap opens the Shapes list); Draw keeps the other tools. Box and Rounded box icons drawn as real shapes (Rounded box showed as a dot). Kit: `test/v113/v148.py`. |
+| v148 | #26 `2f53dcc` | Phone and Fold closed bottom row: Shapes button right next to Marker (one tap opens the Shapes list); Draw keeps the other tools. Box and Rounded box icons drawn as real shapes (Rounded box showed as a dot). Kit: `test/v113/v148.py`. |
+| v149 | #27 | Find text (Menu › Plan › Find text, Ctrl+F): highlights every match on the current page with Previous / Next and an "N of M" count, All pages searches the whole plan grouped by page; PDF text plus pin labels and text markups; plain message for pages with no text layer. Kit: `test/v113/v149.py`. |
 
 ## 8. Open items
-- **Test kit commits** through `e923d0d` (v144, v145, v146 suites and earlier) are unpushed on the old computer; push only with the user's approval. A new bot on a different computer will not have them until they are pushed. **This computer is missing the v135–v146 suites**; the v147 and v148 kit commits here (`e54e8bc`, `369af97`) are local and unpushed too.
+- **Test kit commits** through `e923d0d` (v144, v145, v146 suites and earlier) are unpushed on the old computer; push only with the user's approval. A new bot on a different computer will not have them until they are pushed. **This computer is missing the v135–v146 suites**; the v147, v148 and v149 kit commits here (`e54e8bc`, `369af97`, `87edb15`) are local and unpushed too.
 - **Not yet offered:** adding v135-onward items to the checklist Page.
 - **Older backlog** (from the v121 review and the Detect backlog in the earlier handoff) may be partly done; check against the current app before working on any of it, and only when the user asks.
 
-## 9. Resume here (Tue Nov 17, 2026, 11:35 AM ET)
-1. Read §0 (access), then this whole file, then `/workspace/v148-status.txt` if you are on the same computer.
-2. **bpm-v148 is live** (PR #26). Check: `curl -s https://johnathansiler.github.io/blueprint-markup/sw.js | grep -o "const C='[^']*'"`.
-3. Nothing is in progress. Kit: v147 and v148 commits are local and unpushed (needs the user's yes); v135–v146 suites missing here (§5); v132 and v111walk are known-stale here.
+## 9. Resume here (Tue Nov 17, 2026, 2:20 PM ET)
+1. Read §0 (access), then this whole file, then `/workspace/v149-status.txt` if you are on the same computer.
+2. **bpm-v149 is live** (PR #27). Check: `curl -s https://johnathansiler.github.io/blueprint-markup/sw.js | grep -o "const C='[^']*'"`.
+3. Nothing is in progress. Kit: v147, v148 and v149 commits are local and unpushed (needs the user's yes); v135–v146 suites missing here (§5); v132 and v111walk are known-stale here.
 4. For the next request: fresh clone, branch `v149-wip`, follow §4 and §5, give an ETA in ET, and finish everything in one build.

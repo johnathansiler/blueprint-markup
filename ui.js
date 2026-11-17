@@ -1884,7 +1884,7 @@ try{
   const planSw=()=>[...by('planSel').options].filter(o=>o.value).map(o=>({i:o.selected?'✓':'↪',l:o.text,run:()=>{by('planSel').value=o.value;by('planSel').dispatchEvent(new Event('change',{bubbles:true}))}}));
   const exp=()=>[{i:'⤓',l:'Plan as PDF',run:click('exPdf')},{i:'⤓',l:'Plan as picture (PNG)',run:click('exPng')},{i:'📋',l:'Device list spreadsheet',run:click('csvBtn')},{i:'🔢',l:'Counts spreadsheet',run:click('countCsv')},{i:'☑',l:'Checklist spreadsheet',run:click('checkCsv')},{i:'📄',l:'Report PDF',run:click('reportPdf')}];
   const shr=()=>[{i:'⇆',l:'Split for second technician',run:click('splitBtn')},{i:'⇄',l:'Merge returned file',run:click('mergeBtn')}];
-  wheel(a,'Menu',[{i:'📂',l:'Open plan (PDF / image)…',run:()=>by('file').click()},{i:'💾',l:'Save project file',run:click('projSave')},{i:'⤓',l:'Export…',run:sub(a,'Export',exp)},{i:'⇪',l:'Share…',run:sub(a,'Share',shr)},
+  wheel(a,'Menu',[/* bpm-v149 */{i:'🔎',l:'Find text',run:()=>window.findOpen&&findOpen()},{i:'📂',l:'Open plan (PDF / image)…',run:()=>by('file').click()},{i:'💾',l:'Save project file',run:click('projSave')},{i:'⤓',l:'Export…',run:sub(a,'Export',exp)},{i:'⇪',l:'Share…',run:sub(a,'Share',shr)},
    {i:'↪',l:'Switch plan…',run:sub(a,'Switch plan',planSw)},{i:'✎',l:'Rename page',run:()=>plan?pnRename(page):uiAlert('Open a plan first.')},{i:'🗑',l:'Delete plan',run:click('planDel')},
    {i:'＋',l:'New project',run:click('projNew')},{i:'📥',l:'Open project file…',run:()=>by('bpmFile').click()},{i:'↪',l:'Switch project…',run:sub(a,'Switch project',projSw)},{i:'✎',l:'Rename project',run:click('projRen')},{i:'🗑',l:'Delete project',run:click('projDel')},
    ...(window.menuExtra?menuExtra(a,sub):[]),/* bpm-v135: Start next inspection, Save install sheets for offline use, Backup reminder, Storage */
@@ -2165,7 +2165,7 @@ try{
 // bpm-v142: Finish inspection in Job, Address sweep in Plan.
 // Classic script; shares the app's globals.
 (()=>{
- const GR=[['Job',/^(New project|Open project file|Switch project|Rename project|Delete project|Start next inspection|Finish inspection)/],['Plan',/^(Open plan|Switch plan|Rename page|Delete plan|Address sweep)/],
+ const GR=[['Job',/^(New project|Open project file|Switch project|Rename project|Delete project|Start next inspection|Finish inspection)/],['Plan',/^(Find text|Open plan|Switch plan|Rename page|Delete plan|Address sweep)/],
   ['Files',/^(Save project file|Export|Share|Backup reminder|Save this job|Make saved photos)/],['Settings',/^(Reset screen zoom|Customize)/]];
  window.listGroups=(title,items)=>{if(title!=='Menu')return null;const used=new Set();
   const g=GR.map(([n,rx])=>[n,items.map((x,i)=>i).filter(i=>{const ok=!used.has(i)&&rx.test(items[i].l||'');if(ok)used.add(i);return ok})]);
@@ -2323,14 +2323,15 @@ try{
 (()=>{const M=6;
  const vis=e=>{if(!e||e.hidden)return false;const s=getComputedStyle(e);if(s.display==='none'||s.visibility==='hidden')return false;const r=e.getBoundingClientRect();return r.width>1&&r.height>1&&r.bottom>0&&r.top<innerHeight};
  const R=e=>e.getBoundingClientRect();
- function area(){let top=0,bot=innerHeight,left=0,right=innerWidth;
-  for(const s of ['#proj','#top','#legChip','#vChip','#ghBar']){const e=document.querySelector(s);if(vis(e)&&R(e).top<innerHeight/2)top=Math.max(top,R(e).bottom)}
+ function area(noFind){let top=0,bot=innerHeight,left=0,right=innerWidth;
+  for(const s of ['#proj','#top','#legChip','#vChip','#ghBar',...(noFind?[]:['#findBar'])]){const e=document.querySelector(s);if(vis(e)&&R(e).top<innerHeight/2)top=Math.max(top,R(e).bottom)}
   for(const s of ['#tools','#walk','#swBar']){const e=document.querySelector(s);if(vis(e)&&R(e).top>innerHeight/2)bot=Math.min(bot,R(e).top)}
   const th=document.getElementById('thumbs');if(vis(th)){const r=R(th);if(r.width>r.height){if(r.top>innerHeight/2)bot=Math.min(bot,r.top)}else if(r.left<innerWidth/2)left=Math.max(left,r.right);else right=Math.min(right,r.left)}
   for(const s of ['#panel','#lyrP']){const e=document.querySelector(s);if(vis(e)&&!e.classList.contains('rlOut')){const r=R(e);if(r.height>innerHeight/3){if(r.left>innerWidth/2)right=Math.min(right,r.left);else left=Math.max(left,r.right)}else if(r.top>innerHeight/2)bot=Math.min(bot,r.top)}}
   for(const s of ['#fhBar','#penBar','#shpChip','#stBar','#selBar','#updBar','#toast']){const e=document.querySelector(s);if(vis(e)&&R(e).top>innerHeight/2)bot=Math.min(bot,R(e).top)}
   if(right-left<240){left=0;right=innerWidth}/* narrow: never squeeze a list into a sliver */
   return{top,bot,left,right}}
+ const findB=()=>{const f=document.getElementById('findBar');return vis(f)?R(f).bottom:0};/* bpm-v149: Find bar */
  const CHAIN=['navDraw','widBar','wbOp','fillBar'];
  const inTop=a=>!!(a&&a.closest&&a.closest('#top,#proj'));
  // floor for a piece: the lowest-chain pieces already showing, its button, the free area
@@ -2339,11 +2340,11 @@ try{
   if(a&&a.isConnected&&!inTop(a))f=Math.min(f,R(a).top);return f}
  function fit(el,a,id,A,wantW){// natural size first, then shrink to the space
   el.style.maxHeight='none';const ex=el._stackScroll||el;ex.style.maxHeight='';ex.style.overflowY='';
-  const space=Math.max(80,(inTop(a)?A.bot-M-(R(a).bottom+M):floorFor(id,a,A)-M-(A.top+M)));
+  const tb=a&&a.isConnected?Math.max(R(a).bottom,findB()):0;const space=Math.max(80,(inTop(a)?A.bot-M-(tb+M):floorFor(id,a,A)-M-(A.top+M)));
   let h=el.offsetHeight;if(h>space){const over=h-space;const inner=el._stackScroll;if(inner){inner.style.maxHeight=Math.max(40,inner.clientHeight-over)+'px';inner.style.overflowY='auto'}else{el.style.maxHeight=space+'px';el.style.overflowY='auto'}h=el.offsetHeight}
   const w=el.offsetWidth,ar=a&&a.isConnected?R(a):null,cx=ar?ar.left+ar.width/2:(A.left+A.right)/2;
   const left=Math.round(Math.max(A.left+M,Math.min(A.right-M-w,cx-w/2)));
-  const top=Math.round(inTop(a)&&ar?ar.bottom+M:floorFor(id,a,A)-M-h);
+  const top=Math.round(inTop(a)&&ar?tb+M:floorFor(id,a,A)-M-h);
   return{left,top:Math.max(A.top+M,top)}}
  function stageFloats(){// bars that live on the plan area: lift them above the walk / sweep bar, keep the pin Delete chip out of side panels
   const W=['#walk','#swBar'].map(q=>document.querySelector(q)).filter(vis).map(R);const st=document.getElementById('stage');if(!st)return;const sr=R(st);
@@ -2355,11 +2356,15 @@ try{
    if(vis(LG)){const l=R(LG);for(const q of ['#pinDlg[open]','#panel','#lyrP']){const P=document.querySelector(q);if(!vis(P)||P.classList.contains('rlOut'))continue;const p=R(P);
     if(l.right>p.left&&l.left<p.right&&l.bottom>p.top&&l.top<p.bottom){const rt=(p.left+p.right)/2>innerWidth/2,L0=Math.max(sr.left,rt?sr.left:p.right),R0=rt?p.left:sr.right;
      LG.style.transform='none';LG.style.maxWidth=Math.max(120,R0-L0-2*M)+'px';const w=LG.offsetWidth;LG.style.left=Math.round((L0+R0)/2-w/2-sr.left)+'px';LG.dataset.stk=1;break}}}}
-  const TO=document.getElementById('toast');if(TO){if(TO.dataset.stk){TO.style.top='';delete TO.dataset.stk}
+  const TO=document.getElementById('toast');if(TO){if(TO.dataset.stk){TO.style.top='';TO.style.bottom='';delete TO.dataset.stk}
    if(vis(TO)&&vis(LG)){const t=R(TO),l=R(LG);if(t.bottom>l.top&&t.top<l.bottom&&t.right>l.left&&t.left<l.right){TO.style.top=Math.round(l.bottom-sr.top+M)+'px';TO.dataset.stk=1}}}
+  {const F=document.getElementById('findBar');if(vis(TO)&&vis(F)){const t=R(TO),f=R(F);if(t.bottom>f.top&&t.top<f.bottom&&t.right>f.left&&t.left<f.right){TO.style.top=Math.round(f.bottom-sr.top+M)+'px';TO.style.bottom='auto';TO.dataset.stk=1}}}/* bpm-v149 */
   const D=document.getElementById('pinDelF');if(D&&D.dataset.stk){D.style.left='';delete D.dataset.stk}if(vis(D)){for(const q of ['#panel','#lyrP']){const P=document.querySelector(q);if(!vis(P)||P.classList.contains('rlOut'))continue;const p=R(P),d=R(D);
    if(d.right>p.left&&d.left<p.right&&d.bottom>p.top&&d.top<p.bottom){const dx=(p.left+p.right)/2>innerWidth/2?p.left-M-d.right:p.right+M-d.left;const lim=Math.max(sr.left+M-d.left,Math.min(sr.right-M-d.right,dx));D.style.left=Math.round(lim)+'px';D.dataset.stk=1;break}}}}
- function place(){stageFloats();const A=area();
+ function place(){/* bpm-v149: the Find bar drops below the top bars (it is opened from Menu), left-aligned, sizes to its content; its results list scrolls when too tall */
+  const FD=document.getElementById('findBar');if(FD&&!FD.hidden){const A0=area(true);FD.style.left=Math.round(A0.left+M)+'px';FD.style.top=Math.round(A0.top+M)+'px';FD.style.maxWidth=Math.max(200,A0.right-A0.left-2*M)+'px';
+   const RS=FD.querySelector('.fdRes');if(RS){RS.style.maxHeight='';const room=Math.max(120,(A0.bot-A0.top)*.6);const over=FD.offsetHeight-room;if(over>0)RS.style.maxHeight=Math.max(88,RS.offsetHeight-over)+'px'}}
+  stageFloats();const A=area();
   // Draw panel: above the bottom bar and the Pages bar
   const DR=document.getElementById('navDraw');if(vis(DR)){const f=Math.min(A.bot,innerHeight);DR.style.bottom=Math.round(innerHeight-f+M)+'px';DR.style.top='auto';
    const sp=f-M-(A.top+M);DR.style.maxHeight=sp+'px';DR.style.overflowY=DR.scrollHeight>sp?'auto':''}
@@ -2375,9 +2380,9 @@ try{
     P.style.maxWidth=Math.max(200,A.right-A.left-2*M)+'px';const p=fit(P,a,'list',A);P.style.left=p.left+'px';P.style.top=p.top+'px'}else MS.classList.remove('mnuAnc')}
  }
  let raf=0;const kick=()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;try{place()}catch(e){}})};
- window.stackPlace=place;
+ window.stackPlace=place;window.stackArea=()=>area();
  // react to anything opening, closing or moving; our own style writes are filtered out by the signature check
- let sig='';const tick=()=>{const k=['navDraw','widBar','wbOp','fillBar','mnuSheet','thumbs','panel','lyrP','walk','swBar','tools','top','fhBar','penBar','shpChip','selBar','pinDelF','legChip','toast','pinDlg'].map(id=>{const e=document.getElementById(id);if(!e)return'-';const r=e.getBoundingClientRect();return (e.hidden?'h':'v')+(r.top|0)+','+(r.height|0)+','+(r.left|0)+','+(r.width|0)}).join('|')+(document.getElementById('mnuSheet')?.innerHTML.length||0)+innerWidth+'x'+innerHeight;if(k!==sig){sig=k;try{place()}catch(e){}}requestAnimationFrame(tick)};
+ let sig='';const tick=()=>{const k=['navDraw','widBar','wbOp','fillBar','mnuSheet','thumbs','panel','lyrP','walk','swBar','tools','top','fhBar','penBar','shpChip','selBar','pinDelF','legChip','toast','pinDlg','findBar'].map(id=>{const e=document.getElementById(id);if(!e)return'-';const r=e.getBoundingClientRect();return (e.hidden?'h':'v')+(r.top|0)+','+(r.height|0)+','+(r.left|0)+','+(r.width|0)}).join('|')+(document.getElementById('mnuSheet')?.innerHTML.length||0)+'f'+(document.getElementById('findBar')?.innerHTML.length||0)+innerWidth+'x'+innerHeight;if(k!==sig){sig=k;try{place()}catch(e){}}requestAnimationFrame(tick)};
  requestAnimationFrame(tick);addEventListener('resize',kick);
 })();
 }catch(e){console.error('45-stack.js',e);setTimeout(()=>{throw e})}
@@ -2509,6 +2514,116 @@ try{
   g.addEventListener('pointerup',gend);g.addEventListener('pointercancel',gend);['click','dblclick'].forEach(k=>g.addEventListener(k,e=>e.stopPropagation()))}
 })();
 }catch(e){console.error('48-pin-move.js',e);setTimeout(()=>{throw e})}
+// ===== src/ui/49-find.js =====
+try{
+// bpm-v149: Find text (Menu › Plan › Find text, or Ctrl+F). Searches the plan PDF's text layer (pdf.js getTextContent) plus pin labels
+// (address / location) and text markups. Case-insensitive, partial match. "This page" highlights every match on the current page with
+// Previous / Next and a "3 of 12" count; "All pages" searches every page, lists results by page, and Next / Previous go across pages.
+// Highlights are drawn on the overlay only (no pin or markup is touched) and clear when Find closes. Placement: 45-stack.js (#findBar).
+(()=>{const by=id=>document.getElementById(id);
+ const S={open:false,q:'',all:false,hits:[],cur:-1,pages:new Map(),noText:[],busy:0,tok:0,list:false,msg:''};
+ const TC=new Map();// plan id + page -> text runs (cached for the plan)
+ const norm=s=>String(s||'').toLowerCase().replace(/\s+/g,' ');
+ let FB=null,IN=null;
+ function pgName(n){const m=typeof pnm==='function'&&plan?pnm(plan.id,n):'';return 'Page '+n+(m?' · '+m:'')}
+ // ---------- text runs: join the PDF's text pieces that sit on one line, so "L1D" + "003" still matches "d003" ----------
+ async function runs(n){if(!plan)return{runs:[],text:false,pic:true};const key=plan.id+':'+n;if(TC.has(key))return TC.get(key);
+  if(!pdf){const r={runs:[],text:false,pic:true};TC.set(key,r);return r}
+  let items=[],vp=null;try{const pg=await pdf.getPage(n);vp=pg.getViewport({scale:1});items=(await pg.getTextContent()).items||[]}catch(e){console.warn('find text',e)}
+  const R=[];let cur=null;
+  for(const it of items){const str=it.str||'';if(!str)continue;const m=pdfjsLib.Util.transform(vp.transform,it.transform);const L=Math.hypot(m[0],m[1]),h=Math.hypot(m[2],m[3]);if(!L||!h)continue;
+   const u=[m[0]/L,m[1]/L],v=[m[2]/h,m[3]/h],O=[m[4],m[5]],w=Math.abs(it.width||0)||h*.55*str.length,cw=w/str.length;
+   let along=0;if(cur){const d=[O[0]-cur.O[0],O[1]-cur.O[1]],a=d[0]*cur.u[0]+d[1]*cur.u[1],p=d[0]*cur.v[0]+d[1]*cur.v[1];
+    const same=u[0]*cur.u[0]+u[1]*cur.u[1]>.995&&Math.abs(h-cur.h)<cur.h*.25&&Math.abs(p)<cur.h*.35&&a>cur.end-cur.h*.35&&a-cur.end<cur.h*.9;
+    if(same){along=a;if(a-cur.end>cur.h*.22&&!/\s$/.test(cur.t)&&!/^\s/.test(str)){cur.t+=' ';cur.pos.push(cur.end);cur.cw.push(a-cur.end)}}else{R.push(cur);cur=null}}
+   if(!cur)cur={O,u,v,h,t:'',pos:[],cw:[],end:0};
+   for(let k=0;k<str.length;k++){cur.t+=str[k];cur.pos.push(along+k*cw);cur.cw.push(cw)}cur.end=along+w;
+   if(it.hasEOL){R.push(cur);cur=null}}
+  if(cur)R.push(cur);
+  for(const r of R)r.lo=r.t.toLowerCase().replace(/\s/g,' ');
+  const res={runs:R,text:R.some(r=>/\S/.test(r.t)),pic:false};TC.set(key,res);return res}
+ // a match box: four corners in plan coordinates (works for rotated text too)
+ function quad(r,i,j){const a=r.pos[i],b=r.pos[j-1]+r.cw[j-1],lo=-.25*r.h,hi=.95*r.h,P=(s,t)=>[r.O[0]+r.u[0]*s+r.v[0]*t,r.O[1]+r.u[1]*s+r.v[1]*t];return[P(a,lo),P(b,lo),P(b,hi),P(a,hi)]}
+ function bb(q){const xs=q.map(p=>p[0]),ys=q.map(p=>p[1]),x=Math.min(...xs),y=Math.min(...ys);return{x,y,w:Math.max(...xs)-x,h:Math.max(...ys)-y,cx:(Math.min(...xs)+Math.max(...xs))/2,cy:(Math.min(...ys)+Math.max(...ys))/2}}
+ async function pageHits(n,q){const T=await runs(n),H=[];
+  for(const r of T.runs){let i=r.lo.indexOf(q);while(i>=0){const Q=quad(r,i,i+q.length);H.push({page:n,kind:'text',q:Q,b:bb(Q),txt:r.t.slice(Math.max(0,i-8),i+q.length+8).trim()});i=r.lo.indexOf(q,i+Math.max(1,q.length))}}
+  for(const p of pins){if(p.page!==n)continue;const s=norm([p.address,p.location].filter(Boolean).join(' · '));if(s&&s.includes(q)){const r=12;H.push({page:n,kind:'pin',pin:p,b:{x:p.x-r,y:p.y-r,w:2*r,h:2*r,cx:p.x,cy:p.y},txt:(p.address||'')+(p.location?' · '+p.location:'')})}}
+  for(const m of markups){if(m.page!==n||typeof m.text!=='string'||!norm(m.text).includes(q))continue;const x1=Math.min(m.x1,m.x2??m.x1),y1=Math.min(m.y1,m.y2??m.y1),x2=Math.max(m.x1,m.x2??m.x1+(m.fs||12)*m.text.length*.6),y2=Math.max(m.y1,m.y2??m.y1+(m.fs||12)*1.15);
+   H.push({page:n,kind:'mk',m,b:{x:x1,y:y1,w:x2-x1,h:y2-y1,cx:(x1+x2)/2,cy:(y1+y2)/2},txt:m.text})}
+  // reading order: top to bottom, then left to right (rows about one text height apart)
+  const rowH=Math.max(8,...H.filter(h=>h.kind==='text').map(h=>h.b.h).slice(0,1));H.sort((a,b)=>Math.floor(a.b.cy/(rowH*1.5))-Math.floor(b.b.cy/(rowH*1.5))||a.b.cx-b.b.cx);
+  return{H,text:T.text,pic:T.pic}}
+ // ---------- search ----------
+ async function search(keep){const tok=++S.tok,q=norm(IN.value).trim();S.q=q;S.pid=plan&&plan.id;S.hits=[];S.cur=-1;S.pages=new Map();S.noText=[];S.msg='';
+  if(!plan){S.msg='Open a plan first.';render();repaint();return}
+  if(!q){render();repaint();return}
+  if(!S.all){S.busy=1;S.msg='Reading the page text…';render();const r=await pageHits(page,q);if(tok!==S.tok)return;S.busy=0;S.msg='';S.hits=r.H;S.pages.set(page,r.H.length);
+   if(!r.text)S.msg=r.pic?'This plan is a picture, so it has no searchable text. Pin labels and text markups are still searched.':'This page has no searchable text (it is a scanned picture). Pin labels and text markups are still searched.';
+   else if(!r.H.length)S.msg='No matches on this page.';
+   if(S.hits.length)S.cur=keep?Math.min(keep,S.hits.length-1):0}
+  else{S.busy=1;const N=plan.pages||1;for(let n=1;n<=N;n++){if(tok!==S.tok)return;S.msg=`Searching page ${n} of ${N}…`;render();const r=await pageHits(n,q);if(tok!==S.tok)return;
+    if(!r.text&&!r.pic)S.noText.push(n);if(r.H.length){S.pages.set(n,r.H.length);S.hits.push(...r.H)}}
+   S.busy=0;S.msg=S.hits.length?'':'No matches in this plan.';if(!pdf)S.msg+=(S.msg?' ':'')+'This plan is a picture, so only pin labels and text markups are searched.';
+   S.list=S.hits.length>0;const i=S.hits.findIndex(h=>h.page===page);S.cur=S.hits.length?Math.max(0,i):-1}
+  render();repaint();if(S.cur>=0&&!S.all)go(S.cur)}
+ let dT=0;const later=()=>{clearTimeout(dT);dT=setTimeout(()=>search(),S.all?500:250)};
+ // ---------- go to a match: open its page if needed, zoom and pan so it sits in the middle of the free plan area ----------
+ async function go(i,list){if(i<0||i>=S.hits.length)return;S.cur=i;const h=S.hits[i];if(!list)S.list=false;render();
+  if(h.page!==page){await gotoPage(h.page);if(S.cur!==i)return}
+  const st=by('stage');if(!st)return;const sr=st.getBoundingClientRect(),A=window.stackArea?stackArea():{top:sr.top,bot:sr.bottom,left:sr.left,right:sr.right};
+  const top=Math.max(A.top,sr.top),bot=Math.min(A.bot,sr.bottom),left=Math.max(A.left,sr.left),right=Math.min(A.right,sr.right),fw=Math.max(80,right-left),fh=Math.max(80,bot-top);
+  const D=VR%180?{w:h.b.h,h:h.b.w}:{w:h.b.w,h:h.b.h},tH=h.kind==='text'?Math.min(D.w,D.h):24;
+  let s=Math.max(view.s,30/Math.max(tH,.5));s=Math.min(s,fw*.7/Math.max(D.w,1),fh*.7/Math.max(D.h,1));s=clampS(s);
+  const keep=view;centerOn(h.b.cx,h.b.cy,s,(left+right)/2-sr.left,(top+bot)/2-sr.top);const v1=view;view=keep;
+  if(typeof slideTo==='function')await slideTo(v1,380);else{view=v1;draw();scheduleRender()}repaint()}
+ const step=d=>{if(!S.hits.length)return;go((S.cur+d+S.hits.length)%S.hits.length)};
+ // ---------- highlights (overlay only) ----------
+ function repaint(){try{requestDraw(false)}catch{try{drawOverlay()}catch{}}}
+ const _ov=drawOverlay;drawOverlay=function(){const r=_ov.apply(this,arguments);try{paint()}catch(e){}return r};
+ function paint(){if(!S.open||!S.hits.length||!plan||!pageW)return;const c=octx;c.save();setT(c);const k=1/view.s;
+  S.hits.forEach((h,i)=>{if(h.page!==page)return;const on=i===S.cur;c.lineWidth=(on?3:1.5)*k;c.strokeStyle=on?'#ff7a00':'#c99a00';c.fillStyle=on?'rgba(255,140,0,.38)':'rgba(255,214,0,.38)';
+   if(h.kind==='text'){c.beginPath();h.q.forEach((p,j)=>j?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.closePath();c.fill();c.stroke()}
+   else if(h.kind==='pin'){const o=typeof SCRNOFF!=='undefined'&&SCRNOFF&&SCRNOFF.get(h.pin.id);const x=h.pin.x+(o?o.dx:0),y=h.pin.y+(o?o.dy:0),r=Math.max(10,(typeof pinHalf==='function'?pinHalf(h.pin):8)+6);c.beginPath();c.arc(x,y,r,0,7);c.fill();c.stroke()}
+   else{const p=4*k;c.beginPath();c.rect(h.b.x-p,h.b.y-p,h.b.w+2*p,h.b.h+2*p);c.fill();c.stroke()}
+   if(on){c.lineWidth=2*k;c.strokeStyle='#ff7a00';c.setLineDash([5*k,4*k]);const p=8*k;c.strokeRect(h.b.x-p,h.b.y-p,h.b.w+2*p,h.b.h+2*p);c.setLineDash([])}});
+  c.restore()}
+ // ---------- the Find bar ----------
+ function build(){FB=document.createElement('div');FB.id='findBar';FB.className='widBar findBar';FB.hidden=true;FB.setAttribute('role','search');FB.setAttribute('aria-label','Find text');
+  FB.innerHTML=`<div class="fdRow"><input id="fdQ" type="search" placeholder="Type text to find" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Text to find"><button type="button" class="btn" data-fd="close" title="Close Find and clear the highlights"><span aria-hidden="true">✕</span><span class="wbL">Close</span></button></div>`+
+   `<div class="fdRow"><button type="button" class="btn" data-fd="page" aria-pressed="true"><span class="wbL">This page</span></button><button type="button" class="btn" data-fd="all" aria-pressed="false"><span class="wbL">All pages</span></button></div>`+
+   `<div class="fdRow"><button type="button" class="btn" data-fd="prev" title="Previous match"><span aria-hidden="true">◀</span><span class="wbL">Previous</span></button><b class="fdCnt" aria-live="polite"></b><button type="button" class="btn" data-fd="next" title="Next match"><span class="wbL">Next</span><span aria-hidden="true">▶</span></button></div>`+
+   `<div class="fdMsg" aria-live="polite"></div><button type="button" class="btn fdLst" data-fd="list"></button><div class="fdRes"></div>`;
+  document.body.append(FB);IN=FB.querySelector('#fdQ');
+  IN.addEventListener('input',later);
+  IN.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();clearTimeout(dT);const fresh=norm(IN.value).trim()!==S.q;if(fresh)search();else step(e.shiftKey?-1:1);if(matchMedia('(pointer:coarse)').matches)IN.blur()}else if(e.key==='Escape'){e.preventDefault();close()}});
+  FB.addEventListener('click',e=>{const b=e.target.closest('[data-fd],[data-fi],[data-fp]');if(!b)return;const k=b.dataset.fd;
+   if(k==='close')close();else if(k==='prev')step(-1);else if(k==='next')step(1);
+   else if(k==='page'||k==='all'){const all=k==='all';if(all!==S.all){S.all=all;search()}}
+   else if(k==='list'){S.list=!S.list;render()}
+   else if(b.dataset.fi)go(+b.dataset.fi,true)})}
+ function render(){if(!FB)return;const n=S.hits.length,h=S.hits[S.cur];
+  FB.querySelector('[data-fd=page]').classList.toggle('on',!S.all);FB.querySelector('[data-fd=all]').classList.toggle('on',S.all);
+  FB.querySelector('[data-fd=page]').setAttribute('aria-pressed',!S.all);FB.querySelector('[data-fd=all]').setAttribute('aria-pressed',S.all);
+  FB.querySelector('.fdCnt').textContent=!S.q?'':n?`${S.cur+1} of ${n}`+(S.all&&h?` · page ${h.page}`:''):'0 of 0';
+  FB.querySelector('[data-fd=prev]').disabled=n<2;FB.querySelector('[data-fd=next]').disabled=n<2;
+  let msg=S.msg;if(S.all&&!S.busy&&S.noText.length)msg+=(msg?' ':'')+(S.noText.length===1?`Page ${S.noText[0]} has no searchable text (scanned picture).`:`Pages ${S.noText.join(', ')} have no searchable text (scanned pictures).`);
+  const M=FB.querySelector('.fdMsg');M.textContent=msg;M.hidden=!msg;
+  const L=FB.querySelector('.fdLst'),RS=FB.querySelector('.fdRes');const show=S.all&&n>0;L.hidden=!show;L.textContent=S.list?'Hide results list':`Show results list (${S.pages.size} page${S.pages.size===1?'':'s'})`;
+  RS.hidden=!(show&&S.list);if(!RS.hidden){const G=new Map();S.hits.forEach((h,i)=>{if(!G.has(h.page))G.set(h.page,[]);G.get(h.page).push(i)});
+   RS.innerHTML=[...G].map(([p,ix])=>`<div class="fdG"><h4>${esc(pgName(p))} <small>${ix.length} match${ix.length===1?'':'es'}</small></h4><div class="fdL">`+
+    ix.map(i=>{const h=S.hits[i];return`<button type="button" class="mnuI fdI${i===S.cur?' on':''}" data-fi="${i}"><span class="mnuIc" aria-hidden="true">${h.kind==='pin'?'📍':h.kind==='mk'?'T':'🔎'}</span><span class="tl">${esc(h.txt||S.q)}</span></button>`}).join('')+`</div></div>`).join('')}
+  FB.classList.toggle('fdBusy',!!S.busy)}
+ function open(){if(!plan){uiAlert('Open a plan first.');return}if(!FB)build();S.open=true;FB.hidden=false;render();setTimeout(()=>{IN.focus();IN.select()},60);if(S.q)search()}
+ function close(){S.tok++;S.open=false;S.hits=[];S.cur=-1;S.list=false;if(FB){FB.hidden=true;IN.blur()}repaint()}
+ window.findOpen=open;window.findClose=close;window.findState=()=>({open:S.open,q:S.q,all:S.all,n:S.hits.length,cur:S.cur,page:S.hits[S.cur]?.page,box:S.hits[S.cur]?.b||null,kind:S.hits[S.cur]?.kind||null,msg:S.msg,busy:S.busy,pages:[...S.pages],noText:S.noText});
+ // a new page or plan: re-run "This page" on the page now showing; a closed plan closes Find
+ const _gp=gotoPage;gotoPage=async function(){const r=await _gp.apply(this,arguments);if(S.open&&S.q&&(plan&&plan.id!==S.pid||!S.all&&!S.busy))search();else repaint();return r};
+ const _cp=closePlan;closePlan=function(){TC.clear();if(S.open)close();return _cp.apply(this,arguments)};
+ addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&(e.key==='f'||e.key==='F')&&plan){e.preventDefault();open()}},true);
+ /* Escape closes Find when nothing else used it (an open list takes Escape first and marks it handled) */
+ addEventListener('keydown',e=>{if(e.key==='Escape'&&S.open&&!e.defaultPrevented&&document.activeElement!==IN&&!document.querySelector('dialog[open]'))close()});
+})();
+}catch(e){console.error('49-find.js',e);setTimeout(()=>{throw e})}
 // ===== src/ui/99-ui-ready.js =====
 try{
 // bpm-v141: last file of ui.js. Marks that the screen code started, for the update self-heal in src/app/09-update-heal.js.
