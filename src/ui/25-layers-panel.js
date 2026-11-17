@@ -15,7 +15,7 @@
    <div class="lpAN"><button type="button" class="btn" id="lpAll" title="Show every layer">👁<span class="tl">Show all</span></button><button type="button" class="btn" id="lpNone" title="Hide every layer">🚫<span class="tl">Hide all</span></button></div>
    <small class="lpInfo">${!project?'Open a project':hid?hid+' hidden':'All shown'}</small>
    <div class="lpList">${row('__mk',mkOn(),'<i class="tlSw lpMk">✎</i>','Markups',nm,'Markups (shapes, clouds, text) on this plan')}
-   ${ks.length?ks.map(k=>row(k,!H.has(k),`<i class="tlSw${TYPES[k].sq?' sq':''}" style="background:${TYPES[k].c}">${esc(TYPES[k].l||'')}</i>`,TYPES[k].n.replace(/ – .*/,''),N[k],TYPES[k].n+' – '+N[k]+' in this project')).join(''):'<p class="lpE">No pins yet</p>'}</div>
+   ${ks.length?ks.map(k=>row(k,!H.has(k),`<i class="tlSw${TYPES[k].sq?' sq':''}${pinShpCls(k)}" style="background:${TYPES[k].c}">${esc(TYPES[k].l||'')}</i>`,TYPES[k].n.replace(/ – .*/,''),N[k],TYPES[k].n+' – '+N[k]+' in this project')).join(''):'<p class="lpE">No pins yet</p>'}</div>
    <button type="button" class="btn lpMore" id="lpMore" title="More view options (labels, status, suggestions)">⚙<span class="tl">Filters…</span></button>`;
   P.querySelector('#lpX').onclick=()=>set(false);P.querySelector('#lpMore').onclick=()=>{if(!WMQ.matches)set(false);$('#layBtn').click()};
   P.querySelectorAll('.lpRow').forEach(b=>b.onclick=()=>{const k=b.dataset.k;if(k==='__mk')return setMk(!mkOn()),render();const H=window.HT;if(!H)return;H.has(k)?H.delete(k):H.add(k);tlaySave()});

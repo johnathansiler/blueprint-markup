@@ -40,6 +40,7 @@ function shapePts(m){const x=Math.min(m.x1,m.x2),y=Math.min(m.y1,m.y2),w=Math.ab
  if(m.type==='tri')return[[cx,y],[x+w,y+h],[x,y+h]];
  if(m.type==='poly'){const n=m.n||6;for(let i=0;i<n;i++){const a=-Math.PI/2+i*2*Math.PI/n;P.push([cx+w/2*Math.cos(a),cy+h/2*Math.sin(a)])}return P}
  if(m.type==='star'){const n=m.n||5;for(let i=0;i<2*n;i++){const a=-Math.PI/2+i*Math.PI/n,r=i%2?.45:1;P.push([cx+w/2*r*Math.cos(a),cy+h/2*r*Math.sin(a)])}return P}return P}
+window.penShapePts=shapePts;window.penPathTo=(c,m)=>{const{N,closed}=nodesOf(m);pathTo(c,N,closed)};/* bpm-v147: used by the shape Fill (47-shape-fill.js) */
 const _dm=drawMarkup;
 drawMarkup=function(c,m,s){
  if(m.type==='text')return drawText(c,m);

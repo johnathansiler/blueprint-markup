@@ -93,6 +93,15 @@ Object.assign(PSH,{farp:['rect',26,13],scs:['rect',26,13],loc:['rect',26,13],pad
 const PSC=1.3;const PANEL_S=new Set(['panel','dact','fatc','panelbox','farp','scs','loc','pad','vesda']);
 // bpm-v37: tight outset — path = print outer size; canvas stroke is centered so gray outer edge = print + LW/2 (thin ring just outside black; no inset, no ~1.3× overhang, no color past the gray)
 const pshOf=o=>{if(o&&typeof o==='object'&&o.shk&&o.bw>4&&o.bh>4)return[o.shk,o.bw,o.bh]; /* bpm-v103: taught shape from the template's ink outline */const t=typeof o==='string'?o:o&&(o.shp||o.type),v=PSH[t]||PSH.other;if(PANEL_S.has(t)){if(o&&o.bw>4&&o.bh>4)return['rect',o.bw,o.bh];if(o&&o.vert)return['rect',v[2],v[1]];return['rect',v[1],v[2]]}if(v[0]==='dia'){const W=(o&&o.bw>4&&o.bh>4)?o.bw:v[1],H=(o&&o.bw>4&&o.bh>4)?o.bh:v[2];return['dia',W,H]}if(o&&o.bw>4&&o.bh>4&&(v[0]==='rect'||v[0]==='hex'||v[0]==='circ'))return[v[0],o.bw,o.bh];return[v[0],v[1],v[2]]};
+// bpm-v147: a small picture of a device's real pin shape (hexagon, circle, square, wide box, diamond; same proportions as on the plan) for lists and buttons.
+// Pictures only: pin size, position, rotation, outset and de-overlap on the plan are not touched. o = type key or a pin.
+function pinIcon(o,sz=16,col){const k=typeof o==='string'?o:o&&o.type,T=TYPES[k]||TYPES.other,[s,w0,h0]=pshOf(o),h1=s==='circ'?w0:h0,f=(sz-3)/Math.max(w0,h1),a=w0*f/2,b=h1*f/2,c=sz/2,n=v=>+v.toFixed(2);let d;
+ if(s==='rect')d=`<rect x="${n(c-a)}" y="${n(c-b)}" width="${n(2*a)}" height="${n(2*b)}"/>`;
+ else if(s==='dia')d=`<polygon points="${n(c-a)},${c} ${c},${n(c-b)} ${n(c+a)},${c} ${c},${n(c+b)}"/>`;
+ else if(s==='hex'){const x=a/2;d=`<polygon points="${n(c-a)},${c} ${n(c-x)},${n(c-b)} ${n(c+x)},${n(c-b)} ${n(c+a)},${c} ${n(c+x)},${n(c+b)} ${n(c-x)},${n(c+b)}"/>`}
+ else d=`<circle cx="${c}" cy="${c}" r="${n(a)}"/>`;
+ return `<svg class="pinIc" data-shape="${s}" width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" aria-hidden="true"><g fill="${col||T.c}" stroke="#fff" stroke-width="1.5" stroke-linejoin="miter">${d}</g></svg>`}
+const pinShpCls=k=>' shp-'+pshOf(k)[0];
 // bpm-v35: zoom % readout; pin progress summary = pass/fail/total/left/%
 // bpm-v34: default fit/page-switch zoom 60% closer (scale ×1.6)
 // bpm-v33: code chips (no checkboxes) + Confirm clears leftover suggestions; hide Loop from pin/bulk UI

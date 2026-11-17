@@ -15,7 +15,7 @@
   for(const s of ['#fhBar','#penBar','#shpChip','#stBar','#selBar','#updBar','#toast']){const e=document.querySelector(s);if(vis(e)&&R(e).top>innerHeight/2)bot=Math.min(bot,R(e).top)}
   if(right-left<240){left=0;right=innerWidth}/* narrow: never squeeze a list into a sliver */
   return{top,bot,left,right}}
- const CHAIN=['navDraw','widBar','wbOp'];
+ const CHAIN=['navDraw','widBar','wbOp','fillBar'];
  const inTop=a=>!!(a&&a.closest&&a.closest('#top,#proj'));
  // floor for a piece: the lowest-chain pieces already showing, its button, the free area
  function floorFor(id,a,A){let f=A.bot;const i=CHAIN.indexOf(id),lim=i<0?CHAIN.length:i;
@@ -51,6 +51,8 @@
   const WB=document.getElementById('widBar'),WA=document.querySelector('[data-w=width].on')||document.querySelector('[data-w=width]');
   if(vis(WB)){const p=fit(WB,WA,'widBar',A);WB.style.left=p.left+'px';WB.style.top=p.top+'px'}
   const WO=document.getElementById('wbOp');if(vis(WO)){const p=fit(WO,WB,'wbOp',A);WO.style.left=p.left+'px';WO.style.top=p.top+'px'}
+  // bpm-v147: Fill row: right above its button (Draw panel / bottom row)
+  const FB=document.getElementById('fillBar'),FA=document.querySelector('[data-w=fill]');if(vis(FB)){const p=fit(FB,FA,'fillBar',A);FB.style.left=p.left+'px';FB.style.top=p.top+'px'}
   // lists: next to their button, natural size, scroll only when too tall
   const MS=document.getElementById('mnuSheet');const P=MS&&!MS.hidden&&MS.querySelector('.mnuP');
   if(P){const a=document.querySelector('.whPressed');if(a&&a.isConnected){MS.classList.add('mnuAnc');P._stackScroll=P.querySelector('.mnuB');
@@ -59,6 +61,6 @@
  let raf=0;const kick=()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;try{place()}catch(e){}})};
  window.stackPlace=place;
  // react to anything opening, closing or moving; our own style writes are filtered out by the signature check
- let sig='';const tick=()=>{const k=['navDraw','widBar','wbOp','mnuSheet','thumbs','panel','lyrP','walk','swBar','tools','top','fhBar','penBar','shpChip','selBar','pinDelF','legChip','toast','pinDlg'].map(id=>{const e=document.getElementById(id);if(!e)return'-';const r=e.getBoundingClientRect();return (e.hidden?'h':'v')+(r.top|0)+','+(r.height|0)+','+(r.left|0)+','+(r.width|0)}).join('|')+(document.getElementById('mnuSheet')?.innerHTML.length||0)+innerWidth+'x'+innerHeight;if(k!==sig){sig=k;try{place()}catch(e){}}requestAnimationFrame(tick)};
+ let sig='';const tick=()=>{const k=['navDraw','widBar','wbOp','fillBar','mnuSheet','thumbs','panel','lyrP','walk','swBar','tools','top','fhBar','penBar','shpChip','selBar','pinDelF','legChip','toast','pinDlg'].map(id=>{const e=document.getElementById(id);if(!e)return'-';const r=e.getBoundingClientRect();return (e.hidden?'h':'v')+(r.top|0)+','+(r.height|0)+','+(r.left|0)+','+(r.width|0)}).join('|')+(document.getElementById('mnuSheet')?.innerHTML.length||0)+innerWidth+'x'+innerHeight;if(k!==sig){sig=k;try{place()}catch(e){}}requestAnimationFrame(tick)};
  requestAnimationFrame(tick);addEventListener('resize',kick);
 })();
