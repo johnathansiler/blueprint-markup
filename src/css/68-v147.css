@@ -15,3 +15,4 @@
 /* bpm-v147: drag a marker by its body inside the handles box (covers only the marker; the corner squares and top knob still resize / rotate) */
 #ptx .pxM{position:absolute;inset:0;min-width:16px;min-height:16px;pointer-events:auto;touch-action:none;cursor:move;z-index:3}
 body.pinDragging #stage{cursor:grabbing}
+.shSv{display:inline-block;vertical-align:-.12em;flex:none}
