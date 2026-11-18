@@ -2,7 +2,7 @@
 
 Written Wed Oct 28, 2026, about 4:45 AM ET (America/New_York, UTC-4) by Grok Bot. It replaces the "Resume here" notes in earlier copies. Older detail (v50–v134 history, architecture notes, the Oct 17 rule list) is in the earlier handoff kept in the private test-data repo and test kit (`handoffs/MARKER-HANDOFF.md`). On the box the previous copy is `/workspace/MARKER-HANDOFF.pre-v145.md`.
 
-> **State at writing (updated Tue Nov 17, 2026, 2:20 PM ET):** **bpm-v149 is live** (PR #27). Nothing is in progress. The kit copy on this computer is rebuilt from the v134 kit: the v135–v146 screen suites are missing (see §5 and §8). A new bot taking over should read §0 first, then "Resume here" at the end.
+> **State at writing (updated Wed Nov 18, 2026, 12:15 PM ET):** **bpm-v150 is live** (PR #28). Nothing is in progress. The kit copy on this computer is rebuilt from the v134 kit: the v135–v146 screen suites are missing (see §5 and §8). A new bot taking over should read §0 first, then "Resume here" at the end.
 
 ## 0. Access for a new bot taking over
 This file contains **no passwords, tokens or keys**. The user grants access directly; never ask for a token in chat.
@@ -58,7 +58,8 @@ This file contains **no passwords, tokens or keys**. The user grants access dire
   - Each one **sizes to its content** and doesn't stretch. Width stays small. Lists shrink and scroll **only when too tall**.
   - Compact lists next to their buttons on Fold open and desktop too.
   - **v145:** opening or closing a bar (the Pages bar) **never closes an open list, the Draw panel or the Width row**. They stay and re-stack into the space.
-- Code for stacking: `src/ui/45-stack.js` (placement; v147 adds the Fill row `#fillBar` to the chain), `src/ui/15-toolbar-wheels.js` (the list itself, `wheelOpen`), `src/ui/30-task-bar.js` (bottom row, Draw panel).
+  - **v150:** the Menu (and other lists opened from the top row) must **end above the bottom row**. Height is measured from the top the list is actually placed at, so a legend chip or other top chrome below the button cannot push the list over the bottom buttons; the list scrolls inside itself when it is too tall.
+- Code for stacking: `src/ui/45-stack.js` (placement; v147 adds the Fill row `#fillBar` to the chain; v150 uses the placed top for height), `src/ui/15-toolbar-wheels.js` (the list itself, `wheelOpen`), `src/ui/30-task-bar.js` (bottom row, Draw panel).
 
 ## 4. Build and ship process
 1. **Fresh clone** of `blueprint-markup` into a new folder (e.g. `/workspace/vNNN`), branch `vNNN-wip` from current `main`. Status log `/workspace/vNNN-status.txt`, one line per step with an ET time.
@@ -76,7 +77,7 @@ Run from the kit folder (`/workspace/marker-tester`):
   - `fl130` a test plan 255 pins, 0 phantoms, 0 baseline missed
   - `snapshot` identical to s126 (7 files), v97 pins unchanged
 - **Screen suites:** `tools/test-ui.sh -j 5 /workspace/vNNN` (about 12–15 min). Each must be PASS (PASS* = failed under load, passed on its own rerun).
-  - **On this computer (since v147):** the kit was rebuilt from the pushed v134 kit, so only these 13 run: card120, gap119, walkbar, v113ui, v113anim, v111walk, v132, v133, v134, gray134, v147, v148, v149. `tools/test-ui.sh` was recreated here.
+  - **On this computer (since v147):** the kit was rebuilt from the pushed v134 kit, so only these 14 run: card120, gap119, walkbar, v113ui, v113anim, v111walk, v132, v133, v134, gray134, v147, v148, v149, v150. `tools/test-ui.sh` was recreated here.
   - **Missing (never pushed from the old computer):** lists, v135, v136, v138, v142, v143, v143s, v144, v145, v146. Restore them by pushing the old kit commits (through `e923d0d`) if that copy still exists; then add them back to `tools/test-ui.sh`.
   - **Stale here:** `v132` and `v111walk` fail the same way on live v146 and on v147 (they still expect the v134-era Menu Share row and the old rolling-wheel overlay). Their updated copies were in the missing commits; treat them as known-stale until restored.
   - **Load plan list:** `lib/autoload/sitecustomize.py` (on `PYTHONPATH` from run-all.sh and test-ui.sh) answers the v146 "Load plan" list with All sheets so older suites don't stall. `MARKER_NO_AUTOLOAD=1` turns it off.
@@ -91,9 +92,9 @@ Run from the kit folder (`/workspace/marker-tester`):
 - **Verify the app repo's visibility before every push.**
 - **No force pushes** without the user's explicit approval. Merges and pushes go through approval cards when blocked.
 - **Never push from old pre-purge clones** (folders from before v137, the scrub and dry-run folders). Always build from a fresh clone.
-- **Test kit commits are local and unpushed, pending the user's approval.** On the old computer: everything through `52d86b2`, plus `5ee598c` (v144), `0236407` (v145) and `e923d0d` (v146 suite). On this computer: the v147 kit commit `e54e8bc`, the v148 kit commit `369af97` and the v149 kit commit `87edb15`, made on top of the pushed v134 kit.
+- **Test kit commits are local and unpushed, pending the user's approval.** On the old computer: everything through `52d86b2`, plus `5ee598c` (v144), `0236407` (v145) and `e923d0d` (v146 suite). On this computer: the v147 kit commit `e54e8bc`, the v148 kit commit `369af97`, the v149 kit commit `87edb15` and the v150 kit commit `7e86fb4`, made on top of the pushed v134 kit.
 
-## 7. Release history v135–v149
+## 7. Release history v135–v150
 | Ver | PR / merge | What changed |
 |---|---|---|
 | v135 | #13 `85ed943` | Daily backup reminder and storage protection; merge brings back edits field by field (newest wins); separate Smoke and Heat model lists; firefighter phone jack type; screen pinch zoom with Reset screen zoom; app code split into `src/app` modules. |
@@ -110,15 +111,16 @@ Run from the kit folder (`/workspace/marker-tester`):
 | v146 | #24 `0cddf83` | Picking a new PDF shows a Load plan choice: All sheets, or Legend, renovation and new-work sheets only (`src/ui/46-load-sheets.js`); keeps the legend plus floor plans Detect would pin (a test plan keeps 15 of 55); exact on all 10 test plans. |
 | v147 | #25 `a4ee891` | Bottom row Walk test, Marker, Draw (Marker beside Draw / Shapes); Redo beside Undo on wide screens too (no longer only in More); shape Fill (Fill ▾: No fill / Fill + Fill opacity); drag to move a marker (hold then drag, or drag in Marker mode / by its body); every device picture in lists and buttons shows its real shape instead of a circle. Kit: `test/v113/v147.py`, `tools/test-ui.sh` rebuilt, Load plan autoload. |
 | v148 | #26 `2f53dcc` | Phone and Fold closed bottom row: Shapes button right next to Marker (one tap opens the Shapes list); Draw keeps the other tools. Box and Rounded box icons drawn as real shapes (Rounded box showed as a dot). Kit: `test/v113/v148.py`. |
-| v149 | #27 | Find text (Menu › Plan › Find text, Ctrl+F): highlights every match on the current page with Previous / Next and an "N of M" count, All pages searches the whole plan grouped by page; PDF text plus pin labels and text markups; plain message for pages with no text layer. Kit: `test/v113/v149.py`. |
+| v149 | #27 `084fcce` | Find text (Menu › Plan › Find text, Ctrl+F): highlights every match on the current page with Previous / Next and an "N of M" count, All pages searches the whole plan grouped by page; PDF text plus pin labels and text markups; plain message for pages with no text layer. Kit: `test/v113/v149.py`. |
+| v150 | #28 | Menu list ends above the bottom row and scrolls inside itself when too tall (a legend chip or other top chrome no longer pushes it over the bottom buttons). Bottom row unchanged. Kit: `test/v113/v150.py`. |
 
 ## 8. Open items
-- **Test kit commits** through `e923d0d` (v144, v145, v146 suites and earlier) are unpushed on the old computer; push only with the user's approval. A new bot on a different computer will not have them until they are pushed. **This computer is missing the v135–v146 suites**; the v147, v148 and v149 kit commits here (`e54e8bc`, `369af97`, `87edb15`) are local and unpushed too.
+- **Test kit commits** through `e923d0d` (v144, v145, v146 suites and earlier) are unpushed on the old computer; push only with the user's approval. A new bot on a different computer will not have them until they are pushed. **This computer is missing the v135–v146 suites**; the v147, v148, v149 and v150 kit commits here (`e54e8bc`, `369af97`, `87edb15`, `7e86fb4`) are local and unpushed too.
 - **Not yet offered:** adding v135-onward items to the checklist Page.
 - **Older backlog** (from the v121 review and the Detect backlog in the earlier handoff) may be partly done; check against the current app before working on any of it, and only when the user asks.
 
-## 9. Resume here (Tue Nov 17, 2026, 2:20 PM ET)
-1. Read §0 (access), then this whole file, then `/workspace/v149-status.txt` if you are on the same computer.
-2. **bpm-v149 is live** (PR #27). Check: `curl -s https://johnathansiler.github.io/blueprint-markup/sw.js | grep -o "const C='[^']*'"`.
-3. Nothing is in progress. Kit: v147, v148 and v149 commits are local and unpushed (needs the user's yes); v135–v146 suites missing here (§5); v132 and v111walk are known-stale here.
-4. For the next request: fresh clone, branch `v149-wip`, follow §4 and §5, give an ETA in ET, and finish everything in one build.
+## 9. Resume here (Wed Nov 18, 2026, 12:15 PM ET)
+1. Read §0 (access), then this whole file, then `/workspace/v150-status.txt` if you are on the same computer.
+2. **bpm-v150 is live** (PR #28). Check: `curl -s https://johnathansiler.github.io/blueprint-markup/sw.js | grep -o "const C='[^']*'"`.
+3. Nothing is in progress. Kit: v147, v148, v149 and v150 commits are local and unpushed (needs the user's yes); v135–v146 suites missing here (§5); v132 and v111walk are known-stale here.
+4. For the next request: fresh clone, branch `v151-wip`, follow §4 and §5, give an ETA in ET, and finish everything in one build.
