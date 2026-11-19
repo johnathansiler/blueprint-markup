@@ -68,7 +68,8 @@ Files in each `src` folder are joined in file-name order; the number in front se
 | 41–46 | Detect Cancel at the top, address sweep, finish inspection, pin card Delete, stacking (`45-stack.js`; bpm-v150: list height uses the placed top so a legend chip cannot push the Menu over the bottom row), Load plan choice (`46-load-sheets.js`) |
 | 47-shape-fill.js | bpm-v147: Fill ▾ for shapes (No fill / Fill, Fill opacity), Fill on the Shape added chip and selection bar (`m.fill`) |
 | 48-pin-move.js | bpm-v147: drag to move a marker (hold then drag, Marker-mode drag, drag by the body inside its handles) |
-| 49-find.js | bpm-v149: Find text (Menu › Plan › Find text, Ctrl+F): PDF text layer + pin labels + text markups, This page / All pages, Previous / Next, overlay highlights (`findOpen`, `findState`) |
+| 49-find.js | bpm-v149: Find text (Menu › Plan › Find text, Ctrl+F): PDF text layer + pin labels + text markups, This page / All pages, Previous / Next, overlay highlights (`findOpen`, `findState`). bpm-v151: current-page picture reading hooks into `50-find-ocr.js`; near matches for mixed tokens are confusion-only (so 15cd does not also hit 75cd) |
+| 50-find-ocr.js | bpm-v151: read the current page as a picture (Tesseract.js, two workers, tiled, IndexedDB cache, Cancel). All pages stays text-only |
 
 Functions changed by more than one file (read all of them before changing one): `change` / `changeMulti` (11, 12, 31), `startWalk` / `exitWalk` / `renderWalk` / `walkPick` (10, 37), `loadProject` (31, 32), `renderList` (38), `wheelOpen` / `wheelAnchor` (15, 39).
 
@@ -90,6 +91,7 @@ Functions changed by more than one file (read all of them before changing one): 
 | 63-empty-screen.css | empty first screen |
 | 68-v147.css | device shape pictures (`pinIcon`, Layers shapes), Fill row, marker drag grip |
 | 69-v149.css | Find bar |
+| 70-v151.css | bpm-v151: Find — Read this page as a picture button and progress message |
 
 The light theme is `body.light` (set from Customize > Theme or the system setting). Most light-theme rules sit beside the dark rule they change. Later rules win over earlier ones of the same strength, so keep the file order.
 
