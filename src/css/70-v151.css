@@ -1,0 +1,6 @@
+/* bpm-v151: Find — Read this page as a picture (OCR) button and progress message. */
+.findBar .fdOcrRow{align-items:stretch}
+.findBar [data-fd=ocr]{flex:1 1 auto;white-space:normal;line-height:1.2;min-height:44px;text-align:center}
+.findBar [data-fd=ocrCancel]{flex:0 1 auto;min-width:88px}
+.findBar.fdBusy .fdMsg{color:var(--tx,var(--gray-e7))}
+.findBar .fdI.fdNear .tl{font-style:normal}

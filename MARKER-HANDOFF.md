@@ -2,7 +2,7 @@
 
 Written Wed Oct 28, 2026, about 4:45 AM ET (America/New_York, UTC-4) by Grok Bot. It replaces the "Resume here" notes in earlier copies. Older detail (v50–v134 history, architecture notes, the Oct 17 rule list) is in the earlier handoff kept in the private test-data repo and test kit (`handoffs/MARKER-HANDOFF.md`). On the box the previous copy is `/workspace/MARKER-HANDOFF.pre-v145.md`.
 
-> **State at writing (updated Wed Nov 18, 2026, 12:15 PM ET):** **bpm-v150 is live** (PR #28). Nothing is in progress. The kit copy on this computer is rebuilt from the v134 kit: the v135–v146 screen suites are missing (see §5 and §8). A new bot taking over should read §0 first, then "Resume here" at the end.
+> **State at writing (updated Wed Nov 18, 2026, 8:25 PM ET):** **bpm-v151 is live** (PR #29). Picture-reading Find is on for the current page. The kit copy on this computer is rebuilt from the v134 kit: the v135–v146 screen suites are missing (see §5 and §8). A new bot taking over should read §0 first, then "Resume here" at the end.
 
 ## 0. Access for a new bot taking over
 This file contains **no passwords, tokens or keys**. The user grants access directly; never ask for a token in chat.
@@ -77,7 +77,7 @@ Run from the kit folder (`/workspace/marker-tester`):
   - `fl130` a test plan 255 pins, 0 phantoms, 0 baseline missed
   - `snapshot` identical to s126 (7 files), v97 pins unchanged
 - **Screen suites:** `tools/test-ui.sh -j 5 /workspace/vNNN` (about 12–15 min). Each must be PASS (PASS* = failed under load, passed on its own rerun).
-  - **On this computer (since v147):** the kit was rebuilt from the pushed v134 kit, so only these 14 run: card120, gap119, walkbar, v113ui, v113anim, v111walk, v132, v133, v134, gray134, v147, v148, v149, v150. `tools/test-ui.sh` was recreated here.
+  - **On this computer (since v147):** the kit was rebuilt from the pushed v134 kit, so only these 15 run: card120, gap119, walkbar, v113ui, v113anim, v111walk, v132, v133, v134, gray134, v147, v148, v149, v150, v151. `tools/test-ui.sh` was recreated here.
   - **Missing (never pushed from the old computer):** lists, v135, v136, v138, v142, v143, v143s, v144, v145, v146. Restore them by pushing the old kit commits (through `e923d0d`) if that copy still exists; then add them back to `tools/test-ui.sh`.
   - **Stale here:** `v132` and `v111walk` fail the same way on live v146 and on v147 (they still expect the v134-era Menu Share row and the old rolling-wheel overlay). Their updated copies were in the missing commits; treat them as known-stale until restored.
   - **Load plan list:** `lib/autoload/sitecustomize.py` (on `PYTHONPATH` from run-all.sh and test-ui.sh) answers the v146 "Load plan" list with All sheets so older suites don't stall. `MARKER_NO_AUTOLOAD=1` turns it off.
@@ -92,9 +92,9 @@ Run from the kit folder (`/workspace/marker-tester`):
 - **Verify the app repo's visibility before every push.**
 - **No force pushes** without the user's explicit approval. Merges and pushes go through approval cards when blocked.
 - **Never push from old pre-purge clones** (folders from before v137, the scrub and dry-run folders). Always build from a fresh clone.
-- **Test kit commits are local and unpushed, pending the user's approval.** On the old computer: everything through `52d86b2`, plus `5ee598c` (v144), `0236407` (v145) and `e923d0d` (v146 suite). On this computer: the v147 kit commit `e54e8bc`, the v148 kit commit `369af97`, the v149 kit commit `87edb15` and the v150 kit commit `7e86fb4`, made on top of the pushed v134 kit.
+- **Test kit commits are local and unpushed, pending the user's approval.** On the old computer: everything through `52d86b2`, plus `5ee598c` (v144), `0236407` (v145) and `e923d0d` (v146 suite). On this computer: the v147 kit commit `e54e8bc`, the v148 kit commit `369af97`, the v149 kit commit `87edb15`, the v150 kit commit `7e86fb4` and the v151 kit commit `ced08f0`, made on top of the pushed v134 kit.
 
-## 7. Release history v135–v150
+## 7. Release history v135–v151
 | Ver | PR / merge | What changed |
 |---|---|---|
 | v135 | #13 `85ed943` | Daily backup reminder and storage protection; merge brings back edits field by field (newest wins); separate Smoke and Heat model lists; firefighter phone jack type; screen pinch zoom with Reset screen zoom; app code split into `src/app` modules. |
@@ -112,15 +112,17 @@ Run from the kit folder (`/workspace/marker-tester`):
 | v147 | #25 `a4ee891` | Bottom row Walk test, Marker, Draw (Marker beside Draw / Shapes); Redo beside Undo on wide screens too (no longer only in More); shape Fill (Fill ▾: No fill / Fill + Fill opacity); drag to move a marker (hold then drag, or drag in Marker mode / by its body); every device picture in lists and buttons shows its real shape instead of a circle. Kit: `test/v113/v147.py`, `tools/test-ui.sh` rebuilt, Load plan autoload. |
 | v148 | #26 `2f53dcc` | Phone and Fold closed bottom row: Shapes button right next to Marker (one tap opens the Shapes list); Draw keeps the other tools. Box and Rounded box icons drawn as real shapes (Rounded box showed as a dot). Kit: `test/v113/v148.py`. |
 | v149 | #27 `084fcce` | Find text (Menu › Plan › Find text, Ctrl+F): highlights every match on the current page with Previous / Next and an "N of M" count, All pages searches the whole plan grouped by page; PDF text plus pin labels and text markups; plain message for pages with no text layer. Kit: `test/v113/v149.py`. |
-| v150 | #28 | Menu list ends above the bottom row and scrolls inside itself when too tall (a legend chip or other top chrome no longer pushes it over the bottom buttons). Bottom row unchanged. Kit: `test/v113/v150.py`. |
+| v150 | #28 `78d7a91` | Menu list ends above the bottom row and scrolls inside itself when too tall (a legend chip or other top chrome no longer pushes it over the bottom buttons). Bottom row unchanged. Kit: `test/v113/v150.py`. |
+| v151 | #29 | Find can read the current page as a picture (OCR) so device labels drawn in CAD, which are not in the PDF text layer, can be highlighted. First read is about 20–40 seconds on a large sheet, then later searches on that page are instant (cached). All pages stays text-only. Accuracy is good on many device addresses but not complete: some addresses, cabinet tags (FATC), AIO labels, candela ratings, and small air-sampling tags can still be missed. A 90%+ exact-address target was not met on every plan. A linework/SHX glyph-matching method was tested as a feasibility experiment and declined by the user for this release (prototype scripts stayed out of the app repo). Kit: `test/v113/v151.py` (local, unpushed). |
 
 ## 8. Open items
-- **Test kit commits** through `e923d0d` (v144, v145, v146 suites and earlier) are unpushed on the old computer; push only with the user's approval. A new bot on a different computer will not have them until they are pushed. **This computer is missing the v135–v146 suites**; the v147, v148, v149 and v150 kit commits here (`e54e8bc`, `369af97`, `87edb15`, `7e86fb4`) are local and unpushed too.
+- **Test kit commits** through `e923d0d` (v144, v145, v146 suites and earlier) are unpushed on the old computer; push only with the user's approval. A new bot on a different computer will not have them until they are pushed. **This computer is missing the v135–v146 suites**; the v147, v148, v149, v150 and v151 kit commits here (`e54e8bc`, `369af97`, `87edb15`, `7e86fb4`, `ced08f0`) are local and unpushed too.
 - **Not yet offered:** adding v135-onward items to the checklist Page.
 - **Older backlog** (from the v121 review and the Detect backlog in the earlier handoff) may be partly done; check against the current app before working on any of it, and only when the user asks.
 
-## 9. Resume here (Wed Nov 18, 2026, 12:15 PM ET)
-1. Read §0 (access), then this whole file, then `/workspace/v150-status.txt` if you are on the same computer.
-2. **bpm-v150 is live** (PR #28). Check: `curl -s https://johnathansiler.github.io/blueprint-markup/sw.js | grep -o "const C='[^']*'"`.
-3. Nothing is in progress. Kit: v147, v148, v149 and v150 commits are local and unpushed (needs the user's yes); v135–v146 suites missing here (§5); v132 and v111walk are known-stale here.
-4. For the next request: fresh clone, branch `v151-wip`, follow §4 and §5, give an ETA in ET, and finish everything in one build.
+## 9. Resume here (Wed Nov 18, 2026, 8:25 PM ET)
+1. Read §0 (access), then this whole file, then `/workspace/v151-status.txt` if you are on the same computer.
+2. **bpm-v151 is live** (PR #29). Check: `curl -s https://johnathansiler.github.io/blueprint-markup/sw.js | grep -o "const C='[^']*'"`. Tell the user to **close and reopen the app**.
+3. Picture-reading Find is on for the current page (Menu › Plan › Find text, or Ctrl+F, then “Read this page as a picture”). Known OCR limits: first read is about 20–40 seconds on a large sheet (later searches on that page are cached and instant); All pages is still text-only; many device addresses are found exactly, but some addresses, cabinet tags (FATC), AIO, candela ratings, and small air-sampling tags can still be missed. A 90%+ exact-address target was not met on every plan.
+4. A linework/SHX glyph-matching method was tested and the user declined it. Prototype scripts and overlays are only under `/workspace/glyph-test/` (not in any repo). Do not add that method, those scripts, plan PDFs, plan IDs, or plan-derived images to the public app repo unless the user asks again.
+5. Kit: v147, v148, v149, v150 and v151 commits are local and unpushed (needs the user's yes); v135–v146 suites missing here (§5); v132 and v111walk are known-stale here.
