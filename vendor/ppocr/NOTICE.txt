@@ -1,0 +1,16 @@
+PP-OCR models bundled here are official PaddleOCR PP-OCRv6 small detection and
+recognition weights, converted to ONNX and packaged by RapidOCR. The upstream
+model weights are copyright Baidu and/or the applicable PaddleOCR rights holders
+and are licensed under the Apache License, Version 2.0.
+
+Converted from an official PaddleOCR model to the indicated inference format
+and packaged for use with RapidOCR. The upstream model weights are copyright
+Baidu and/or the applicable PaddleOCR rights holders and are licensed under
+the Apache License, Version 2.0.
+
+These files contain no plan data.
+
+See LICENSE-RapidOCR-Apache-2.0.txt, MODEL_LICENSES.md, and
+LICENSE-onnxruntime-web-MIT.txt.
+
+onnxruntime-web is copyright Microsoft Corporation and licensed under the MIT License.

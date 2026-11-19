@@ -69,7 +69,7 @@ Files in each `src` folder are joined in file-name order; the number in front se
 | 47-shape-fill.js | bpm-v147: Fill ▾ for shapes (No fill / Fill, Fill opacity), Fill on the Shape added chip and selection bar (`m.fill`) |
 | 48-pin-move.js | bpm-v147: drag to move a marker (hold then drag, Marker-mode drag, drag by the body inside its handles) |
 | 49-find.js | bpm-v149: Find text (Menu › Plan › Find text, Ctrl+F): PDF text layer + pin labels + text markups, This page / All pages, Previous / Next, overlay highlights (`findOpen`, `findState`). bpm-v151: current-page picture reading hooks into `50-find-ocr.js`; near matches for mixed tokens are confusion-only (so 15cd does not also hit 75cd) |
-| 50-find-ocr.js | bpm-v151: read the current page as a picture (Tesseract.js, two workers, tiled, IndexedDB cache, Cancel). All pages stays text-only |
+| 50-find-ocr.js | bpm-v152: read the current page as a picture with PP-OCRv6 (onnxruntime-web, one worker). Pass 1 is black text-pen strokes from the pdf.js operator list; pass 2 is leftover full-page tiles. Grammar includes i→1. IndexedDB cache key version 4. All pages stays text-only |
 
 Functions changed by more than one file (read all of them before changing one): `change` / `changeMulti` (11, 12, 31), `startWalk` / `exitWalk` / `renderWalk` / `walkPick` (10, 37), `loadProject` (31, 32), `renderList` (38), `wheelOpen` / `wheelAnchor` (15, 39).
 
