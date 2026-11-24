@@ -23,7 +23,7 @@ Files in each `src` folder are joined in file-name order; the number in front se
 |---|---|
 | 01-core.js | device types, colors, checklists, IndexedDB storage, app state (`plan`, `pins`, `page`, `view`, `walk`, `ghosts`), plans |
 | 02-draw.js | drawing the plan and pins, hit testing, pointer input, undo/redo |
-| 03-card.js | pin card (`openPin`, with the Last visit row), photos (`addMedia` stores smaller photos), Pins list, deficiencies, export, projects, start-up, report |
+| 03-card.js | pin card (`openPin`, with the Last visit row), photos (`addMedia` stores smaller photos), Pins list, deficiencies, export, projects, start-up, report. bpm-v153: Report PDF deficiency notes wrap in the column left of the photo; new Plain report (title, then one address-sorted list of devices with a deficiency, notes, or photos; all photos) |
 | 04-detect.js | Detect (`runDetect`), suggestions bar (`renderGhostBar`), layers, multi-select, copy/paste, toast |
 | 05-walk.js | walk mode, walk order (`nearestFrom`: nearest first or address order), voice commands, learned rules |
 | 06-files.js | .bpm project file (see FORMAT.md), plan export, code references, job info, NFPA documents |

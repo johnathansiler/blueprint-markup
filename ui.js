@@ -80,7 +80,7 @@ window.preSend=async function(scope,label){const iss=await preIssues(scope);if(!
    if(i.p){if(plan?.id!==i.pl)await openPlan(i.pl,i.p.page);else if(page!==i.p.page)await openPlan(i.pl,i.p.page);const q=pins.find(x=>x.id===i.p.id);if(q){centerOn(q.x,q.y,Math.max(view.s,1),stage.clientWidth/2,stage.clientHeight/2);draw();openPin(q)}}
    else if(i.k==='tester'&&!(project&&(await getJob()).techName))$('#jobBtn').click();else $('#jobBtn').click()});d.showModal()})};
 const guard=(id,scope,label)=>{const b=$(id),o=b.onclick;if(!o)return;b.onclick=async e=>{if(await preSend(scope,label))return o.call(b,e)}};
-guard('#reportPdf','project','Report PDF');guard('#defPdf','project','Deficiencies PDF');guard('#exPdf','plan','Plan PDF');guard('#exPng','plan','Plan PNG');
+guard('#reportPdf','project','Report PDF');guard('#reportPlain','project','Plain report');guard('#defPdf','project','Deficiencies PDF');guard('#exPdf','plan','Plan PDF');guard('#exPng','plan','Plan PNG');
 
 // ---------- export menu ----------
 $('#exMenu').onclick=e=>{e.stopPropagation();$('#exPop').hidden=!$('#exPop').hidden};document.addEventListener('click',e=>{if(!e.target.closest('.exWrap'))$('#exPop').hidden=true});
@@ -1243,10 +1243,10 @@ try{
  const dd=(id,label,title,ids)=>{const d=document.createElement('details');d.className='pDd';d.id=id;d.innerHTML=`<summary class="btn" title="${title}">${label} ▾</summary><div class="pDm"></div>`;const m=d.querySelector('.pDm');for(const i of ids){const e=by(i);if(e){e.classList.add('pDi');m.append(e)}}
   m.addEventListener('click',e=>{if(e.target.closest('button'))setTimeout(()=>d.open=false,0)});return d};
  // (b) labels inside menus
- by('csvBtn').textContent='📋 Device list spreadsheet';by('countCsv').textContent='🔢 Counts spreadsheet';by('checkCsv').textContent='☑ Checklist spreadsheet';by('reportPdf').textContent='📄 Report PDF';
+ by('csvBtn').textContent='📋 Device list spreadsheet';by('countCsv').textContent='🔢 Counts spreadsheet';by('checkCsv').textContent='☑ Checklist spreadsheet';by('reportPdf').textContent='📄 Report PDF';if(by('reportPlain'))by('reportPlain').textContent='📄 Plain report';
  by('clrBtn').textContent='🗑 Delete Pins';by('clrMBtn').textContent='🗑 Delete Markups';by('testerBtn').innerHTML='Tester';
  const row2=document.createElement('div');row2.className='row pinsOnly pTools';
- row2.append(dd('pExp','Export','Export: device list, counts, checklist, report',['csvBtn','countCsv','checkCsv','reportPdf']),dd('pEdit','Edit','Split for a second technician / merge a returned file',['splitBtn','mergeBtn']),dd('pDel','Delete','Delete all pins or all markups (asks first)',['clrBtn','clrMBtn']),by('testerBtn'));
+ row2.append(dd('pExp','Export','Export: device list, counts, checklist, report, plain report',['csvBtn','countCsv','checkCsv','reportPdf','reportPlain']),dd('pEdit','Edit','Split for a second technician / merge a returned file',['splitBtn','mergeBtn']),dd('pDel','Delete','Delete all pins or all markups (asks first)',['clrBtn','clrMBtn']),by('testerBtn'));
  ph.after(row2);by('pDel').querySelector('summary').classList.add('danger');
  // (c) search + filters in one row; summary + counts on one small line
  const q=by('q'),f=by('fType').parentElement;f.classList.add('pFlt');f.prepend(q);q.placeholder='Search…';q.title='Search address, location, type, notes';
@@ -1291,7 +1291,7 @@ try{
  const clk=id=>()=>{const e=by(id);e&&e.click()};
  const btn=(bar,id,ic,l,run)=>{const b=mk('button','pB',`<i>${ic}</i><small>${l}</small>`);b.type='button';b.id=id;b.onclick=run;bar.append(b);return b};
  const menu=(title,items)=>function(){wheelAnchor(this);wheelOpen(title,items.map(x=>({...x,html:`<span class="whIc">${x.i}</span>${esc(x.l)}`})),0,x=>x.run())};
- btn(bb,'pbExp','⤓','Export',menu('Export',[{i:'📋',l:'Device list spreadsheet',run:clk('csvBtn')},{i:'🔢',l:'Counts spreadsheet',run:clk('countCsv')},{i:'☑',l:'Checklist spreadsheet',run:clk('checkCsv')},{i:'📄',l:'Report PDF',run:clk('reportPdf')}]));
+ btn(bb,'pbExp','⤓','Export',menu('Export',[{i:'📋',l:'Device list spreadsheet',run:clk('csvBtn')},{i:'🔢',l:'Counts spreadsheet',run:clk('countCsv')},{i:'☑',l:'Checklist spreadsheet',run:clk('checkCsv')},{i:'📄',l:'Report PDF',run:clk('reportPdf')},{i:'📄',l:'Plain report',run:clk('reportPlain')}]));
  btn(bb,'pbSplit','⇆','Split',menu('Split',[{i:'⇆',l:'Split for second technician',run:clk('splitBtn')},{i:'⇄',l:'Merge returned file',run:clk('mergeBtn')}]));
  btn(bb,'pbTester','👤','Tester',clk('testerBtn'));
  btn(bb,'pbClear','🗑','Clear',menu('Clear',[{i:'🗑',l:'Clear pins…',run:clk('clrBtn')},{i:'🗑',l:'Clear markups…',run:clk('clrMBtn')}]));
@@ -1882,7 +1882,7 @@ try{
  const menuB=mkTop('navMenu','☰','Menu ▾',function(){const a=this;
   const projSw=()=>[...by('projSel').options].map(o=>({i:o.selected?'✓':'↪',l:o.text,run:()=>{by('projSel').value=o.value;by('projSel').dispatchEvent(new Event('change',{bubbles:true}))}}));
   const planSw=()=>[...by('planSel').options].filter(o=>o.value).map(o=>({i:o.selected?'✓':'↪',l:o.text,run:()=>{by('planSel').value=o.value;by('planSel').dispatchEvent(new Event('change',{bubbles:true}))}}));
-  const exp=()=>[{i:'⤓',l:'Plan as PDF',run:click('exPdf')},{i:'⤓',l:'Plan as picture (PNG)',run:click('exPng')},{i:'📋',l:'Device list spreadsheet',run:click('csvBtn')},{i:'🔢',l:'Counts spreadsheet',run:click('countCsv')},{i:'☑',l:'Checklist spreadsheet',run:click('checkCsv')},{i:'📄',l:'Report PDF',run:click('reportPdf')}];
+  const exp=()=>[{i:'⤓',l:'Plan as PDF',run:click('exPdf')},{i:'⤓',l:'Plan as picture (PNG)',run:click('exPng')},{i:'📋',l:'Device list spreadsheet',run:click('csvBtn')},{i:'🔢',l:'Counts spreadsheet',run:click('countCsv')},{i:'☑',l:'Checklist spreadsheet',run:click('checkCsv')},{i:'📄',l:'Report PDF',run:click('reportPdf')},{i:'📄',l:'Plain report',run:click('reportPlain')}];
   const shr=()=>[{i:'⇆',l:'Split for second technician',run:click('splitBtn')},{i:'⇄',l:'Merge returned file',run:click('mergeBtn')}];
   wheel(a,'Menu',[/* bpm-v149 */{i:'🔎',l:'Find text',run:()=>window.findOpen&&findOpen()},{i:'📂',l:'Open plan (PDF / image)…',run:()=>by('file').click()},{i:'💾',l:'Save project file',run:click('projSave')},{i:'⤓',l:'Export…',run:sub(a,'Export',exp)},{i:'⇪',l:'Share…',run:sub(a,'Share',shr)},
    {i:'↪',l:'Switch plan…',run:sub(a,'Switch plan',planSw)},{i:'✎',l:'Rename page',run:()=>plan?pnRename(page):uiAlert('Open a plan first.')},{i:'🗑',l:'Delete plan',run:click('planDel')},
@@ -2279,22 +2279,24 @@ try{
    <section id="finReason"><h4>Failed without a reason (${G.noReason.length})</h4>${G.noReason.length?`<ul class="finL">${failRows(G.noReason)}</ul>`:none('Every failed device has a reason')}</section>
    <section id="finAddr"><h4>No address (${G.noAddrN})</h4>${G.noAddrN?`<ul class="finL">${na.map(g=>row(g.t,g.n,'Go to page',go({pl:g.pl,page:g.page,p:g.p}))).join('')}</ul><button type="button" class="btn" id="finSweep">Start address sweep</button>`:none('Every device has an address')}</section>
    <section id="finTester"><h4>Tester</h4>${G.tester&&G.lic?none(`${G.tester}, license ${G.lic}`):`<div class="finWarn">${!G.tester?'Tester name is missing. ':''}${!G.lic?'Tester license number is missing.':''}</div><button type="button" class="btn" id="finJob">Open job info</button>`}</section></div>
-   <div class="finFoot"><label><input type="checkbox" id="finRep" checked> Make the report PDF</label><label><input type="checkbox" id="finBpm" checked> Save the project file (your backup)</label>
+   <div class="finFoot"><label><input type="checkbox" id="finRep" checked> Make the report PDF</label><label><input type="checkbox" id="finPlain"> Make the plain report</label><label><input type="checkbox" id="finBpm" checked> Save the project file (your backup)</label>
     <div class="row"><span class="sp"></span><button type="button" class="btn pri" id="finGo">Finish and save</button></div></div>`;
   d.querySelector('#finX').onclick=()=>d.close();
   d.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{const x=GO[+b.dataset.go];goTo(x.pl,x.p?.page??x.page,x.p,x.card)});
   const sw=d.querySelector('#finSweep');if(sw)sw.onclick=async()=>{const g=na[0];await goTo(g.pl,g.page,null);window.sweepStart&&sweepStart()};
   const jb=d.querySelector('#finJob');if(jb)jb.onclick=()=>{d.close();by('jobBtn')&&by('jobBtn').click()};
-  d.querySelector('#finGo').onclick=()=>finish(d.querySelector('#finRep').checked,d.querySelector('#finBpm').checked);
+  d.querySelector('#finGo').onclick=()=>finish(d.querySelector('#finRep').checked,d.querySelector('#finPlain').checked,d.querySelector('#finBpm').checked);
   d.showModal();d.querySelector('.finBody').scrollTop=0;return true}
  async function saveFile(){const pr=project;busy(1,'Saving project file');prog(0);
   try{let wl=false;try{wl=(await learnedRules()).length>0}catch{}const r=await deliver(fsafe(pr.name)+'.bpm','application/octet-stream','.bpm',async()=>{const b=await buildBpm(pr.id,wl,prog);window.__lastBpm=b;return b});
    if(r){window.bkSaved&&await bkSaved(pr.id);return 'saved'}return 'cancelled'}catch(e){showErr('Saving the project file failed: '+e.message);return 'failed'}finally{busy(0)}}
- async function makeReport(){const b=by('reportPdf');if(!b||!b.onclick)return 'failed';let got=false;const _dl=window.dl;window.dl=function(blob,name,...r){if(/inspection-report\.pdf$/.test(name))got=true;return _dl.call(this,blob,name,...r)};
-  FIN.skipPre=true;try{await b.onclick(new Event('click'))}catch(e){showErr('Report failed: '+e.message)}finally{FIN.skipPre=false;window.dl=_dl}return got?'saved':'failed'}
- async function finish(rep,bpm){if(!rep&&!bpm)return uiAlert('Tick the report, the project file, or both.');const R=[];
+ async function makeNamed(id,re,label){const b=by(id);if(!b||!b.onclick)return 'failed';let got=false;const _dl=window.dl;window.dl=function(blob,name,...r){if(re.test(name))got=true;return _dl.call(this,blob,name,...r)};
+  FIN.skipPre=true;try{await b.onclick(new Event('click'))}catch(e){showErr(label+' failed: '+e.message)}finally{FIN.skipPre=false;window.dl=_dl}return got?'saved':'failed'}
+ const makeReport=()=>makeNamed('reportPdf',/inspection-report\.pdf$/,'Report');
+ const makePlain=()=>makeNamed('reportPlain',/plain-report\.pdf$/,'Plain report');
+ async function finish(rep,plain,bpm){if(!rep&&!plain&&!bpm)return uiAlert('Tick a report, the project file, or both.');const R=[];
   d.querySelector('#finGo').disabled=true;
-  try{if(rep)R.push(['Report PDF',await makeReport()]);if(bpm)R.push(['Project file (backup)',await saveFile()])}finally{const g=d.querySelector('#finGo');if(g)g.disabled=false}
+  try{if(rep)R.push(['Report PDF',await makeReport()]);if(plain)R.push(['Plain report',await makePlain()]);if(bpm)R.push(['Project file (backup)',await saveFile()])}finally{const g=d.querySelector('#finGo');if(g)g.disabled=false}
   const W={saved:'saved',cancelled:'not saved (cancelled)',failed:'not saved (failed)'};window.__finLast=R;
   d.querySelector('.finBody').innerHTML=`<p class="finSum">${R.every(r=>r[1]==='saved')?'All done.':'Finished with a problem.'}</p><ul class="finL">${R.map(([t,s])=>`<li><span class="finR">${t}</span><b class="finC ${s==='saved'?'finY':'finN'}">${W[s]}</b></li>`).join('')}</ul>`;
   d.querySelector('.finFoot').innerHTML=`<div class="row"><span class="sp"></span><button type="button" class="btn pri" id="finClose">Close</button></div>`;d.querySelector('#finClose').onclick=()=>d.close();
