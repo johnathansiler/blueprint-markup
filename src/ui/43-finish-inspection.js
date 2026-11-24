@@ -30,22 +30,24 @@
    <section id="finReason"><h4>Failed without a reason (${G.noReason.length})</h4>${G.noReason.length?`<ul class="finL">${failRows(G.noReason)}</ul>`:none('Every failed device has a reason')}</section>
    <section id="finAddr"><h4>No address (${G.noAddrN})</h4>${G.noAddrN?`<ul class="finL">${na.map(g=>row(g.t,g.n,'Go to page',go({pl:g.pl,page:g.page,p:g.p}))).join('')}</ul><button type="button" class="btn" id="finSweep">Start address sweep</button>`:none('Every device has an address')}</section>
    <section id="finTester"><h4>Tester</h4>${G.tester&&G.lic?none(`${G.tester}, license ${G.lic}`):`<div class="finWarn">${!G.tester?'Tester name is missing. ':''}${!G.lic?'Tester license number is missing.':''}</div><button type="button" class="btn" id="finJob">Open job info</button>`}</section></div>
-   <div class="finFoot"><label><input type="checkbox" id="finRep" checked> Make the report PDF</label><label><input type="checkbox" id="finBpm" checked> Save the project file (your backup)</label>
+   <div class="finFoot"><label><input type="checkbox" id="finRep" checked> Make the report PDF</label><label><input type="checkbox" id="finPlain"> Make the plain report</label><label><input type="checkbox" id="finBpm" checked> Save the project file (your backup)</label>
     <div class="row"><span class="sp"></span><button type="button" class="btn pri" id="finGo">Finish and save</button></div></div>`;
   d.querySelector('#finX').onclick=()=>d.close();
   d.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{const x=GO[+b.dataset.go];goTo(x.pl,x.p?.page??x.page,x.p,x.card)});
   const sw=d.querySelector('#finSweep');if(sw)sw.onclick=async()=>{const g=na[0];await goTo(g.pl,g.page,null);window.sweepStart&&sweepStart()};
   const jb=d.querySelector('#finJob');if(jb)jb.onclick=()=>{d.close();by('jobBtn')&&by('jobBtn').click()};
-  d.querySelector('#finGo').onclick=()=>finish(d.querySelector('#finRep').checked,d.querySelector('#finBpm').checked);
+  d.querySelector('#finGo').onclick=()=>finish(d.querySelector('#finRep').checked,d.querySelector('#finPlain').checked,d.querySelector('#finBpm').checked);
   d.showModal();d.querySelector('.finBody').scrollTop=0;return true}
  async function saveFile(){const pr=project;busy(1,'Saving project file');prog(0);
   try{let wl=false;try{wl=(await learnedRules()).length>0}catch{}const r=await deliver(fsafe(pr.name)+'.bpm','application/octet-stream','.bpm',async()=>{const b=await buildBpm(pr.id,wl,prog);window.__lastBpm=b;return b});
    if(r){window.bkSaved&&await bkSaved(pr.id);return 'saved'}return 'cancelled'}catch(e){showErr('Saving the project file failed: '+e.message);return 'failed'}finally{busy(0)}}
- async function makeReport(){const b=by('reportPdf');if(!b||!b.onclick)return 'failed';let got=false;const _dl=window.dl;window.dl=function(blob,name,...r){if(/inspection-report\.pdf$/.test(name))got=true;return _dl.call(this,blob,name,...r)};
-  FIN.skipPre=true;try{await b.onclick(new Event('click'))}catch(e){showErr('Report failed: '+e.message)}finally{FIN.skipPre=false;window.dl=_dl}return got?'saved':'failed'}
- async function finish(rep,bpm){if(!rep&&!bpm)return uiAlert('Tick the report, the project file, or both.');const R=[];
+ async function makeNamed(id,re,label){const b=by(id);if(!b||!b.onclick)return 'failed';let got=false;const _dl=window.dl;window.dl=function(blob,name,...r){if(re.test(name))got=true;return _dl.call(this,blob,name,...r)};
+  FIN.skipPre=true;try{await b.onclick(new Event('click'))}catch(e){showErr(label+' failed: '+e.message)}finally{FIN.skipPre=false;window.dl=_dl}return got?'saved':'failed'}
+ const makeReport=()=>makeNamed('reportPdf',/inspection-report\.pdf$/,'Report');
+ const makePlain=()=>makeNamed('reportPlain',/plain-report\.pdf$/,'Plain report');
+ async function finish(rep,plain,bpm){if(!rep&&!plain&&!bpm)return uiAlert('Tick a report, the project file, or both.');const R=[];
   d.querySelector('#finGo').disabled=true;
-  try{if(rep)R.push(['Report PDF',await makeReport()]);if(bpm)R.push(['Project file (backup)',await saveFile()])}finally{const g=d.querySelector('#finGo');if(g)g.disabled=false}
+  try{if(rep)R.push(['Report PDF',await makeReport()]);if(plain)R.push(['Plain report',await makePlain()]);if(bpm)R.push(['Project file (backup)',await saveFile()])}finally{const g=d.querySelector('#finGo');if(g)g.disabled=false}
   const W={saved:'saved',cancelled:'not saved (cancelled)',failed:'not saved (failed)'};window.__finLast=R;
   d.querySelector('.finBody').innerHTML=`<p class="finSum">${R.every(r=>r[1]==='saved')?'All done.':'Finished with a problem.'}</p><ul class="finL">${R.map(([t,s])=>`<li><span class="finR">${t}</span><b class="finC ${s==='saved'?'finY':'finN'}">${W[s]}</b></li>`).join('')}</ul>`;
   d.querySelector('.finFoot').innerHTML=`<div class="row"><span class="sp"></span><button type="button" class="btn pri" id="finClose">Close</button></div>`;d.querySelector('#finClose').onclick=()=>d.close();

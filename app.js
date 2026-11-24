@@ -596,6 +596,73 @@ $('#annSave').onclick=async()=>{const m=ann.m;if(ann.shapes.length){annDraw();m.
 function pdfCounts(doc,C,y){doc.setFontSize(10);const row=(a,b,c,d,e,bold)=>{if(y>760){doc.addPage([612,792],'p');y=40}doc.setFont(undefined,bold?'bold':'normal');doc.text(String(a),40,y);[b,c,d,e].forEach((v,i)=>doc.text(String(v),300+i*70,y));y+=14};
  row('Type','Total','Tested','In progress','Untested',1);for(const b of C.plans.filter(b=>b.rows.length)){y+=4;row(b.pl.name.slice(0,55),'','','','',1);for(const r of b.rows)row('  '+TYPES[r.t].n,r.n,r.te,r.ip,r.un)}
  y+=4;row('Project total','','','','',1);for(const r of C.total)row('  '+TYPES[r.t].n,r.n,r.te,r.ip,r.un);const t=C.total.reduce((a,r)=>[a[0]+r.n,a[1]+r.te,a[2]+r.ip,a[3]+r.un],[0,0,0,0]);row('All devices',...t,1);doc.setFont(undefined,'normal');return y}
+
+const ST_LAB={passed:'Passed',failed:'Failed',corrected:'Corrected','in progress':'In progress','not tested':'Not tested'};
+function stLab(s){return ST_LAB[s]||s||'Not tested'}
+async function pinPhotoJpegs(pinId){const ms=(await byIdx('media','pinId',pinId)).filter(m=>m.kind==='photo').sort((a,b)=>a.created-b.created),out=[];for(const m of ms){try{out.push(await blobJpeg(photoBlob(m),600))}catch(e){}}return out}
+// Wrap text in the column left of the first photo; grow the row to the taller of text or photo; extra photos in a grid below; clean page breaks. No text past the photo's left edge.
+function pdfWriteItem(doc,y,blocks,images){
+ const left=40,right=572,bottom=760,top=44,gap=8,imgW=150,lineH=13;
+ const first=images&&images[0],rest=(images&&images.slice(1))||[];
+ const imgX=right-imgW,textRight=first?imgX-gap:right;
+ const lines=[];
+ for(const b of blocks||[]){
+  if(b==null||b.t==null||b.t==='')continue;
+  doc.setFont(undefined,b.bold?'bold':'normal');doc.setFontSize(b.size||10);
+  const x=b.x==null?left:b.x,w=Math.max(20,textRight-x);
+  for(const s of doc.splitTextToSize(String(b.t),w))lines.push({s,x,col:b.col,bold:!!b.bold,size:b.size||10});
+ }
+ const ih=first?Math.min(110,first.h*(imgW/Math.max(1,first.w))):0;
+ const topH=Math.max(lines.length*lineH,ih,8);
+ if(y+Math.min(topH,48)+6>bottom&&y>top+8){doc.addPage();y=top}
+ let y0=y;
+ if(first){if(y0+ih+2>bottom){doc.addPage();y=top;y0=y}doc.addImage(first.d,'JPEG',imgX,y0+2,imgW,ih)}
+ const pStart=doc.internal.getNumberOfPages();
+ for(const ln of lines){
+  if(y+lineH+4>bottom){doc.addPage();y=top}
+  doc.setFontSize(ln.size);doc.setFont(undefined,ln.bold?'bold':'normal');
+  if(ln.col)doc.setTextColor(...ln.col);else doc.setTextColor(0,0,0);
+  doc.text(ln.s,ln.x,y+10);doc.setTextColor(0,0,0);y+=lineH;
+ }
+ if(doc.internal.getNumberOfPages()===pStart)y=Math.max(y,y0+ih+4);
+ if(rest.length){
+  const colW=150,colGap=8,cols=Math.max(1,Math.floor((right-left+colGap)/(colW+colGap)));
+  let c=0,rowY=y,rowH=0;
+  for(const im of rest){
+   const h=Math.min(110,im.h*(colW/Math.max(1,im.w)));
+   if((c===0&&rowY+h+6>bottom)||(c>0&&rowY+h+6>bottom)){doc.addPage();rowY=top;c=0;rowH=0}
+   doc.addImage(im.d,'JPEG',left+c*(colW+colGap),rowY,colW,h);
+   rowH=Math.max(rowH,h);c++;
+   if(c>=cols){rowY+=rowH+8;c=0;rowH=0}
+  }
+  if(c>0)rowY+=rowH+8;
+  y=rowY;
+ }
+ return y+6;
+}
+function pinReportBlocks(pl,p,kind){
+ // kind 'def' keeps the existing Report PDF wording; 'plain' uses full labeled fields.
+ if(kind==='def'){
+  const loc=p.location?' @ '+p.location:'';
+  return [
+   {t:`${p.severity||'-'}: ${TYPES[p.type]?.n||p.type} ${p.address||''}${loc}`,x:40,bold:1,col:p.severity==='Critical'?[185,28,28]:null},
+   {t:`Reason: ${p.reason||'-'}${p.reasonText?' - '+failReasonText(p.reasonText):''}`,x:48},
+   p.codes?.length?{t:`Codes: ${fmtCodes(p.codes)}`,x:48,col:[180,83,9]}:null,
+   {t:`${pl.name} ${pgT(pl.id,p.page)} · ${p.testedAt?fmtT(p.testedAt):'-'}${p.tester?' · '+p.tester:''}${p.notes?' · '+p.notes:''}`,x:48}
+  ];
+ }
+ const loc=p.location?' @ '+p.location:'';
+ const failed=p.status==='failed',red=failed?[185,28,28]:null;
+ return [
+  {t:`${TYPES[p.type]?.n||p.type} ${p.address||'(no address)'}${loc}`,x:40,bold:1,size:11,col:red},
+  {t:`${stLab(p.status)}${p.severity?' · '+p.severity:''} · ${pl.name} · ${pgT(pl.id,p.page)}`,x:40,bold:failed?1:0,col:red},
+  (p.reason||p.reasonText)?{t:`Reason: ${p.reason||'-'}${p.reasonText?' - '+failReasonText(p.reasonText):''}`,x:40,col:red}:null,
+  p.codes?.length?{t:`Codes: ${fmtCodes(p.codes)}`,x:40,col:[180,83,9]}:null,
+  p.notes?{t:`Notes: ${p.notes}`,x:40}:null,
+  (p.status==='corrected'&&corrTxt(p))?{t:corrTxt(p),x:40,col:[8,145,178]}:null
+ ];
+}
+
 const sortAddr=(a,b)=>String(a.address).localeCompare(b.address,undefined,{numeric:true});
 $('#reportPdf').onclick=async()=>{if(!project)return;await pnAll();busy(1,'Building report');try{const D=await projData(),all_=D.flatMap(d=>d.pins),c=cntSt(all_),{jsPDF}=window.jspdf,doc=new jsPDF({unit:'pt',format:'letter'});const tn=tester===null?await get('meta','tester'):tester;
  let y=0;const need=h=>{if(y+h>760){doc.addPage();y=44}},H=t=>{need(40);y+=8;doc.setFontSize(13);doc.setFont(undefined,'bold');doc.text(t,40,y+12);doc.setFont(undefined,'normal');doc.setDrawColor(150);doc.line(40,y+17,572,y+17);y+=30;doc.setFontSize(10)},L=(t,x=40,col)=>{const ls=doc.splitTextToSize(String(t),572-x);need(ls.length*13);if(col)doc.setTextColor(...col);doc.text(ls,x,y+10);doc.setTextColor(0,0,0);y+=ls.length*13};
@@ -606,10 +673,8 @@ $('#reportPdf').onclick=async()=>{if(!project)return;await pnAll();busy(1,'Build
  H('Device counts');y=pdfCounts(doc,countRows(D),y+10)+4;
  const defs=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='failed').map(p=>({pl,p}))).sort((a,b)=>(a.p.severity==='Critical'?0:1)-(b.p.severity==='Critical'?0:1));
  H(`Deficiencies (${defs.length})`);if(!defs.length)L('None.');
- for(const{pl,p}of defs){const ph=await firstPhoto(p.id);let im=null;if(ph)try{im=await blobJpeg(ph,600)}catch{}const ih=im?Math.min(110,im.h*(150/im.w)):0;need(Math.max(ih,56)+8);const y0=y;
-  doc.setFont(undefined,'bold');L(`${p.severity||'-'}: ${TYPES[p.type]?.n||p.type} ${p.address||''}${p.location?' @ '+p.location:''}`,40,p.severity==='Critical'?[185,28,28]:null);doc.setFont(undefined,'normal');
-  L(`Reason: ${p.reason||'-'}${p.reasonText?' - '+failReasonText(p.reasonText):''}`,48);if(p.codes?.length)L(`Codes: ${fmtCodes(p.codes)}`,48,[180,83,9]);L(`${pl.name} ${pgT(pl.id,p.page)} · ${p.testedAt?fmtT(p.testedAt):'-'}${p.tester?' · '+p.tester:''}${p.notes?' · '+p.notes:''}`,48);
-  if(im){doc.addImage(im.d,'JPEG',422,y0+2,150,ih);y=Math.max(y,y0+ih+4)}y+=6}
+ for(const{pl,p}of defs){const ph=await firstPhoto(p.id);let im=null;if(ph)try{im=await blobJpeg(ph,600)}catch{}
+  y=pdfWriteItem(doc,y,pinReportBlocks(pl,p,'def'),im?[im]:[])}
  {const cd=D.flatMap(({pl,pins:ps})=>ps.filter(p=>p.status==='corrected').map(p=>({pl,p})));if(cd.length){H(`Corrected deficiencies (${cd.length})`);for(const{pl,p}of cd){doc.setFont(undefined,'bold');L(`${TYPES[p.type]?.n||p.type} ${p.address||''}${p.location?' @ '+p.location:''}`,40,[8,145,178]);doc.setFont(undefined,'normal');L(`Was: ${p.severity||'-'} · ${p.reason||'-'}${p.reasonText?' - '+failReasonText(p.reasonText):''}`,48);L(corrTxt(p),48);L(`${pl.name} ${pgT(pl.id,p.page)}`,48);y+=6}}}
  H('Device checklist results');
  for(const{pl,pins:ps}of D){if(!ps.length)continue;need(30);doc.setFontSize(12);doc.setFont(undefined,'bold');L(pl.name);doc.setFontSize(10);doc.setFont(undefined,'normal');let lp=null;
@@ -620,6 +685,21 @@ $('#reportPdf').onclick=async()=>{if(!project)return;await pnAll();busy(1,'Build
    if(rdTxt(p))L('Readings: '+rdTxt(p),72,[14,116,144]);if(!p.checks)L('(no checklist recorded)',72,[100,116,139]);y+=4}}
  const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(120);doc.text(`${project.name} · Inspection report · page ${i} of ${n}`,40,780);doc.setTextColor(0)}
  dl(doc.output('blob'),project.name.replace(/[\\/:*?"<>|]/g,'_')+'-inspection-report.pdf')}catch(e){showErr('Report failed: '+e.message)}finally{busy(0)}};
+
+$('#reportPlain').onclick=async()=>{if(!project)return;await pnAll();busy(1,'Building plain report');try{const D=await projData(),{jsPDF}=window.jspdf,doc=new jsPDF({unit:'pt',format:'letter'});
+ const planOrd=new Map(D.map((d,i)=>[d.pl.id,i]));
+ const sortItem=(a,b)=>String(a.p.address||'').localeCompare(String(b.p.address||''),undefined,{numeric:true})||(planOrd.get(a.pl.id)-planOrd.get(b.pl.id))||(a.p.page-b.p.page);
+ const hasNoteOrPhoto=async p=>{if(String(p.notes||'').trim())return true;return (await byIdx('media','pinId',p.id)).some(m=>m.kind==='photo')};
+ const items=[];
+ for(const{pl,pins:ps}of D)for(const p of ps){if(p.status==='failed'||await hasNoteOrPhoto(p))items.push({pl,p})}
+ items.sort(sortItem);
+ let y=44;
+ doc.setFontSize(14);doc.setFont(undefined,'bold');doc.text(String(project.name||'Plain report'),40,y);y+=16;
+ doc.setFont(undefined,'normal');doc.setFontSize(10);doc.setTextColor(80);doc.text(`Plain report · ${fmtT(Date.now())}`,40,y);doc.setTextColor(0,0,0);y+=22;
+ if(!items.length){doc.text('No devices with a deficiency, notes, or photos.',40,y+10);y+=18}
+ for(const{pl,p}of items){const imgs=await pinPhotoJpegs(p.id);y=pdfWriteItem(doc,y,pinReportBlocks(pl,p,'plain'),imgs)}
+ const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(120);doc.text(`${project.name} · Plain report · page ${i} of ${n}`,40,780);doc.setTextColor(0)}
+ dl(doc.output('blob'),project.name.replace(/[\\/:*?"<>|]/g,'_')+'-plain-report.pdf')}catch(e){showErr('Plain report failed: '+e.message)}finally{busy(0)}};
 $('#checkCsv').onclick=async()=>{await pnAll();const rows=[['plan','page','page name','type','address','location','status','item','result','tested','tester']];/* status column shows "corrected" for fixed deficiencies */
  for(const{pl,pins:ps}of await projData())for(const p of ps.slice().sort(sortAddr)){const base=[pl.name,p.page,pnm(pl.id,p.page),TYPES[p.type]?.n||p.type,p.address,p.location||'',p.status];const tt=[p.testedAt?fmtT(p.testedAt):'',p.tester||''];
   if(p.checks?.length)for(const c of p.checks)rows.push([...base,c.v==='fail'?failItemLabel(c.t):c.t,CV[c.v]||'',...tt]);else rows.push([...base,'(no checklist)','',...tt])}

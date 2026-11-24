@@ -71,7 +71,7 @@ window.preSend=async function(scope,label){const iss=await preIssues(scope);if(!
    if(i.p){if(plan?.id!==i.pl)await openPlan(i.pl,i.p.page);else if(page!==i.p.page)await openPlan(i.pl,i.p.page);const q=pins.find(x=>x.id===i.p.id);if(q){centerOn(q.x,q.y,Math.max(view.s,1),stage.clientWidth/2,stage.clientHeight/2);draw();openPin(q)}}
    else if(i.k==='tester'&&!(project&&(await getJob()).techName))$('#jobBtn').click();else $('#jobBtn').click()});d.showModal()})};
 const guard=(id,scope,label)=>{const b=$(id),o=b.onclick;if(!o)return;b.onclick=async e=>{if(await preSend(scope,label))return o.call(b,e)}};
-guard('#reportPdf','project','Report PDF');guard('#defPdf','project','Deficiencies PDF');guard('#exPdf','plan','Plan PDF');guard('#exPng','plan','Plan PNG');
+guard('#reportPdf','project','Report PDF');guard('#reportPlain','project','Plain report');guard('#defPdf','project','Deficiencies PDF');guard('#exPdf','plan','Plan PDF');guard('#exPng','plan','Plan PNG');
 
 // ---------- export menu ----------
 $('#exMenu').onclick=e=>{e.stopPropagation();$('#exPop').hidden=!$('#exPop').hidden};document.addEventListener('click',e=>{if(!e.target.closest('.exWrap'))$('#exPop').hidden=true});
