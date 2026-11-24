@@ -1,6 +1,6 @@
 // bpm-v38: app files are network-first (fresh code whenever online, cache when offline); the big vendor libraries are cache-first.
 // Precache bypasses the HTTP cache (cache:'reload') so an install can't mix old and new files.
-const C='bpm-v153',D='bpm-docs',O='bpm-ocr',A=['./','index.html','app.js','app.css','detect.js','codes.json','vendor/pdf-lib.min.js','manifest.json','icon.svg','icon-192.png','icon-512.png','icon-maskable-512.png','vendor/pdf.min.js','vendor/pdf.worker.min.js','vendor/jspdf.umd.min.js','vendor/jsQR.min.js','dlg.js','ui.js','guides-trouble.json'];
+const C='bpm-v154',D='bpm-docs',O='bpm-ocr',A=['./','index.html','app.js','app.css','detect.js','codes.json','device-catalog.json','vendor/pdf-lib.min.js','manifest.json','icon.svg','icon-192.png','icon-512.png','icon-maskable-512.png','vendor/pdf.min.js','vendor/pdf.worker.min.js','vendor/jspdf.umd.min.js','vendor/jsQR.min.js','dlg.js','ui.js','guides-trouble.json'];
 // bpm-v124: OCR tag files stay in O across version bumps (activate used to delete them with the old app cache).
 // Not in the install precache, so the first open does not wait on them. After the worker takes control it downloads whatever this phone is missing.
 const OB=['vendor/ppocr/ort.wasm.min.js','vendor/ppocr/ort-wasm-simd-threaded.wasm','vendor/ppocr/ort-wasm-simd-threaded.mjs','vendor/ppocr/ppocr_keys.json','vendor/ppocr/PP-OCRv6_det_small.onnx','vendor/ppocr/PP-OCRv6_rec_small.onnx','vendor/ppocr/ppocr-worker.js'];

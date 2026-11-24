@@ -268,5 +268,6 @@
   await save(plan.id,n,recOut);return recOut}
  function clearMem(){mem.clear()}
  window.findOcrCached=cached;window.findOcrRead=readPage;window.findOcrClear=clearMem;window.findOcrJoin=lineJoin;window.findOcrPrefixFix=prefixFix;
+ window.ppocrReady=ensureEngine;window.ppocrImage=ocrImageData;
  const _cp=window.closePlan;if(typeof closePlan==='function')closePlan=function(){clearMem();return _cp.apply(this,arguments)};
 })();
